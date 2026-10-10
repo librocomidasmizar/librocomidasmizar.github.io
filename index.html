@@ -60,6 +60,14 @@ h3{font-size:17px;font-weight:600}
 
 /* Tabs */
 .tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.nav-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-bottom:20px}
+.chip{padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-weight:700;font-size:15px;text-align:center}
+.chip[aria-current="true"]{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.menu-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px 16px;border-radius:12px;border:2px solid var(--primary);background:var(--surface);font-family:var(--head);font-weight:600;font-size:19px;text-align:left}
+.menu-panel{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:10px 12px;margin-top:8px}
+.menu-g{font-size:13px;color:var(--muted);font-weight:700;margin:8px 2px 6px;text-transform:uppercase;letter-spacing:.04em}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+#print-area{display:none}
 .tab{background:none;border:0;padding:10px 14px;font-weight:700;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
 .tab[aria-current="true"]{color:var(--ink);border-bottom-color:var(--primary)}
 .badge{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--accent);color:#fff;font-size:12px;line-height:20px;text-align:center;margin-left:6px}
@@ -176,13 +184,6 @@ textarea.input{min-height:90px;resize:vertical}
 .cal-i{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:4px;padding:0 3px;margin-top:2px;font-size:11px}
 .cal-i.cumple{background:var(--accent-soft);color:var(--accent)}
 .cal-i.evento{background:var(--soft);color:var(--primary)}
-.efe{background:var(--surface);border:2px solid var(--line);border-left:6px solid var(--accent);border-radius:14px;padding:12px 16px;margin-bottom:18px}
-.efe-k{font-size:14px;color:var(--muted)}
-.efe-t{display:block;width:100%;text-align:left;background:none;border:0;padding:6px 0;font-family:var(--head);font-weight:600;font-size:18px;color:var(--ink)}
-.efe-t::after{content:" +";color:var(--accent)}
-.efe-t[aria-expanded="true"]::after{content:" −"}
-.efe-b{padding:2px 0 8px;white-space:pre-line;font-size:16px}
-.efe-b a{color:var(--primary)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;max-width:90vw;z-index:10}
 .empty{background:var(--surface);border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--muted)}
 
@@ -194,6 +195,8 @@ textarea.input{min-height:90px;resize:vertical}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{
+  #app{display:none!important}
+  #print-area{display:block!important}
   body{background:#fff;color:#000;font-size:12px}
   .top,.tabs,.no-print,.toast{display:none!important}
   .block,.tablewrap{border-color:#999}
@@ -208,11 +211,12 @@ window.addEventListener("error", e => { const a = document.getElementById("app")
 window.addEventListener("unhandledrejection", e => { const a = document.getElementById("app"); if (a) a.innerHTML += '<p class="muted small">Aviso técnico: ' + String((e.reason && (e.reason.code || e.reason.message)) || e.reason).replace(/</g,"&lt;") + '</p>'; });
 </script>
 <div id="toast" class="toast" hidden></div>
+<div id="print-area"></div>
 <script type="module">
 /* ---------- Conexión con Firebase ---------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, initializeAuth, inMemoryPersistence, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsnap, query, where as fwhere, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsnap, query, where as fwhere, writeBatch, deleteField } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const FB_CONFIG = {
   apiKey: "AIzaSyA5dr_N0Z8VqiRWTCDMHbrRsmK6gFsUDBM",
@@ -222,8 +226,6 @@ const FB_CONFIG = {
   messagingSenderId: "574865497497",
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
-const CAL_ID = "3vd99gunofva0k3dgi9qpg2rdg@group.calendar.google.com";
-const CAL_KEY = "AIzaSyCjx6qkf1TsVKNGlPXl9GxALnp--xAQAZ8";
 const DOMINIO = "libro-comidas-mizar.app";
 
 const fbApp = initializeApp(FB_CONFIG);
@@ -274,7 +276,7 @@ const S = {
   parteFecha:today(), loginRole:null, loginRes:null, loginErr:"",
   drafts:{}, editRes:null
 };
-S.pub = {}; S.priv = {}; S.authListo = false; S.efe = null; S.efeOpen = {};
+S.pub = {}; S.priv = {}; S.authListo = false; S.nom = {};
 S.extras = {}; S.wordle = {}; S.eventos = []; S.wlTyped = "";
 try { S.vistos = JSON.parse(localStorage.getItem("comedor.avisos")||"[]"); } catch(e){ S.vistos = []; }
 function saveSession(){}
@@ -306,13 +308,19 @@ const esTitular = u => !!(S.config && u && u.id===S.config.principal);
 const puedeGestionarAdmins = u => !!u && rolDe(u)==="admin" && (!(S.config && S.config.principal) || esTitular(u) || u.id===principalHoy());
 const activos = () => S.residentes.filter(r=>r.activo!==false && esComensal(r));
 const resById = id => S.residentes.find(r=>r.id===id);
-const iniciales = r => (r.iniciales && String(r.iniciales).trim()) || String(r.nombre||"").split(/\s+/).filter(Boolean).map(x=>x[0]).join("").toUpperCase();
+const inicialesDe = n => String(n||"").split(/\s+/).filter(Boolean).map(x=>x[0]).join("").toUpperCase().slice(0,6);
+const iniciales = r => (r.iniciales && String(r.iniciales).trim()) || inicialesDe(r.nombre) || "?";
+/* La administración (y la vista previa) nunca ve nombres: solo iniciales */
+const verAnon = () => S.vista || rolDe(resById(S.session && S.session.uid))==="cocina";
+const nombreVis = r => verAnon() ? iniciales(r) : (r.nombre || iniciales(r));
+/* Personas con cumpleaños: todos menos la administración */
+const conCumple = () => S.residentes.filter(r=>r.activo!==false && rolDe(r)!=="cocina");
 const extrasDe = f => S.extras[f] || {};
 const notaParaDe = e => e.notaPara || (e.notaTodos ? "todos" : "administracion");
-const faltanDatos = u => esComensal(u) && (!u.cumple || !u.anioNac || !String(u.gustos||"").trim());
+const faltanDatos = u => rolDe(u)!=="cocina" && (!u.cumple || !u.anioNac || !String(u.gustos||"").trim());
 const edadEn = (r, anio) => r.anioNac ? anio - r.anioNac : null;
 const edadProx = r => { if (!r.cumple || !r.anioNac) return null; const d = diasHasta(r.cumple); return edadEn(r, parse(addDays(today(), d)).getFullYear()); };
-const pideActualizar = u => esComensal(u) && !!u.pedirGustos && !((u.gustosTs||0) > u.pedirGustos);
+const pideActualizar = u => rolDe(u)!=="cocina" && !!u.pedirGustos && !((u.gustosTs||0) > u.pedirGustos);
 function diasHasta(mmdd){
   if (!mmdd) return 9999;
   const [m,d] = mmdd.split("-").map(Number), hoy = parse(today());
@@ -339,10 +347,10 @@ S.db = { doc: mkDoc, collection: c => mkCol(c) };
 let subs = [];
 function limpiar(){
   subs.forEach(u=>{ try { u(); } catch(e){} }); subs = [];
-  Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, efeOpen:{}});
+  Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, nom:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, vista:false, menu:false, migrado:false});
 }
 function mezclar(){
-  S.residentes = Object.entries(S.pub).map(([id,p])=>({id, ...p, ...(S.priv[id]||{})})).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),"es"));
+  S.residentes = Object.entries(S.pub).map(([id,p])=>({id, ...p, ...(S.nom[id]||{}), ...(S.priv[id]||{})})).sort((a,b)=>String(a.nombre||a.iniciales||"").localeCompare(String(b.nombre||b.iniciales||""),"es"));
 }
 function revisarPeticion(){
   const yo = S.session && resById(S.session.uid);
@@ -355,7 +363,9 @@ function suscribir(pid, rol){
     const o = {}; q.docs.forEach(d=>o[d.id]=d.data()); S.pub = o; S.resLoaded = true; mezclar();
     if (!o[pid] || o[pid].activo===false){ toast("Tu usuario ya no está activo."); signOut(auth); return; }
     revisarPeticion(); render();
+    if (rol==="admin" && !S.migrado){ S.migrado = true; setTimeout(migrarNombres, 2500); setTimeout(()=>limpiarAntiguos(false), 6000); }
   }, dbErr));
+  if (rol!=="cocina") add(S.db.collection("nombres").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.nom=o; mezclar(); render(); }, dbErr));
   if (gest) add(S.db.collection("privados").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.priv=o; mezclar(); revisarPeticion(); render(); }, dbErr));
   else add(S.db.doc("privados/"+pid).onSnapshot(s => { S.priv = s.exists ? {[pid]: s.data()} : {}; mezclar(); revisarPeticion(); render(); }, dbErr));
   add(S.db.collection("plantillas").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.plantillas=o; render(); }, dbErr));
@@ -378,6 +388,46 @@ function suscribir(pid, rol){
     }, dbErr));
   }
 }
+/* ---------- Historial: borrar datos antiguos ---------- */
+async function borrarHistorial(limite){
+  const limiteMs = parse(limite).getTime(); let total = 0;
+  const grupos = [["pedidos", fwhere("fecha","<",limite)], ["extras", fwhere("fecha","<",limite)], ["wordle", fwhere("fecha","<",limite)], ["eventos", fwhere("fecha","<",limite)], ["mensajes", fwhere("ts","<",limiteMs)]];
+  for (const [col, cond] of grupos){
+    const snap = await getDocs(query(fcol(fs, col), cond));
+    for (let i=0; i<snap.docs.length; i+=400){ const b = writeBatch(fs); snap.docs.slice(i,i+400).forEach(d=>b.delete(d.ref)); await b.commit(); }
+    total += snap.docs.length;
+  }
+  await S.db.doc("config/general").update({ultimaLimpieza: today(), ultimaLimpiezaBorrados: total});
+  return total;
+}
+/* Automático: si está activado, cada trimestre se borra lo que tenga más de 3 meses */
+async function limpiarAntiguos(){
+  const c = S.config || {};
+  if (!c.limpiezaAuto) return;
+  if (c.ultimaLimpieza && c.ultimaLimpieza > addDays(today(), -91)) return;
+  try { await borrarHistorial(addDays(today(), -91)); } catch(e){ console.warn("Limpieza automática:", e); }
+}
+
+/* Paso de los nombres a su propia colección (solo una vez, lo hace el administrador principal) */
+async function migrarNombres(){
+  const me = resById(S.session && S.session.uid);
+  if (!me || !puedeGestionarAdmins(me)) return;
+  const viejos = Object.entries(S.pub).filter(([id,p])=>("nombre" in p) || ("usuario" in p) || !p.iniciales);
+  if (!viejos.length) return;
+  try {
+    const b = writeBatch(fs);
+    viejos.forEach(([id,p])=>{
+      const nombre = p.nombre || (S.nom[id]||{}).nombre || "", usuario = p.usuario || (S.nom[id]||{}).usuario || "";
+      if (nombre || usuario) b.set(fdoc(fs,"nombres/"+id), {nombre, usuario});
+      const upd = {iniciales: p.iniciales || inicialesDe(nombre)};
+      if ("nombre" in p) upd.nombre = deleteField();
+      if ("usuario" in p) upd.usuario = deleteField();
+      b.update(fdoc(fs,"usuarios/"+id), upd);
+    });
+    await b.commit();
+  } catch(e){ console.warn("Migración de nombres:", e); }
+}
+
 async function entrarCon(user){
   limpiar();
   if (!user){ S.authListo = true; render(); return; }
@@ -388,40 +438,11 @@ async function entrarCon(user){
     if (!p.exists || p.data().activo===false){ S.loginErr = "Tu usuario está dado de baja."; await signOut(auth); return; }
     S.session = {uid:pid}; S.authListo = true; S.loginErr = "";
     suscribir(pid, p.data().rol || "residente");
-    cargarEfemerides();
   } catch(e){ console.error(e); S.loginErr = e.code==="permission-denied" ? "Tu usuario está dado de baja o no tiene acceso. Habla con el administrador." : "No se ha podido entrar ("+(e.code||e.message)+")."; S.authListo = true; try { await signOut(auth); } catch(e2){} }
   render();
 }
 S.db.doc("config/general").onSnapshot(s => { S.config = s.exists ? s.data() : null; S.cfgLoaded = true; render(); }, e => { console.error(e); S.loadErr = e.code||e.message; S.cfgLoaded = true; render(); });
 onAuthStateChanged(auth, user => { if (S.enAlta) return; entrarCon(user); });
-
-/* ---------- Efeméride del día (calendario de Google) ---------- */
-async function cargarEfemerides(){
-  const f = today();
-  try { const c = JSON.parse(localStorage.getItem("mizar.efe")||"null"); if (c && c.f===f){ S.efe = c; render(); return; } } catch(e){}
-  try {
-    const ini = parse(f), fin = parse(addDays(f,1));
-    const url = "https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(CAL_ID)+"/events?key="+CAL_KEY+"&singleEvents=true&orderBy=startTime&maxResults=10&timeMin="+encodeURIComponent(ini.toISOString())+"&timeMax="+encodeURIComponent(fin.toISOString());
-    const r = await fetch(url), j = await r.json();
-    if (!r.ok) throw new Error((j.error && (j.error.status||j.error.message)) || r.status);
-    const items = (j.items||[]).filter(e=>!e.start || !e.start.date || e.start.date===f).map(e=>({id:e.id, t:e.summary||"(Sin título)", d:aTexto(e.description||"")}));
-    S.efe = {f, items}; try { localStorage.setItem("mizar.efe", JSON.stringify(S.efe)); } catch(e){}
-  } catch(e){ console.warn("Efeméride:", e); S.efe = {f, items:[], error:String(e.message||e)}; }
-  render();
-}
-function aTexto(html){
-  const d = new DOMParser().parseFromString("<div>"+String(html).replace(/<br\s*\/?>/gi,"\n").replace(/<\/(p|div|li)>/gi,"\n")+"</div>", "text/html");
-  return (d.body.textContent||"").replace(/\n{3,}/g,"\n\n").trim();
-}
-const enlazar = t => esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
-function efemerideHTML(u){
-  if (!S.efe || S.efe.f!==today()) return "";
-  if (S.efe.error) return rolDe(u)==="admin" ? `<div class="efe"><span class="efe-k">No se ha podido cargar la efeméride del día (${esc(S.efe.error)}).</span></div>` : "";
-  if (!S.efe.items.length) return "";
-  return `<section class="efe" aria-label="Efeméride del día"><span class="efe-k">Hoy, ${esc(fmtDay(today()))}</span>
-    ${S.efe.items.map(x=>`<button class="efe-t" data-a="efe" data-v="${esc(x.id)}" aria-expanded="${!!S.efeOpen[x.id]}">${esc(x.t)}</button>${S.efeOpen[x.id] ? `<div class="efe-b">${x.d ? enlazar(x.d) : '<span class="muted">Sin más contenido.</span>'}</div>` : ""}`).join("")}
-  </section>`;
-}
 
 /* ---------- Render ---------- */
 function notificar(m){
@@ -470,8 +491,8 @@ function viewLogin(){
   </div></div>`;
 }
 
-function cabecera(nombre){
-  return `<div class="top"><div class="brand"><h1>Libro de comidas - Mizar</h1><span class="who">${esc(nombre)}</span></div><div class="row" style="gap:14px"><button class="link" data-a="pw-ver">Contraseña</button><button class="link" data-a="logout">Salir</button></div></div>`;
+function cabecera(nombre, esAdm){
+  return `<div class="top"><div class="brand"><h1>Libro de comidas - Mizar</h1><span class="who">${esc(nombre)}</span></div><div class="row" style="gap:14px">${esAdm?`<button class="link" data-a="vista-admon">Ver como la administración</button>`:""}<button class="link" data-a="pw-ver">Contraseña</button><button class="link" data-a="logout">Salir</button></div></div>`;
 }
 function panelPw(){
   if (!S.verPw) return "";
@@ -482,7 +503,12 @@ function panelPw(){
     <div class="row"><button class="btn" data-a="pw-save">Cambiar contraseña</button><button class="btn ghost" data-a="pw-ver">Cancelar</button></div></div>`;
 }
 function tabs(list){
-  return `<nav class="tabs">${list.map(([k,l,b])=>`<button class="tab" data-a="tab" data-v="${k}" aria-current="${S.tab===k}">${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</nav>`;
+  // Pocas secciones: botones a la vista. Muchas: un menú desplegable agrupado.
+  if (list.length<=4) return `<nav class="nav-chips" aria-label="Secciones">${list.map(([k,l,b])=>`<button class="chip" data-a="tab" data-v="${k}" aria-current="${S.tab===k}">${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</nav>`;
+  const act = list.find(x=>x[0]===S.tab) || list[0], pend = list.reduce((n,x)=>n+(Number(x[2])||0),0);
+  const grupos = [...new Set(list.map(x=>x[3]))];
+  return `<nav class="no-print" aria-label="Secciones"><button class="menu-btn" data-a="menu" aria-expanded="${!!S.menu}"><span>${act[1]}${pend&&!S.menu?`<span class="badge">${pend}</span>`:""}</span><span class="muted small">${S.menu?"Cerrar":"Cambiar de sección"} ${S.menu?"▴":"▾"}</span></button>
+    ${S.menu ? `<div class="menu-panel">${grupos.map(g=>`<div class="menu-g">${g}</div><div class="menu-grid">${list.filter(x=>x[3]===g).map(([k,l,b])=>`<button class="chip" data-a="tab" data-v="${k}" aria-current="${S.tab===k}">${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</div>`).join("")}</div>` : ""}</nav><div style="height:16px"></div>`;
 }
 
 /* --- Editor de un día (para día concreto o plantilla) --- */
@@ -496,8 +522,8 @@ function editor(sel, ctx, f, disabled){
       ${sel.comida==="bolsa" ? `<div class="hora"><label for="h_${ctx}">Hora a la que quieres la bolsa</label><input class="input" type="time" id="h_${ctx}" data-hora="${ctx}" value="${esc(sel.horaBolsa)}" ${dis}></div>` : ""}
     </div>
     <div class="q"><h3>Cena</h3>${yn("cena")}</div>
-    <div class="q"><h3>Desayuno ${manana ? "del "+manana : "del día siguiente"}</h3>${yn("desayuno")}</div>
-    <div class="q"><h3>Para llevar ${manana ? "el "+manana : "al día siguiente"}</h3>${seg("llevar", LLEVAR)}</div>`;
+    <div class="q"><h3>Desayuno ${manana ? "del "+manana : "del día siguiente"}</h3>${yn("desayuno")}
+      <p class="small muted" style="margin:12px 0 6px">¿Te llevas algo ese día? Se deja preparado la noche anterior.</p>${seg("llevar", LLEVAR)}</div>`;
 }
 
 function vistaComensal(r){
@@ -613,7 +639,7 @@ function parteHTML(f, anon){
         <td>${o.sel.llevar==="nada"?"—":(o.sel.llevar==="tupper"?"Tupper":"Bolsa")}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No hay comensales activos.</div>`}`}`;
 }
 function parteView(){
-  const f = S.parteFecha, me = resById(S.session.uid), anon = rolDe(me)!=="admin";
+  const f = S.parteFecha, anon = verAnon();
   return `<div class="weeknav no-print">
       <button class="arrow" data-a="parteday" data-v="-1" aria-label="Día anterior">‹</button>
       <h2>${fmtLong(f)}</h2>
@@ -621,8 +647,9 @@ function parteView(){
     </div>
     <div class="row no-print" style="margin-bottom:14px;justify-content:space-between">
       ${f!==today()?`<button class="link" data-a="parteday" data-v="0">Ir a hoy</button>`:"<span></span>"}
-      <div class="row"><button class="btn" data-a="pdf" data-f="${f}">Descargar PDF</button><button class="btn ghost" data-a="print">Imprimir</button></div>
+      <div class="row"><button class="btn" data-a="pdf" data-f="${f}">Descargar PDF</button><button class="btn ghost" data-a="print" data-f="${f}">Imprimir</button></div>
     </div>
+    ${anon ? "" : `<p class="muted small no-print" style="margin-top:-6px">El PDF y la impresión salen siempre como los ve la administración: sin nombres, con iniciales.</p>`}
     ${parteHTML(f, anon)}`;
 }
 
@@ -653,21 +680,21 @@ function datosView(u){
 }
 function cumplesView(){
   const me = resById(S.session.uid);
-  const lista = activos().map(r=>({r, d:diasHasta(r.cumple)})).sort((a,b)=>a.d-b.d || String(a.r.nombre).localeCompare(String(b.r.nombre),"es"));
+  const lista = conCumple().map(r=>({r, d:diasHasta(r.cumple)})).sort((a,b)=>a.d-b.d || String(nombreVis(a.r)).localeCompare(String(nombreVis(b.r)),"es"));
   const cuando = d => d===0 ? '<span class="tag abierto">Hoy</span>' : d===1 ? '<span class="tag plantilla">Mañana</span>' : d<9999 ? `<span class="muted small">dentro de ${d} días</span>` : "";
   return (lista.length ? lista.map(({r,d})=>{
     const pend = pideActualizar(r);
     return `<div class="res" style="grid-template-columns:1fr">
-      <div class="row" style="justify-content:space-between"><strong>${esc(r.nombre)}</strong><span>${r.cumple?`${esc(fmtCumple(r.cumple))}${r.anioNac?` de ${r.anioNac}`:""} ${cuando(d)}`:'<span class="tag cerrado">Sin cumpleaños</span>'}</span></div>
+      <div class="row" style="justify-content:space-between"><strong>${esc(nombreVis(r))}</strong><span>${r.cumple?`${esc(fmtCumple(r.cumple))}${r.anioNac?` de ${r.anioNac}`:""} ${cuando(d)}`:'<span class="tag cerrado">Sin cumpleaños</span>'}</span></div>
       ${r.cumple && r.anioNac ? `<div class="small"><strong>${d===0?"Hoy cumple":"Cumplirá"} ${edadProx(r)} años</strong>${d===0?"":` el ${esc(fmtCumple(r.cumple))}`}</div>` : (r.cumple ? `<div class="small muted">Falta el año de nacimiento.</div>` : "")}
       <div class="small">${String(r.gustos||"").trim() ? esc(r.gustos).replace(/\n/g,"<br>") : '<span style="color:var(--danger)">Todavía no ha indicado sus gustos.</span>'}</div>
       <div>${pend ? '<span class="muted small">Actualización pedida. Pendiente de respuesta.</span>' : `<button class="link" data-a="pedir-gustos" data-id="${r.id}">Pedir que actualice sus gustos</button>`}</div>
     </div>`;}).join("") : `<div class="empty">No hay residentes activos.</div>`);
 }
 function avisoCumples(){
-  const l = activos().filter(r=>diasHasta(r.cumple)<=1);
+  const l = conCumple().filter(r=>diasHasta(r.cumple)<=1);
   if (!l.length) return "";
-  const conEdad = r => r.nombre + (edadProx(r)!=null ? " ("+edadProx(r)+" años)" : "");
+  const conEdad = r => nombreVis(r) + (edadProx(r)!=null ? " ("+edadProx(r)+" años)" : "");
   const hoy = l.filter(r=>diasHasta(r.cumple)===0).map(conEdad), man = l.filter(r=>diasHasta(r.cumple)===1).map(conEdad);
   return `<div class="alert no-print">${hoy.length?`<strong>Hoy cumple años: ${esc(hoy.join(", "))}.</strong> `:""}${man.length?`Mañana: ${esc(man.join(", "))}.`:""} <button class="link" data-a="tab" data-v="cumples">Ver gustos</button></div>`;
 }
@@ -732,7 +759,7 @@ async function wlTecla(k){
 function eventosEntre(desde, hasta){
   const out = [];
   S.eventos.forEach(e=>{ if (e.fecha>=desde && e.fecha<=hasta) out.push({fecha:e.fecha, tipo:"evento", texto:e.titulo, detalle:e.detalle, id:e.id}); });
-  for (let f=desde; f<=hasta; f=addDays(f,1)){ const md=f.slice(5); activos().forEach(r=>{ if (r.cumple===md) { const e = edadEn(r, Number(f.slice(0,4))); out.push({fecha:f, tipo:"cumple", texto:"Cumpleaños de "+r.nombre+(e!=null?" ("+e+" años)":""), corto:r.nombre+(e!=null?" "+e:"")}); } }); }
+  for (let f=desde; f<=hasta; f=addDays(f,1)){ const md=f.slice(5); conCumple().forEach(r=>{ if (r.cumple===md) { const e = edadEn(r, Number(f.slice(0,4))), n = nombreVis(r); out.push({fecha:f, tipo:"cumple", texto:"Cumpleaños de "+n+(e!=null?" ("+e+" años)":""), corto:n+(e!=null?" "+e:"")}); } }); }
   return out.sort((a,b)=>a.fecha.localeCompare(b.fecha) || (a.tipo==="cumple"?-1:1));
 }
 function calendarioView(editable){
@@ -826,8 +853,8 @@ function usuariosView(){
       <div class="field"><label for="rf_nombre">Nombre</label><input class="input" id="rf_nombre" data-draft="rf_nombre" value="${esc(draft("rf_nombre"))}"></div>
       <div class="field"><label>Perfil</label><div class="seg">${Object.entries(ROLES).filter(([k])=>k!=="admin"||can).map(([k,l])=>`<button class="opt" data-a="rf-rol" data-v="${k}" aria-pressed="${rol===k}">${l}</button>`).join("")}</div></div>
       ${rol!=="residente"?`<div class="field"><label>¿Come en la residencia?</label>${yn("rf-com", draft("rf_com",false)===true)}</div>`:""}
-      ${com?`<div class="field"><label for="rf_ini">Iniciales (las que verá la administración)</label><input class="input" id="rf_ini" data-draft="rf_ini" placeholder="${esc(iniciales({nombre:draft("rf_nombre")}))}" value="${esc(draft("rf_ini"))}" style="max-width:160px;text-transform:uppercase"></div>
-      <div class="field"><label for="rf_regimen">Régimen de comida</label><input class="input" id="rf_regimen" data-draft="rf_regimen" placeholder="Déjalo vacío si no sigue ninguno" value="${esc(draft("rf_regimen"))}"></div>`:""}
+      <div class="field"><label for="rf_ini">Iniciales (las que verá la administración en lugar del nombre)</label><input class="input" id="rf_ini" data-draft="rf_ini" placeholder="${esc(inicialesDe(draft("rf_nombre")))}" value="${esc(draft("rf_ini"))}" style="max-width:160px;text-transform:uppercase"><span class="muted small">Si lo dejas vacío, se calculan del nombre.</span></div>
+      ${com?`<div class="field"><label for="rf_regimen">Régimen de comida</label><input class="input" id="rf_regimen" data-draft="rf_regimen" placeholder="Déjalo vacío si no sigue ninguno" value="${esc(draft("rf_regimen"))}"></div>`:""}
       <div class="field"><label for="rf_usuario">Usuario</label><input class="input" id="rf_usuario" data-draft="rf_usuario" autocapitalize="none" spellcheck="false" value="${esc(draft("rf_usuario"))}"></div>
       ${S.editRes==="new" ? `<div class="field"><label for="rf_pin">Contraseña inicial (mínimo 6 caracteres)</label><input class="input" id="rf_pin" data-draft="rf_pin" value="${esc(draft("rf_pin"))}"><span class="muted small">Dísela a la persona. Después podrá cambiarla desde «Contraseña».</span></div>` : ""}
       <div class="row"><button class="btn" data-a="res-save" ${S.entrando?"disabled":""}>Guardar</button><button class="btn ghost" data-a="res-cancel">Cancelar</button></div>
@@ -839,10 +866,22 @@ function usuariosView(){
   const lista = S.residentes.slice().sort((a,b)=>orden.indexOf(rolDe(a))-orden.indexOf(rolDe(b)) || String(a.nombre).localeCompare(String(b.nombre),"es"));
   return form + (lista.length ? lista.map(r=>`<div class="res ${r.activo===false?"off":""}">
       <div><strong>${esc(r.nombre)}</strong> <span class="tag ${rolDe(r)==="residente"?"abierto":"plantilla"}">${ROLES[rolDe(r)]}${rolDe(r)!=="residente"&&esComensal(r)?" y comensal":""}</span>${esTitular(r)?' <span class="tag abierto">Principal</span>':""}${r.id===alCargo&&!esTitular(r)?' <span class="tag abierto">Principal por delegación</span>':""}${r.activo===false?' <span class="tag cerrado">De baja</span>':""}
-        <div class="small muted">Usuario: ${esc(r.usuario||"sin asignar")}${esComensal(r)?". Iniciales: "+esc(iniciales(r)):""}</div>
+        <div class="small muted">Usuario: ${esc(r.usuario||"sin asignar")}. Iniciales: ${esc(iniciales(r))}</div>
         ${esComensal(r)?`<div class="small ${r.regimen?"":"muted"}" style="${r.regimen?"color:var(--danger)":""}">${r.regimen?"Régimen: "+esc(r.regimen):"Sin régimen"}</div>`:""}</div>
       <div class="row">${rolDe(r)!=="admin"||can||r.id===S.session.uid?`<button class="link" data-a="res-edit" data-id="${r.id}">Editar</button>`:""}${r.id!==S.session.uid&&!esTitular(r)&&(rolDe(r)!=="admin"||can)?`<button class="link" data-a="res-toggle" data-id="${r.id}">${r.activo===false?"Dar de alta":"Dar de baja"}</button>`:""}</div>
     </div>`).join("") : `<div class="empty">Añade usuarios para que puedan empezar a usar la aplicación.</div>`);
+}
+function historialHTML(){
+  const c = S.config||{}, auto = !!c.limpiezaAuto, lim = draft("hs_fecha", addDays(today(),-91));
+  return `<h2 style="margin:28px 0 8px">Historial</h2>
+    <p class="muted" style="margin-top:0">Se pueden borrar los pedidos, comensales extra, partidas del juego, notas y eventos antiguos. Los usuarios, plantillas, cumpleaños y gustos no se tocan nunca.</p>
+    <div class="field"><label>Borrado automático cada trimestre</label><div class="seg"><button class="opt" data-a="hs-auto" data-v="false" aria-pressed="${!auto}">Desactivado</button><button class="opt" data-a="hs-auto" data-v="true" aria-pressed="${auto}">Activado</button></div>
+      <span class="muted small">${auto ? "Cada tres meses se borra solo todo lo que tenga más de tres meses, cuando entra un administrador." : "No se borra nada salvo que lo hagáis a mano."}</span></div>
+    <div class="panel"><h3 style="margin-bottom:8px">Borrar ahora</h3>
+      <div class="field"><label for="hs_fecha">Borrar todo lo anterior al</label><input class="input" type="date" id="hs_fecha" data-draft="hs_fecha" max="${today()}" value="${esc(lim)}" style="max-width:220px"></div>
+      ${S.drafts.hs_confirm ? `<p class="err">Se borrará definitivamente todo lo anterior al ${esc(fmtLong(lim).toLowerCase())}. No se puede deshacer.</p><div class="row"><button class="btn danger" data-a="hs-do">Sí, borrar</button><button class="btn ghost" data-a="hs-cancel">Cancelar</button></div>` : `<button class="btn danger" data-a="hs-ask">Borrar historial</button>`}
+    </div>
+    <p class="small muted">${c.ultimaLimpieza ? "Último borrado: "+esc(fmtLong(c.ultimaLimpieza).toLowerCase())+" ("+(c.ultimaLimpiezaBorrados||0)+" registros)." : "Todavía no se ha borrado nada."}</p>`;
 }
 function ajustesView(){
   const me = resById(S.session.uid), c = S.config||{}, d = c.delegacion, tit = resById(c.principal);
@@ -871,16 +910,19 @@ function ajustesView(){
     </div>`;
   } else deleg += `<p class="muted small">Solo el titular puede programar o anular una delegación o ceder la titularidad.</p>`;
   return `<div class="field"><label for="cf_hora">Hora de cierre diaria</label><input class="input" type="time" id="cf_hora" data-draft="cf_hora" value="${esc(draft("cf_hora", horaCierre()))}" style="max-width:180px"></div>
-    <button class="btn" data-a="cfg-save">Guardar hora de cierre</button>` + deleg;
+    <button class="btn" data-a="cfg-save">Guardar hora de cierre</button>` + historialHTML() + deleg;
 }
-function viewApp(u){
+function viewApp(uReal){
+  const u = S.vista ? {id:"vista", nombre:"Administración", rol:"cocina", comensal:false, activo:true} : uReal;
   const rol = rolDe(u), t = [];
-  if (esComensal(u)) t.push(["semana","Mi semana"],["plantilla","Plantilla fija"],["datos","Mis datos"]);
-  if (esComensal(u) && rol!=="cocina") t.splice(2, 0, ["wordle","Palabra del día"]);
-  if (rol==="cocina") t.push(["parte","Parte del día"],["cumples","Cumpleaños"],["calendario","Calendario"],["notas","Notas", unread("cocina")||""]);
-  if (rol==="admin") t.push(["usuarios","Usuarios"],["extras","Comensales extra"],["parte","Parte"],["cumples","Cumpleaños"],["calendario","Calendario"],["notas","Notas", unread("admin")||""],["ajustes","Ajustes"]);
-  if (!t.length) return cabecera(u.nombre) + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
-  if (!t.find(x=>x[0]===S.tab)) S.tab = t[0][0];
+  const G1 = "Mis comidas", G2 = rol==="admin" ? "Gestión" : "Administración";
+  if (esComensal(u)) t.push(["semana","Mi semana","",G1],["plantilla","Plantilla fija","",G1]);
+  if (esComensal(u) && rol!=="cocina") t.push(["wordle","Palabra del día","",G1]);
+  if (rol!=="cocina") t.push(["datos","Mis datos","",G1]);
+  if (rol==="cocina") t.push(["parte","Parte del día","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Notas", unread("cocina")||"",G2]);
+  if (rol==="admin") t.push(["parte","Parte del día","",G2],["extras","Comensales extra","",G2],["notas","Notas", unread("admin")||"",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
+  if (!t.length) return cabecera(u.nombre||"") + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
+  if (!t.find(x=>x[0]===S.tab)) S.tab = esComensal(u) ? "semana" : (t.find(x=>x[0]==="parte")||t[0])[0];
   let main;
   if (S.tab==="semana"||S.tab==="plantilla") main = vistaComensal(u);
   else if (S.tab==="parte") main = avisoCumples() + avisoEventos() + parteView();
@@ -892,22 +934,27 @@ function viewApp(u){
   else if (S.tab==="extras") main = extrasView();
   else if (S.tab==="usuarios") main = usuariosView();
   else main = ajustesView();
-  const nuevas = (rol==="admin"||rol==="cocina") ? S.mensajes.filter(m=>m.para===rol && !m.leido) : [];
+  const nuevas = !S.vista && (rol==="admin"||rol==="cocina") ? S.mensajes.filter(m=>m.para===rol && !m.leido) : [];
   const banner = nuevas.length && S.tab!=="notas" ? `<div class="alert no-print" role="status"><strong>${nuevas.length===1?"Tienes una nota nueva":"Tienes "+nuevas.length+" notas nuevas"} de ${rol==="admin"?"la administración":"los administradores"}.</strong>
       <p style="margin:6px 0">${esc(nuevas[nuevas.length-1].texto.slice(0,140))}${nuevas[nuevas.length-1].texto.length>140?"…":""}</p><button class="btn" data-a="tab" data-v="notas">Leer y marcar como leída</button></div>` : "";
   const avs = esComensal(u) ? avisosResidente().filter(x=>!x.visto) : [];
   const bannerAv = avs.length ? avs.map(x=>`<div class="alert no-print" role="status"><strong>Aviso para el ${esc(fmtLong(x.fecha).toLowerCase())}</strong><p style="margin:6px 0">${esc(x.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="${esc(x.clave)}">Entendido</button></div>`).join("") : "";
-  return cabecera(u.nombre) + panelPw() + (t.length>1 ? tabs(t) : "") + (S.tab===t[0][0] ? efemerideHTML(u) : "") + avisoDatos(u) + banner + bannerAv + main;
+  const cab = S.vista
+    ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas - Mizar</h1><span class="who">Administración</span></div></div>`
+    : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin") + panelPw();
+  return cab + (t.length>1 ? tabs(t) : "") + (S.vista ? "" : avisoDatos(u)) + banner + bannerAv + main;
 }
-
 
 /* ---------- PDF del parte ---------- */
 async function descargarPDF(f){
-  if (!window.jspdf || !window.jspdf.jsPDF){ toast("No se ha podido preparar el PDF. Usa «Imprimir»."); return; }
+  if (!window.jspdf || !window.jspdf.jsPDF){
+    await new Promise(res=>{ const sc=document.createElement("script"); sc.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"; sc.onload=res; sc.onerror=res; document.head.appendChild(sc); });
+    if (!window.jspdf || !window.jspdf.jsPDF){ toast("No se ha podido preparar el PDF. Comprueba la conexión."); return; }
+  }
   const doc = new window.jspdf.jsPDF({unit:"mm", format:"a4"});
   const W=210, H=297, M=16, CW=W-2*M;
   const VERDE=[46,94,78], TINTA=[28,38,33], GRIS=[95,108,100], ROJO=[162,59,44], LINEA=[214,222,216], SUAVE=[232,240,235], OCRE=[246,236,214];
-  const anon = rolDe(resById(S.session.uid))!=="admin";
+  const anon = true; // El PDF es para la administración: nunca lleva nombres
   const D = datosParte(f), filas = D.filas, lk = locked(f), manana = DIAS[wd(addDays(f,1))].toLowerCase();
   const ahora = new Date(), hh = d => String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
   const col = c => doc.setTextColor(c[0],c[1],c[2]);
@@ -994,6 +1041,12 @@ async function descargarPDF(f){
     doc.text("Página "+i+" de "+n, W-M, H-8, {align:"right"}); }
 
   const filename = "parte-"+f+".pdf", blob = doc.output("blob");
+  const movil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent));
+  try {
+    const file = new File([blob], filename, {type:"application/pdf"});
+    if (movil && navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:"Parte del "+fmtLong(f).toLowerCase()}); return; }
+  } catch(e){ if (e && e.name==="AbortError") return; }
+  if (movil){ const url = URL.createObjectURL(blob), win = window.open(url, "_blank"); if (win) { setTimeout(()=>URL.revokeObjectURL(url), 60000); return; } }
   let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; } catch(e){}
   if (dl){
     try { await dl.save({filename, data: blob}); } catch(e){ if (!e || e.code!=="declined") toast("No se ha podido descargar el PDF."); }
@@ -1053,6 +1106,7 @@ document.addEventListener("click", e => {
 
 async function act(a, b){
   const v = b.dataset.v;
+  if (S.vista && !["tab","menu","parteday","cal-mes","pdf","print","vista-salir","logout","reload"].includes(a)){ toast("Vista de la administración: solo lectura."); return; }
   switch(a){
     case "setup": {
       const nombre=String(draft("su_nombre","Nacho")).trim(), usuario=normU(draft("su_usuario","nacho")), pw=String(draft("su_pin")), h=draft("su_hora","09:30");
@@ -1062,7 +1116,8 @@ async function act(a, b){
       try {
         const email = emailNuevo(usuario), cred = await createUserWithEmailAndPassword(auth, email, pw), pid = newId("u"), b = writeBatch(fs);
         b.set(fdoc(fs,"cuentas/"+cred.user.uid), {perfil:pid});
-        b.set(fdoc(fs,"usuarios/"+pid), {nombre, usuario, rol:"admin", comensal:false, iniciales:"", activo:true});
+        b.set(fdoc(fs,"usuarios/"+pid), {rol:"admin", comensal:false, iniciales:inicialesDe(nombre), activo:true});
+        b.set(fdoc(fs,"nombres/"+pid), {nombre, usuario});
         b.set(fdoc(fs,"privados/"+pid), {regimen:"", authUid:cred.user.uid});
         b.set(fdoc(fs,"logins/"+usuario), {email, perfil:pid});
         b.set(fdoc(fs,"config/general"), {horaCierre:h, principal:pid});
@@ -1089,6 +1144,18 @@ async function act(a, b){
       S.entrando=false; break;
     }
     case "logout": S.drafts={}; S.openDay=null; S.openWd=null; await signOut(auth); return;
+    case "vista-admon": S.vista = true; S.tabReal = S.tab; S.tab = "parte"; S.verPw = false; S.menu = false; window.scrollTo(0,0); break;
+    case "vista-salir": S.vista = false; S.tab = S.tabReal || null; S.menu = false; window.scrollTo(0,0); break;
+    case "menu": S.menu = !S.menu; break;
+    case "hs-auto": await w(()=>S.db.doc("config/general").update({limpiezaAuto: v==="true"})); toast(v==="true" ? "Borrado trimestral activado." : "Borrado trimestral desactivado."); return;
+    case "hs-ask": if (!/^\d{4}-\d{2}-\d{2}$/.test(draft("hs_fecha", addDays(today(),-91)))){ toast("Elige una fecha."); return; } S.drafts.hs_confirm = true; break;
+    case "hs-cancel": S.drafts.hs_confirm = false; break;
+    case "hs-do": {
+      S.drafts.hs_confirm = false; render();
+      try { const n = await borrarHistorial(draft("hs_fecha", addDays(today(),-91))); toast(n ? "Historial borrado: "+n+" registros." : "No había nada anterior a esa fecha."); }
+      catch(e){ toast("No se ha podido borrar ("+(e.code||e.message)+")."); }
+      break;
+    }
     case "pw-ver": S.verPw=!S.verPw; delete S.drafts.pw_act; delete S.drafts.pw_new; delete S.drafts.pw_rep; break;
     case "pw-save": {
       const act=String(draft("pw_act")), nw=String(draft("pw_new")), rp=String(draft("pw_rep"));
@@ -1101,10 +1168,9 @@ async function act(a, b){
       } catch(e){ toast(["auth/invalid-credential","auth/wrong-password","auth/invalid-login-credentials"].includes(e.code) ? "La contraseña actual no es correcta." : "No se ha podido cambiar ("+(e.code||e.message)+")."); return; }
       break;
     }
-    case "efe": S.efeOpen[v] = !S.efeOpen[v]; break;
     case "tab":
-      S.tab=v; S.editRes=null;
-      if (v==="notas") marcarLeidos(rolDe(resById(S.session.uid)));
+      S.tab=v; S.editRes=null; S.menu=false; window.scrollTo(0,0);
+      if (v==="notas" && !S.vista) marcarLeidos(rolDe(resById(S.session.uid)));
       break;
     case "week": S.weekOffset = v==="0" ? 0 : S.weekOffset + Number(v); S.openDay=null; break;
     case "openday": S.openDay = S.openDay===b.dataset.f ? null : b.dataset.f; break;
@@ -1131,7 +1197,12 @@ async function act(a, b){
     case "parteday": S.parteFecha = v==="0" ? today() : addDays(S.parteFecha, Number(v)); break;
     case "reload": location.reload(); return;
     case "pdf": await descargarPDF(b.dataset.f); return;
-    case "print": try { window.print(); } catch(e){ toast("La impresión no está disponible aquí."); } return;
+    case "print": {
+      const f = b.dataset.f || S.parteFecha;
+      document.getElementById("print-area").innerHTML = `<h1 style="font-size:22px;margin-bottom:4px">Libro de comidas - Mizar</h1><h2 style="margin-bottom:12px">Parte del ${esc(fmtLong(f).toLowerCase())}</h2>` + parteHTML(f, true);
+      try { window.print(); } catch(e){ toast("La impresión no está disponible aquí."); }
+      return;
+    }
     case "sendmsg": {
       const t = draft("msg").trim(); if (!t) return;
       const role = rolDe(resById(S.session.uid)), para = role==="admin"?"cocina":"admin";
@@ -1199,7 +1270,7 @@ async function act(a, b){
     case "pedir-gustos": {
       const r = resById(b.dataset.id); if (!r) return;
       await w(()=>S.db.doc("privados/"+r.id).update({pedirGustos:Date.now()}));
-      toast("Se ha pedido a "+r.nombre+" que actualice sus gustos."); break;
+      toast("Se ha pedido a "+nombreVis(r)+" que actualice sus gustos."); break;
     }
     case "res-new": S.editRes="new"; Object.assign(S.drafts,{rf_nombre:"", rf_ini:"", rf_usuario:"", rf_regimen:"", rf_rol:"residente", rf_com:false, rf_pin:String(Math.floor(100000+Math.random()*900000))}); break;
     case "res-edit": { const r=resById(b.dataset.id); S.editRes=r.id; Object.assign(S.drafts,{rf_nombre:r.nombre||"", rf_ini:r.iniciales||"", rf_usuario:r.usuario||"", rf_regimen:r.regimen||"", rf_rol:rolDe(r), rf_com:r.comensal===true, rf_newpw:""}); break; }
@@ -1218,7 +1289,7 @@ async function act(a, b){
       const meU = resById(S.session.uid);
       if ((rol==="admin" || (prev && rolDe(prev)==="admin")) && id!==S.session.uid && !puedeGestionarAdmins(meU)){ toast("Solo el administrador principal puede gestionar administradores."); return; }
       if (prev && esTitular(prev) && rol!=="admin"){ toast("El titular siempre es administrador."); return; }
-      const pub = {nombre, usuario, rol, comensal, iniciales: comensal ? String(draft("rf_ini")).trim().toUpperCase().slice(0,6) : "", activo: prev ? prev.activo!==false : true};
+      const pub = {rol, comensal, iniciales: String(draft("rf_ini")).trim().toUpperCase().slice(0,6) || inicialesDe(nombre), activo: prev ? prev.activo!==false : true};
       const regimen = comensal ? String(draft("rf_regimen")).trim().slice(0,120) : "";
       S.entrando=true; render();
       try {
@@ -1229,6 +1300,7 @@ async function act(a, b){
           await signOut(sa);
           const b = writeBatch(fs);
           b.set(fdoc(fs,"usuarios/"+id), pub);
+          b.set(fdoc(fs,"nombres/"+id), {nombre, usuario});
           b.set(fdoc(fs,"privados/"+id), {regimen, authUid:cred.user.uid});
           b.set(fdoc(fs,"cuentas/"+cred.user.uid), {perfil:id});
           b.set(fdoc(fs,"logins/"+usuario), {email, perfil:id});
@@ -1236,7 +1308,8 @@ async function act(a, b){
           toast("Usuario creado. Contraseña inicial: "+pw);
         } else {
           const b = writeBatch(fs);
-          b.update(fdoc(fs,"usuarios/"+id), pub);
+          b.update(fdoc(fs,"usuarios/"+id), {...pub, nombre:deleteField(), usuario:deleteField()});
+          b.set(fdoc(fs,"nombres/"+id), {nombre, usuario});
           b.update(fdoc(fs,"privados/"+id), {regimen});
           if (normU(prev.usuario)!==usuario){
             const ex = await S.db.doc("logins/"+usuario).get();
