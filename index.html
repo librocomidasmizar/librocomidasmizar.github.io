@@ -1,0 +1,1309 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Libro de comidas - Mizar</title>
+<meta name="theme-color" content="#2E5E4E">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mizar">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,750&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2EE; --surface:#FFFFFF; --ink:#1C2621; --muted:#58685F; --line:#D2DCD5;
+  --primary:#2E5E4E; --primary-ink:#FFFFFF; --soft:#DFEBE3;
+  --accent:#B9791A; --accent-soft:#F5E8CF; --danger:#A23B2C; --danger-soft:#F6DED9;
+  --body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --head:"Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111714; --surface:#19211D; --ink:#E4ECE7; --muted:#9BAAA1; --line:#2B3731;
+    --primary:#80C2A7; --primary-ink:#0E1A15; --soft:#21302A;
+    --accent:#E2B357; --accent-soft:#3A301E; --danger:#E7897A; --danger-soft:#3B221E;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111714; --surface:#19211D; --ink:#E4ECE7; --muted:#9BAAA1; --line:#2B3731;
+  --primary:#80C2A7; --primary-ink:#0E1A15; --soft:#21302A;
+  --accent:#E2B357; --accent-soft:#3A301E; --danger:#E7897A; --danger-soft:#3B221E;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 64px}
+h1,h2,h3{font-family:var(--head);line-height:1.15;margin:0}
+h1{font-size:30px;font-weight:750;letter-spacing:-.01em}
+h2{font-size:22px;font-weight:750}
+h3{font-size:17px;font-weight:600}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+/* Top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 16px}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand h1{font-size:24px}
+.who{font-size:15px;color:var(--muted)}
+.link{background:none;border:0;padding:6px 0;color:var(--primary);text-decoration:underline;text-underline-offset:3px}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tab{background:none;border:0;padding:10px 14px;font-weight:700;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab[aria-current="true"]{color:var(--ink);border-bottom-color:var(--primary)}
+.badge{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--accent);color:#fff;font-size:12px;line-height:20px;text-align:center;margin-left:6px}
+
+/* Login */
+.cover{min-height:100%;display:grid;place-items:center;padding:24px 0}
+.cover-inner{width:100%;max-width:440px}
+.cover h1{font-size:40px;margin-bottom:6px}
+.cover .lead{color:var(--muted);margin:0 0 28px}
+.roles{display:grid;gap:10px}
+.role{display:block;width:100%;text-align:left;background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:16px 18px}
+.role strong{display:block;font-family:var(--head);font-size:19px}
+.role span{color:var(--muted);font-size:15px}
+.role:hover{border-color:var(--primary)}
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:12px 0 20px}
+.name{background:var(--surface);border:2px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left}
+.name[aria-pressed="true"]{border-color:var(--primary);background:var(--soft)}
+
+/* Forms */
+.field{display:grid;gap:6px;margin-bottom:14px}
+.field label{font-weight:700;font-size:15px}
+.input{width:100%;padding:11px 12px;border:2px solid var(--line);border-radius:10px;background:var(--surface)}
+.input:focus{border-color:var(--primary);outline:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:10px;border:2px solid var(--primary);background:var(--primary);color:var(--primary-ink);font-weight:700}
+.btn.ghost{background:transparent;color:var(--primary)}
+.btn.danger{border-color:var(--danger);background:transparent;color:var(--danger)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.err{color:var(--danger);font-weight:700;margin:8px 0}
+
+/* Week */
+.weeknav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.weeknav h2{font-size:19px;text-align:center}
+.arrow{width:44px;height:44px;border-radius:50%;border:2px solid var(--line);background:var(--surface);font-size:20px;line-height:1}
+.days{display:grid;gap:8px}
+.day{background:var(--surface);border:2px solid var(--line);border-radius:14px;overflow:hidden}
+.day.today{border-color:var(--primary)}
+.day-head{width:100%;display:grid;grid-template-columns:92px 1fr auto;gap:12px;align-items:center;padding:12px 14px;background:none;border:0;text-align:left}
+.day-name{font-family:var(--head);font-weight:600;font-size:17px;line-height:1.1}
+.day-name small{display:block;font-family:var(--body);font-weight:400;font-size:14px;color:var(--muted)}
+.day-sum{font-size:15px}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.tag.plantilla{background:var(--accent-soft);color:var(--accent)}
+.tag.cerrado{background:var(--line);color:var(--muted)}
+.tag.abierto{background:var(--soft);color:var(--primary)}
+.day.locked .day-head{opacity:.75}
+.editor{padding:4px 14px 16px;border-top:1px solid var(--line)}
+.q{padding:12px 0 4px}
+.q > h3{margin-bottom:8px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.opt{padding:9px 14px;border-radius:999px;border:2px solid var(--line);background:var(--surface);font-weight:700;font-size:15px}
+.opt[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.opt:disabled{cursor:not-allowed}
+.hora{display:flex;align-items:center;gap:10px;margin-top:10px}
+.hora input{max-width:140px}
+.editor-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+
+/* Parte */
+.status{border-radius:12px;padding:12px 14px;margin:0 0 16px;font-weight:700}
+.status.prov{background:var(--accent-soft);color:var(--accent)}
+.status.def{background:var(--soft);color:var(--primary)}
+.blocks{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-bottom:24px}
+.block{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:14px 16px}
+.block h3{font-size:18px;margin-bottom:8px}
+.count{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line)}
+.count:last-of-type{border-bottom:0}
+.count b{font-family:var(--head);font-size:24px;font-weight:750;font-variant-numeric:tabular-nums}
+.reg{font-size:14px;color:var(--danger);margin:-2px 0 6px}
+.reg-label{font-weight:700}
+.list{margin:6px 0 0;padding:0;list-style:none;font-size:15px}
+.list li{padding:3px 0}
+.tablewrap{overflow-x:auto;border:2px solid var(--line);border-radius:14px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--head);font-weight:600;background:var(--soft)}
+tr:last-child td{border-bottom:0}
+.regcell{color:var(--danger);font-size:13px;display:block}
+
+/* Notes */
+.notes{display:grid;gap:10px;margin-top:18px}
+.note{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px 14px;max-width:88%}
+.note.mine{justify-self:end;background:var(--soft);border-color:transparent}
+.note .meta{font-size:13px;color:var(--muted);margin-bottom:4px}
+.note.unread{border-color:var(--accent)}
+textarea.input{min-height:90px;resize:vertical}
+.alert{background:var(--accent-soft);color:var(--ink);border-left:5px solid var(--accent);border-radius:10px;padding:12px 14px;margin-bottom:16px}
+
+/* Residents admin */
+.res{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:8px}
+.res.off{opacity:.55}
+.panel{background:var(--surface);border:2px solid var(--primary);border-radius:14px;padding:16px;margin-bottom:16px}
+
+
+/* Palabra del día */
+.wl-board{display:grid;gap:6px;justify-content:center;margin:8px 0 16px}
+.wl-row{display:grid;grid-template-columns:repeat(5,52px);gap:6px}
+.wl-c{height:52px;border:2px solid var(--line);border-radius:8px;display:grid;place-items:center;font-family:var(--head);font-weight:750;font-size:24px;text-transform:uppercase;background:var(--surface)}
+.wl-c.c,.wl-k.c,.mini i.c{background:#3E8E5E;border-color:#3E8E5E;color:#fff}
+.wl-c.p,.wl-k.p,.mini i.p{background:#C49A1E;border-color:#C49A1E;color:#fff}
+.wl-c.a,.wl-k.a,.mini i.a{background:#7C8A83;border-color:#7C8A83;color:#fff}
+.wl-kb{display:grid;gap:6px;max-width:520px;margin:0 auto 22px}
+.wl-kr{display:flex;gap:4px;justify-content:center}
+.wl-k{flex:1;min-width:0;height:50px;border:0;border-radius:6px;background:var(--line);color:var(--ink);font-weight:700;text-transform:uppercase;padding:0;font-size:16px}
+.wl-k.wide{flex:1.7;font-size:12px}
+.mini{display:inline-grid;grid-template-columns:repeat(5,10px);gap:2px;vertical-align:middle}
+.mini i{width:10px;height:10px;border-radius:2px;display:block;background:var(--line)}
+/* Calendario */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:18px}
+.cal-h{font-size:12px;color:var(--muted);text-align:center;font-weight:700}
+.cal-d{min-height:66px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px;font-size:12px;overflow:hidden}
+.cal-d.vacio{background:transparent;border-color:transparent}
+.cal-d.hoy{border:2px solid var(--primary)}
+.cal-n{font-weight:700}
+.cal-i{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:4px;padding:0 3px;margin-top:2px;font-size:11px}
+.cal-i.cumple{background:var(--accent-soft);color:var(--accent)}
+.cal-i.evento{background:var(--soft);color:var(--primary)}
+.efe{background:var(--surface);border:2px solid var(--line);border-left:6px solid var(--accent);border-radius:14px;padding:12px 16px;margin-bottom:18px}
+.efe-k{font-size:14px;color:var(--muted)}
+.efe-t{display:block;width:100%;text-align:left;background:none;border:0;padding:6px 0;font-family:var(--head);font-weight:600;font-size:18px;color:var(--ink)}
+.efe-t::after{content:" +";color:var(--accent)}
+.efe-t[aria-expanded="true"]::after{content:" −"}
+.efe-b{padding:2px 0 8px;white-space:pre-line;font-size:16px}
+.efe-b a{color:var(--primary)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;max-width:90vw;z-index:10}
+.empty{background:var(--surface);border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--muted)}
+
+@media (max-width:520px){
+  h1{font-size:26px}
+  .day-head{grid-template-columns:78px 1fr}
+  .day-head .tagcol{grid-column:2}
+  .blocks{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  body{background:#fff;color:#000;font-size:12px}
+  .top,.tabs,.no-print,.toast{display:none!important}
+  .block,.tablewrap{border-color:#999}
+  .blocks{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><p class="muted">Abriendo el libro…</p></div>
+<script>
+window.addEventListener("error", e => { const a = document.getElementById("app"); if (a) a.innerHTML = '<h1>Error al iniciar</h1><p>' + String(e.message || e.error || "desconocido").replace(/</g,"&lt;") + '</p>'; });
+window.addEventListener("unhandledrejection", e => { const a = document.getElementById("app"); if (a) a.innerHTML += '<p class="muted small">Aviso técnico: ' + String((e.reason && (e.reason.code || e.reason.message)) || e.reason).replace(/</g,"&lt;") + '</p>'; });
+</script>
+<div id="toast" class="toast" hidden></div>
+<script type="module">
+/* ---------- Conexión con Firebase ---------- */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, initializeAuth, inMemoryPersistence, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsnap, query, where as fwhere, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const FB_CONFIG = {
+  apiKey: "AIzaSyA5dr_N0Z8VqiRWTCDMHbrRsmK6gFsUDBM",
+  authDomain: "libro-comidas-mizar.firebaseapp.com",
+  projectId: "libro-comidas-mizar",
+  storageBucket: "libro-comidas-mizar.firebasestorage.app",
+  messagingSenderId: "574865497497",
+  appId: "1:574865497497:web:ec6708809617672cd50708"
+};
+const CAL_ID = "3vd99gunofva0k3dgi9qpg2rdg@group.calendar.google.com";
+const CAL_KEY = "AIzaSyCjx6qkf1TsVKNGlPXl9GxALnp--xAQAZ8";
+const DOMINIO = "libro-comidas-mizar.app";
+
+const fbApp = initializeApp(FB_CONFIG);
+const auth = getAuth(fbApp);
+const fs = initializeFirestore(fbApp, {ignoreUndefinedProperties:true});
+let secAuth = null;
+function authSecundaria(){ if (!secAuth) secAuth = initializeAuth(initializeApp(FB_CONFIG, "altas"), {persistence: inMemoryPersistence}); return secAuth; }
+const emailNuevo = u => u + "." + Date.now().toString(36) + "@" + DOMINIO;
+
+/* Capa fina sobre Firestore con la misma forma que usaba el prototipo */
+const wrap = s => ({id:s.id, exists:s.exists(), data:()=>s.data()});
+function mkDoc(path){ const r = fdoc(fs, path); return {id:r.id, path,
+  get: async()=>wrap(await getDoc(r)), set:d=>setDoc(r,d), update:d=>updateDoc(r,d), delete:()=>deleteDoc(r),
+  onSnapshot:(n,e)=>fsnap(r, s=>n(wrap(s)), e)}; }
+function mkCol(path, cons=[]){ const base = fcol(fs, path), q = cons.length ? query(base, ...cons) : base; return {
+  where:(f,op,v)=>mkCol(path,[...cons, fwhere(f,op,v)]), doc:id=>mkDoc(path+"/"+id),
+  get: async()=>{ const s = await getDocs(q); return {docs:s.docs.map(wrap)}; },
+  onSnapshot:(n,e)=>fsnap(q, s=>n({docs:s.docs.map(wrap)}), e)}; }
+
+/* ---------- Utilidades ---------- */
+const $app = document.getElementById("app");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d); };
+const addDays = (s,n) => { const d = parse(s); d.setDate(d.getDate()+n); return iso(d); };
+const wd = s => (parse(s).getDay()+6)%7;
+const today = () => iso(new Date());
+const mondayOf = s => addDays(s,-wd(s));
+const fmtDay = s => { const d = parse(s); return d.getDate()+" de "+MESES[d.getMonth()]; };
+const fmtLong = s => DIAS[wd(s)]+" "+fmtDay(s);
+const horaCierre = () => (S.config && S.config.horaCierre) || "09:30";
+function cierre(s){ const [h,m] = horaCierre().split(":").map(Number); const d = parse(s); d.setHours(h,m,0,0); return d; }
+const locked = s => new Date() >= cierre(s);
+
+const VACIO = {comida:"no", horaBolsa:"", cena:false, desayuno:false, llevar:"nada"};
+const COMIDA = [["no","No como"],["primer","1.er turno"],["normal","Normal"],["segundo","2.º turno"],["bolsa","En bolsa"]];
+const LLEVAR = [["nada","Nada"],["tupper","Tupper"],["bolsa","Bolsa de comida"]];
+const norm = o => ({...VACIO, ...(o||{})});
+const comidaTxt = sel => { const c = COMIDA.find(x=>x[0]===sel.comida); return sel.comida==="bolsa" ? "En bolsa"+(sel.horaBolsa?" a las "+sel.horaBolsa:"") : c ? c[1] : "No come"; };
+
+/* ---------- Estado ---------- */
+const S = {
+  db:null, noDb:false, cfgLoaded:false, resLoaded:false,
+  config:null, residentes:[], plantillas:{}, pedidos:{}, mensajes:[],
+  session:null, tab:null, weekOffset:0, openDay:null, openWd:null,
+  parteFecha:today(), loginRole:null, loginRes:null, loginErr:"",
+  drafts:{}, editRes:null
+};
+S.pub = {}; S.priv = {}; S.authListo = false; S.efe = null; S.efeOpen = {};
+S.extras = {}; S.wordle = {}; S.eventos = []; S.wlTyped = "";
+try { S.vistos = JSON.parse(localStorage.getItem("comedor.avisos")||"[]"); } catch(e){ S.vistos = []; }
+function saveSession(){}
+
+function efectiva(rid,f){
+  const p = S.pedidos[f+"_"+rid];
+  if (p) return {sel:norm(p), fuente:"pedido"};
+  const t = S.plantillas[rid] && S.plantillas[rid]["d"+wd(f)];
+  if (t) return {sel:norm(t), fuente:"plantilla"};
+  return {sel:norm(), fuente:"vacio"};
+}
+function resumen(sel, f){
+  const manana = f ? DIAS[wd(addDays(f,1))].toLowerCase() : "día siguiente";
+  const p = [];
+  if (sel.comida!=="no") p.push("Comida: "+comidaTxt(sel).toLowerCase());
+  if (sel.cena) p.push("cena");
+  if (sel.desayuno) p.push("desayuno del "+manana);
+  if (sel.llevar!=="nada") p.push(sel.llevar+" para el "+manana);
+  if (!p.length) return "Sin servicios";
+  const s = p.join(", ");
+  return s.charAt(0).toUpperCase()+s.slice(1);
+}
+const ROLES = {residente:"Residente", cocina:"Administración", admin:"Administrador"};
+const rolDe = r => (r && r.rol) || "residente";
+const esComensal = r => rolDe(r)==="residente" || r.comensal===true;
+const normU = s => String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"");
+const principalHoy = () => { const c=S.config||{}, d=c.delegacion; if (d && d.uid && d.desde<=today() && today()<=d.hasta && resById(d.uid) && resById(d.uid).activo!==false) return d.uid; return c.principal; };
+const esTitular = u => !!(S.config && u && u.id===S.config.principal);
+const puedeGestionarAdmins = u => !!u && rolDe(u)==="admin" && (!(S.config && S.config.principal) || esTitular(u) || u.id===principalHoy());
+const activos = () => S.residentes.filter(r=>r.activo!==false && esComensal(r));
+const resById = id => S.residentes.find(r=>r.id===id);
+const iniciales = r => (r.iniciales && String(r.iniciales).trim()) || String(r.nombre||"").split(/\s+/).filter(Boolean).map(x=>x[0]).join("").toUpperCase();
+const extrasDe = f => S.extras[f] || {};
+const notaParaDe = e => e.notaPara || (e.notaTodos ? "todos" : "administracion");
+const faltanDatos = u => esComensal(u) && (!u.cumple || !u.anioNac || !String(u.gustos||"").trim());
+const edadEn = (r, anio) => r.anioNac ? anio - r.anioNac : null;
+const edadProx = r => { if (!r.cumple || !r.anioNac) return null; const d = diasHasta(r.cumple); return edadEn(r, parse(addDays(today(), d)).getFullYear()); };
+const pideActualizar = u => esComensal(u) && !!u.pedirGustos && !((u.gustosTs||0) > u.pedirGustos);
+function diasHasta(mmdd){
+  if (!mmdd) return 9999;
+  const [m,d] = mmdd.split("-").map(Number), hoy = parse(today());
+  let c = new Date(hoy.getFullYear(), m-1, d); if (c < hoy) c = new Date(hoy.getFullYear()+1, m-1, d);
+  return Math.round((c - hoy)/86400000);
+}
+const fmtCumple = mmdd => { if (!mmdd) return ""; const [m,d] = mmdd.split("-").map(Number); return d+" de "+MESES[m-1]; };
+const WL_SOL = ["abeja","abrir","acero","actor","aguas","ahora","alado","alamo","album","alero","algas","almas","altar","altos","amigo","ancho","angel","anima","antes","anual","apoyo","arbol","arcos","arena","armas","aroma","arroz","asado","atlas","avena","aviso","ayuda","azote","bahia","baile","bajar","balon","banco","banda","barco","barro","bello","besos","bingo","bolsa","bomba","borde","brazo","breve","brisa","broma","bueno","burro","cable","cabra","cacao","caida","cajas","calle","calma","calor","campo","canal","canto","caoba","capaz","carne","carta","casco","catar","cazar","cebra","cedro","cejas","cerdo","cerca","cesta","chico","chile","chino","ciclo","cielo","cifra","cinco","circo","cisne","claro","clase","clave","clima","cobre","coche","cofre","color","comer","conde","copas","coral","corto","costa","crema","cruce","cubos","cuero","cueva","culto","curso","dados","danza","datos","deber","dedos","delta","denso","deseo","diana","dieta","disco","dolor","dones","dorar","ducha","due\u00f1o","dulce","duros","ebano","elite","enano","enero","entre","envio","epoca","error","espia","etapa","euros","exito","fallo","falso","farol","fauna","feliz","feria","ficha","fiera","fiero","final","firma","flaco","flora","flota","fondo","forma","fruta","fuego","fuera","fumar","furia","gafas","gallo","ganar","ganso","garra","gasto","gatos","gemas","genio","gesto","girar","globo","golpe","gordo","gorra","gotas","grado","gramo","grano","grasa","grave","grifo","gripe","grito","grupo","guapo","guiso","gusto","haber","habla","hacer","hadas","harto","hielo","hijos","hilos","hojas","hongo","horas","horno","hotel","huevo","humor","ideal","idolo","igual","impar","indio","jabon","jamon","jarra","jaula","joven","joyas","juego","jugar","jugos","julio","junio","junto","jurar","labio","lacio","lados","lapiz","largo","latas","lavar","lazos","leche","lecho","lejos","lento","leona","letra","libre","libro","lider","limon","lindo","linea","listo","litro","llama","llave","lleno","local","lomas","loros","lucha","lugar","lunes","madre","magia","mango","manos","manta","mapas","marco","marea","mares","mayor","medio","mejor","melon","menta","menos","mesas","metal","metro","miedo","mitad","modas","mojar","molde","monte","moral","morir","mosca","motor","mover","mujer","mundo","museo","nacer","nadar","nariz","navio","necio","negro","nieve","nivel","noble","noche","norte","notas","novio","nubes","nueve","nunca","obeso","obras","ocaso","oeste","oidos","ojala","olivo","olmos","ondas","opera","orden","oreja","oruga","osado","oto\u00f1o","ovalo","pacto","padre","pagar","palco","palma","panal","papel","parar","pared","pasar","pasta","patio","pausa","pavos","pecho","peine","perla","perro","pesca","piano","picar","pieza","pilar","pinta","pinza","pisos","pizza","placa","plano","plata","playa","plaza","plomo","pluma","pobre","poder","poema","poeta","polvo","pollo","poner","porte","posar","prado","prisa","prosa","punto","queso","quien","quiza","radio","rampa","rango","rasgo","rayos","razon","recto","regla","reina","reloj","remar","renta","resto","ricos","rigor","rival","robot","rocas","rodar","rollo","rombo","rosal","rubio","rueda","rugby","ruido","rumbo","sabio","sacar","salir","salsa","salto","salud","santo","sauce","secar","sello","selva","se\u00f1al","se\u00f1or","serie","siglo","signo","silla","sitio","sobre","socio","solar","sonar","sopas","suave","subir","sucio","sue\u00f1o","suelo","surco","tabla","tacos","talla","tango","tapas","tarde","tarta","techo","tecla","tejer","telas","temas","tenis","tibio","tigre","tinta","tiras","titan","tomar","tonto","toque","torre","total","traer","trago","trama","trato","trece","tribu","trigo","tripa","trono","tropa","tumba","turno","unido","untar","usado","vacas","vacio","valle","valor","vapor","vasos","veloz","venas","venta","verde","verso","viaje","vicio","video","viejo","vigor","vinos","virus","visor","vista","viudo","vocal","volar","voces","vuelo","yemas","yerno","yogur","zarpa","zorro","zumos"];
+const WL_VAL = new Set(["ababa","abaca","abaco","abada","abadi","abaja","abaje","abajo","abala","abale","abalo","abana","abane","abano","abasi","abata","abate","abati","abato","aba\u00f1a","aba\u00f1e","aba\u00f1o","abece","abeja","abete","abeto","abiar","abias","abina","abine","abino","abiso","abita","abite","abito","aboba","abobe","abobo","aboca","aboco","abofa","abofe","abofo","aboga","abogo","aboli","abona","abone","abono","aboya","aboye","aboyo","abozo","abran","abras","abren","abres","abria","abrid","abril","abrio","abrir","abris","absit","abubo","abuce","abuje","abura","abure","aburo","abusa","abuse","abuso","abuza","abuzo","acaba","acabe","acabo","acama","acame","acamo","acana","acara","acare","acaro","acaso","acata","acate","acato","acebo","acece","aceda","acede","acedo","acema","acepa","acepe","acepo","acera","acere","acero","aceta","aceto","aceza","acezo","ace\u00f1a","achin","achis","acial","aciar","acida","acido","acije","acilo","acimo","acion","acles","aclla","acmes","acnes","acoca","acoco","acoda","acode","acodo","acoge","acogi","acoja","acojo","acola","acole","acolo","acopa","acope","acopo","acora","acore","acoro","acosa","acose","acoso","acota","acote","acoto","acres","acroe","acroy","actas","actea","actor","actos","actua","actue","actuo","acuda","acude","acudi","acudo","acuea","acueo","acula","acule","aculo","acuna","acune","acuno","acure","acusa","acuse","acuso","acuta","acuti","acuto","acuyo","acu\u00f1a","acu\u00f1e","acu\u00f1o","adala","adama","adame","adamo","adaza","adema","ademe","ademo","adiad","adian","adiar","adias","adien","adies","adios","adiva","adive","adoba","adobe","adobo","adora","adore","adoro","adosa","adose","adoso","adrad","adral","adran","adrar","adras","adren","adres","aduar","aduce","aduci","adufe","aduja","aduje","adujo","adula","adule","adulo","aduna","adune","aduno","adura","adure","aduri","aduro","adven","aedas","aedos","aerea","aereo","aetas","afaca","aface","afaga","afago","afama","afame","afamo","afana","afane","afano","afara","afare","afata","afate","afato","afead","afean","afear","afeas","afeen","afees","afiar","afice","afija","afijo","afila","afile","afilo","afina","afine","afino","afizo","aflui","afoca","afoco","afofa","afofe","afofo","afoga","afogo","afona","afono","afora","afore","aforo","afosa","afose","afoso","aftas","afufa","afufe","afufo","afuma","afume","afumo","agace","agami","agana","agane","agano","agape","agata","agave","agios","agita","agite","agito","agnus","agola","agole","agolo","agora","agore","agoro","agota","agote","agoto","agras","agraz","agres","agria","agrie","agrio","agror","agros","aguad","aguai","aguan","aguar","aguas","aguay","aguce","aguda","agudo","aguen","agues","aguin","aguio","aguja","aguti","aguza","aguzo","ahaja","ahaje","ahajo","ahija","ahije","ahijo","ahila","ahile","ahilo","ahina","ahita","ahite","ahito","ahoga","ahogo","ahora","ahoya","ahoye","ahoyo","ahuma","ahume","ahumo","ahusa","ahuse","ahuso","aillo","aillu","ainas","airad","airan","airar","airas","airea","airee","airen","aireo","aires","airon","aisas","aisla","aisle","aislo","aites","ajaba","ajada","ajado","ajais","ajaja","ajara","ajare","ajase","ajead","ajean","ajear","ajeas","ajebe","ajeen","ajees","ajeis","ajena","ajeno","ajeos","ajera","ajero","ajete","ajice","ajies","ajipa","ajiza","ajizo","ajobo","ajora","ajore","ajoro","ajota","ajote","ajoto","ajuar","ajuma","ajume","ajumo","ajuna","ajuno","alaba","alabe","alabo","alaco","alada","alado","alafa","alaga","alago","alaju","alala","alalo","alama","alamo","alana","alano","alaui","alazo","albar","albas","albea","albee","albeo","albin","albor","albos","album","albur","alcas","alcea","alcen","alces","alcor","aldea","alead","alean","alear","aleas","alece","aleda","aleen","alees","alefs","alega","alego","aleja","aleje","alejo","alela","alele","aleli","alelo","alema","alero","aleta","aleto","aleve","aleya","alezo","alfad","alfan","alfar","alfas","alfen","alfes","alfil","alfiz","alfoz","algar","algas","algol","algos","algun","alhoz","aliad","alian","aliar","alias","alica","alien","alier","alies","alifa","aliga","aligo","alija","alije","alijo","alimo","alims","alioj","alisa","alise","aliso","ali\u00f1a","ali\u00f1e","ali\u00f1o","aljez","aljor","allen","almas","almea","almez","almos","almud","alnas","alnos","aloba","alobe","alobo","aloca","aloco","aloes","aloja","aloje","alojo","alola","alole","alolo","aloma","alome","alomo","alona","alora","alosa","alota","alote","aloto","aloya","alpes","altar","altas","altea","altee","alteo","altor","altos","aluas","aluce","aluda","alude","aludi","aludo","alula","aluna","alune","aluno","aluza","aluzo","alveo","alzad","alzan","alzar","alzas","alzos","amaba","amada","amado","amaga","amago","amais","amala","amale","amalo","amana","amane","amano","amara","amare","amaro","amasa","amase","amaso","amata","amate","amato","ama\u00f1a","ama\u00f1e","ama\u00f1o","ambar","ambas","ambla","amble","amblo","ambon","ambos","ameba","ameis","amela","amele","amelo","amena","ameno","ameos","amera","amere","amero","amias","amiba","amibo","amida","amiga","amigo","amina","amine","amino","amiri","amito","amola","amole","amolo","amomo","amona","amone","amono","amove","amovi","ampay","ampla","amplo","ampon","ampos","ampra","ampre","ampro","amuga","amugo","amula","amule","amulo","amura","amure","amuro","amuso","anabi","anaco","anade","anafe","anamu","anana","anata","ancas","ancha","anche","ancho","ancla","ancle","anclo","ancon","ancua","andad","andan","andar","andas","andel","anden","andes","andon","anead","anean","anear","aneas","aneen","anees","anega","anego","aneja","aneje","anejo","aneto","anexa","anexe","anexo","angel","angla","anglo","angor","angra","angus","anida","anide","anido","anima","anime","animo","anion","anisa","anise","aniso","anito","ani\u00f1a","ani\u00f1e","ani\u00f1o","anjeo","anoas","anodo","anola","anole","anolo","anona","anota","anote","anoto","ansar","ansas","ansia","ansie","ansio","antas","antes","antia","antis","antro","anual","anuas","anuda","anude","anudo","anula","anule","anulo","anuos","anura","anuro","aocar","aojad","aojan","aojar","aojas","aojen","aojes","aojos","aonia","aonio","aorta","aovad","aovan","aovar","aovas","aoven","aoves","apaga","apago","apale","apara","apare","aparo","apa\u00f1a","apa\u00f1e","apa\u00f1o","apead","apean","apear","apeas","apeen","apees","apega","apego","apela","apele","apelo","apena","apene","apeno","apeos","apera","apere","apero","apese","apice","apila","apile","apilo","apios","apipa","apipe","apipo","apiri","apita","apite","apito","api\u00f1a","api\u00f1e","api\u00f1o","apnea","apoca","apoce","apoco","apoda","apode","apodo","apola","apole","apolo","apone","aposa","apose","aposo","apoya","apoye","apoyo","apoza","apozo","apres","aproa","aproe","aproo","aptar","aptas","aptos","apuna","apune","apuno","apura","apure","apuro","apuse","apuso","apu\u00f1a","apu\u00f1e","apu\u00f1o","aquea","aquel","aqueo","araba","arabe","arabi","arabo","arada","arado","arais","arana","arara","arare","arasa","arase","araza","ara\u00f1a","ara\u00f1e","ara\u00f1o","arbol","arbor","arcad","arcan","arcar","arcas","arcea","arcen","arces","archa","archi","arcon","arcos","ardan","ardas","ardea","arded","arden","arder","ardes","ardia","ardid","ardil","ardio","ardor","ardua","arduo","areas","areca","areis","arela","arele","arelo","arena","arene","areno","arepa","arete","arfad","arfan","arfar","arfas","arfen","arfes","arfil","argan","argel","argen","argon","argos","argot","argue","argui","arias","arica","arico","arida","arido","aries","arija","arije","arijo","arilo","arios","arlad","arlan","arlar","arlas","arlen","arles","arlos","armad","arman","armar","armas","armen","armes","armon","armos","arnas","arnes","aroca","aroma","arome","aromo","arpad","arpan","arpar","arpas","arpen","arpeo","arpes","arpia","arpon","arque","arras","arraz","arrea","arree","arreo","arres","arria","arrie","arrio","arroz","arrua","arrue","arrui","arruo","artal","artas","artes","artos","arula","arupo","aru\u00f1a","aru\u00f1e","aru\u00f1o","arzon","asaba","asaca","asaco","asada","asado","asais","asara","asare","asaro","asase","ascar","ascas","ascia","ascio","ascos","ascua","asead","asean","asear","aseas","aseda","asede","asedo","aseen","asees","aseis","asela","asele","aselo","aseos","asesa","asese","aseso","asgan","asgas","asian","asias","asica","asico","asida","asido","asila","asile","asilo","asina","asira","asire","asmar","asmas","asnal","asnas","asnos","asola","asole","asolo","asoma","asome","asomo","asona","asone","asono","aspad","aspan","aspar","aspas","aspea","aspee","aspen","aspeo","aspes","aspic","aspid","aspro","astas","aster","astil","astro","astur","asuma","asume","asumi","asumo","asura","asure","asuro","asuso","ataba","atabe","ataca","ataco","atada","atado","atais","ataja","ataje","atajo","atapa","atape","atapo","atara","atare","atase","ataud","ata\u00f1a","ata\u00f1e","ata\u00f1o","atear","ateas","atece","ateis","ateje","ateos","ateri","atesa","atese","ateso","ateta","atete","ateto","ateza","atezo","atiba","atibe","atibo","atica","atice","atico","atina","atine","atino","atipa","atipe","atipo","atiza","atizo","atlas","atoad","atoan","atoar","atoas","atoba","atobe","atobo","atoen","atoes","atoja","atoje","atojo","atole","atomo","atona","atono","atora","atore","atoro","atrae","atras","atril","atrio","atroz","atufa","atufe","atufo","atura","ature","aturo","atusa","atuse","atuso","atuve","atuvo","aucas","audaz","audio","auges","augur","aulas","aulla","aulle","aullo","aunad","aunan","aunar","aunas","aunen","aunes","aupad","aupan","aupar","aupas","aupen","aupes","auras","aurea","aureo","ausol","autan","autor","autos","avada","avade","avado","avaha","avahe","avaho","avala","avale","avalo","avara","avaro","avati","avece","avena","avene","aveni","aveno","aveza","avezo","aviad","avian","aviar","avias","avica","avida","avido","avien","avies","avine","avino","avion","avios","avisa","avise","aviso","aviva","avive","avivo","avoca","avoco","avugo","axial","axila","ayaco","ayate","ayead","ayean","ayear","ayeas","ayeen","ayees","ayora","ayote","ayuas","ayuda","ayude","ayudo","ayuga","ayuna","ayune","ayuno","ayuso","azada","azaga","azago","azala","azara","azare","azaro","azcon","azeri","azimo","azoad","azoan","azoar","azoas","azoca","azoco","azoen","azoes","azoga","azogo","azola","azole","azolo","azora","azore","azoro","azota","azote","azoto","aztor","azuas","azuce","azuda","azula","azule","azulo","azuts","azuza","azuzo","a\u00f1ada","a\u00f1ade","a\u00f1adi","a\u00f1ado","a\u00f1eda","a\u00f1ede","a\u00f1edi","a\u00f1edo","a\u00f1eja","a\u00f1eje","a\u00f1ejo","a\u00f1era","a\u00f1ero","a\u00f1ida","a\u00f1ide","a\u00f1idi","a\u00f1ido","a\u00f1ila","a\u00f1ile","a\u00f1ilo","a\u00f1ina","a\u00f1ino","a\u00f1oja","a\u00f1ojo","a\u00f1ora","a\u00f1ore","a\u00f1oro","a\u00f1osa","a\u00f1oso","a\u00f1uda","a\u00f1ude","a\u00f1udo","babas","babea","babee","babel","babeo","babis","bable","babor","bacan","bacas","bache","bacia","bacin","bacon","badal","badan","badas","badea","baden","badil","bafle","bagad","bagan","bagar","bagas","bagos","bagre","bague","bahai","bahia","baida","baifa","baifo","baila","baile","bailo","bajad","bajan","bajar","bajas","bajea","bajee","bajel","bajen","bajeo","bajes","bajez","bajia","bajin","bajio","bajon","bajos","balad","balaj","balan","balar","balas","balay","balda","balde","baldo","balea","balee","balen","baleo","bales","balin","balon","balos","balsa","balso","balta","balto","bamba","bambu","banal","banas","banca","bance","banco","banda","bando","banir","banjo","bantu","banyo","banzo","baque","barba","barbe","barbo","barca","barco","barda","barde","bardo","bares","baria","baril","bario","baris","barns","baron","baros","barra","barre","barri","barro","barza","basad","basal","basan","basar","basas","basca","basen","bases","basis","basna","basta","baste","basto","batan","batas","batea","batee","batel","baten","bateo","bates","batey","batia","batid","batin","batio","batir","batis","baton","batos","batua","baula","baure","bausa","bauza","bayal","bayas","bayon","bayos","bayua","bayus","bazar","bazas","bazos","ba\u00f1ad","ba\u00f1an","ba\u00f1ar","ba\u00f1as","ba\u00f1en","ba\u00f1es","ba\u00f1il","ba\u00f1os","beata","beato","beban","bebas","bebed","beben","beber","bebes","bebia","bebio","becad","becan","becar","becas","bedel","befad","befan","befar","befas","befen","befes","befos","befre","begum","beige","bejin","belda","belde","beldo","belen","beles","belez","belfa","belfo","belga","belio","bella","bello","belua","bemba","bembe","bembo","bemol","benes","beoda","beodo","beori","beque","berbi","berma","beron","berra","berre","berro","berta","berza","besad","besan","besar","besas","besen","beses","besos","betas","betel","betun","beuda","beudo","beyes","bezar","bezon","bezos","biaza","bibis","bical","bicha","biche","bicho","bicis","bicos","bides","bidon","biela","bifaz","bifes","bigas","bijao","bijas","bijol","bilao","biles","bilis","billa","bilma","bilme","bilmo","bimba","binad","binan","binar","binas","binea","binee","binen","bineo","bines","bingo","binza","biota","biras","birla","birle","birli","birlo","biros","bisad","bisan","bisar","bisas","bisel","bisen","bises","bisos","biste","bitad","bitan","bitar","bitas","biten","biter","bites","bitor","bizas","bizca","bizco","bizma","bizme","bizmo","bizna","blaos","blava","blavo","bleda","bledo","bloca","bloco","blocs","blues","blusa","boato","bobas","bobea","bobee","bobeo","bobos","bocal","bocas","bocea","bocee","bocel","boceo","bocha","boche","bocho","bocin","bocio","bocon","bocoy","bodas","bodes","bodon","bofan","bofar","bofas","bofen","bofes","bofia","bofos","bogad","bogan","bogar","bogas","bogue","bohio","boina","boira","boite","bojad","bojan","bojar","bojas","bojea","bojee","bojen","bojeo","bojes","bojos","bolar","bolas","boldo","bolea","bolee","boleo","boles","bolin","bolis","bolla","bolle","bollo","bolon","bolos","bolsa","bolso","bomba","bombe","bombo","bonal","bones","bonga","bongo","bonos","bonzo","boque","boqui","borax","borda","borde","bordo","boreo","boria","borla","borna","borne","borni","boros","borra","borre","borro","borto","bosar","boson","bosta","botad","botan","botar","botas","botea","botee","boten","boteo","botes","botin","boton","botor","botos","boxea","boxee","boxeo","boxer","boxes","boyad","boyal","boyan","boyar","boyas","boyen","boyes","bozal","bozas","bozon","bozos","braca","braco","braga","brama","brame","bramo","brasa","brava","bravo","braza","brazo","bra\u00f1a","bread","brean","brear","breas","breca","brece","breco","breen","brees","brega","brego","brete","breva","breve","breza","brezo","bre\u00f1a","brial","briba","brice","brida","briol","brios","brisa","brise","briso","briza","brizo","broas","broca","broce","broma","brome","bromo","brota","brote","broto","broza","brozo","bruce","brugo","bruja","bruje","bruji","brujo","bruma","brume","brumo","bruna","bruno","bruta","bruto","bruts","bruza","bruzo","bru\u00f1a","bru\u00f1e","bru\u00f1i","bru\u00f1o","buaro","bubas","bubis","bubon","bucal","bucea","bucee","bucen","buceo","buces","buche","bucio","bucle","bucos","budas","budin","buega","buena","bueno","buera","bufad","bufan","bufar","bufas","bufen","bufeo","bufes","bufet","bufia","bufon","bufos","bugle","buhio","buhos","buida","buido","bujeo","bujes","bujia","bujos","bular","bulas","bulbo","bulda","bules","bulin","bulis","bulla","bulle","bulli","bullo","bulon","bulos","bulto","bunas","bunio","buque","buras","burda","burdo","burel","bureo","burga","burgo","buril","burio","buris","burla","burle","burlo","buros","burra","burro","busca","busco","buses","busto","buten","butia","buyos","buzad","buzan","buzar","buzas","buzon","buzos","cabal","cabas","cabed","caben","caber","cabes","cabia","cabio","cable","cabos","cabra","cabre","cabro","cacan","cacao","cacas","cacea","cacee","cacen","caceo","caces","cacha","cache","cacho","cachu","cacle","cacos","cacto","cacuy","cadas","cadis","cados","caeis","caena","caera","caere","cafes","cafiz","cafre","cagad","cagan","cagar","cagas","cagon","cague","cahiz","caian","caias","caico","caida","caido","caies","caiga","caigo","caima","caire","caite","cajas","cajel","cajin","cajis","cajon","cajos","calad","calan","calao","calar","calas","calca","calce","calco","calda","caldo","caled","calen","caler","cales","calia","calio","calis","caliz","calla","calle","callo","calma","calme","calmo","calon","calor","calos","calta","calva","calve","calvo","calza","calzo","camal","camao","camas","camba","cambe","cambo","camio","camon","campa","campe","campo","canal","canas","canda","cande","candi","cando","canea","canee","caneo","canes","caney","canez","canga","cango","cania","canil","canje","canoa","canon","canos","cansa","canse","canso","canta","cante","canto","cantu","caoba","caobo","capad","capan","capar","capas","capaz","capea","capee","capel","capen","capeo","capes","capia","capin","capio","capis","capon","capos","cappa","capta","capte","capto","capuz","caqui","carao","caras","carau","caray","carba","carca","carda","carde","cardo","carea","caree","carel","careo","cares","carey","carga","cargo","caria","carie","cario","caris","cariz","carla","carlo","carme","carne","caron","caros","carpa","carpe","carpi","carpo","carra","carro","carta","carvi","casad","casal","casan","casar","casas","casca","casco","casea","casen","caseo","cases","casia","casis","cason","casos","caspa","casta","casto","catad","catan","catar","catas","catea","catee","caten","cateo","cates","catey","catin","caton","catos","catre","cauba","cauca","cauce","cauda","cauje","caula","cauno","cauri","cauro","causa","cause","causo","cauta","cauto","cauza","cavad","cavan","cavar","cavas","cavea","caven","caves","cavia","cavio","cavis","cavon","cavos","cayan","cayas","cayos","cazad","cazan","cazar","cazas","cazon","cazos","cazuz","ca\u00f1ad","ca\u00f1al","ca\u00f1an","ca\u00f1ar","ca\u00f1as","ca\u00f1ea","ca\u00f1ee","ca\u00f1en","ca\u00f1eo","ca\u00f1es","ca\u00f1is","ca\u00f1on","ca\u00f1os","ceaja","ceajo","cebad","ceban","cebar","cebas","ceben","cebes","cebil","cebon","cebos","cebra","cebro","cebti","cebus","cecal","cecas","cecea","cecee","ceceo","cedan","cedas","ceded","ceden","ceder","cedes","cedia","cedio","cedro","cefea","cefee","cefeo","cefos","cegad","cegar","cegas","cegua","cegue","ceiba","ceibo","cejad","cejan","cejar","cejas","cejen","cejes","cejos","celad","celan","celar","celas","celda","celen","celes","celfo","celia","cella","cello","celos","celta","cemas","cembo","cenad","cenal","cenan","cenar","cenas","cenca","cenco","cenen","cenes","cenia","cenis","cenit","censa","cense","censo","cents","cepas","cepos","cepti","cequi","ceras","cerca","cerco","cerda","cerdo","cerea","cereo","cerio","cerna","cerne","cerni","cerno","ceron","ceros","cerpa","cerra","cerre","cerro","cesad","cesan","cesar","cesas","cesen","ceses","cesio","cesta","cesto","cetil","cetis","cetme","cetra","cetre","cetro","ceuti","ce\u00f1ad","ce\u00f1an","ce\u00f1ar","ce\u00f1as","ce\u00f1en","ce\u00f1es","ce\u00f1ia","ce\u00f1id","ce\u00f1ir","ce\u00f1is","ce\u00f1os","chaca","chace","chaco","chafa","chafe","chafo","chais","chaja","chala","chale","chalo","chama","chame","chamo","chana","chane","chano","chapa","chape","chapo","chata","chato","chaul","chauz","chava","chave","chavo","chaya","chaye","chayo","chaza","chazo","checa","checo","chefs","cheje","chela","chele","cheli","chelo","chepa","chepe","chepo","chera","chero","chesa","cheso","cheta","cheto","chiad","chian","chiar","chias","chica","chico","chics","chida","chido","chien","chies","chifa","chiis","chile","chima","chime","chimo","chimu","china","chine","chino","chipa","chipe","chips","chira","chiri","chisa","chist","chita","chite","chito","chiva","chive","chivo","chiza","choba","choca","choco","chofe","chola","cholo","chona","chono","chopa","chope","chopo","chora","chore","chori","choro","chota","chote","choto","chova","choya","choye","choyo","choza","chozo","chuas","chuca","chuce","chuco","chufa","chufe","chufo","chula","chule","chulo","chuna","chupa","chupe","chupo","chura","churo","churu","chuta","chute","chuto","chuts","chuva","chuya","chuyo","chuza","chuzo","chu\u00f1a","chu\u00f1o","ciaba","ciado","ciais","ciani","ciara","ciare","ciase","ciato","cibal","cibis","cicas","cicca","cicla","cicle","ciclo","cides","cidra","cidro","cieca","ciega","ciego","cieis","cielo","ciemo","cieno","cifra","cifre","cifro","cigua","cijas","cilio","cilla","cimar","cimas","cimba","cimia","cimpa","cinas","cinca","cinco","cincs","cines","cinia","cinta","cinte","cinto","cipes","cipos","circa","circe","circo","cirio","cirro","cisca","cisco","cisma","cisme","cismo","cisne","cista","citad","citan","citar","citas","citen","cites","citra","civil","ci\u00f1an","ci\u00f1as","ci\u00f1en","ci\u00f1es","claco","clacs","clama","clame","clamo","clapa","clara","claro","clase","clava","clave","clavo","clema","clero","clica","clics","clima","clips","clisa","clise","cliso","cloca","cloco","clona","clone","clono","clora","clore","cloro","clota","clube","clubs","coana","coati","cobas","cobea","cobez","cobil","cobla","cobos","cobra","cobre","cobro","cocad","cocal","cocan","cocar","cocas","cocea","coced","cocee","coceo","cocer","coces","cocha","coche","cochi","cocho","cocia","cocio","cocol","cocos","cocui","cocuy","codal","codas","codea","codee","codeo","codez","codin","codon","codos","coeva","coevo","cofan","cofas","cofia","cofin","cofre","coged","cogen","coger","coges","cogia","cogio","cogon","coima","coime","coine","coipo","coita","coite","coito","cojal","cojan","cojas","cojea","cojee","cojeo","cojin","cojon","cojos","colad","colan","colar","colas","colea","colee","colen","coleo","coles","colga","colgo","colin","colla","colma","colme","colmo","colon","color","colos","colpa","colpe","colza","comal","coman","comas","comba","combe","combo","comed","comen","comer","comes","comia","comic","comio","comis","comta","comto","comun","conca","conde","conga","congo","conos","conta","conte","conto","coona","copad","copal","copan","copar","copas","copea","copec","copee","copen","copeo","copes","copey","copia","copie","copin","copio","copla","copon","copos","copra","copta","copto","coque","coqui","corad","coral","coran","corar","coras","corbe","corca","corco","corda","corea","coree","coren","coreo","cores","corio","coris","corla","corle","corlo","corma","corno","coros","corpa","corps","corra","corre","corri","corro","corsa","corse","corso","corta","corte","corto","corua","corva","corve","corvo","corza","corzo","cosan","cosas","cosca","cosco","cosed","cosen","coser","coses","cosia","cosio","cosos","cospe","costa","coste","costo","cotad","cotan","cotar","cotas","coten","cotes","cotin","cotis","coton","cotos","cotua","covad","covan","covar","covas","coven","coves","coxal","coxas","coxis","coyan","coyas","coyes","coyol","co\u00f1ac","co\u00f1as","co\u00f1ea","co\u00f1ee","co\u00f1eo","co\u00f1on","co\u00f1os","cracs","crasa","craso","craza","cread","crean","crear","creas","crece","creci","credo","creed","creen","creer","crees","creia","crema","creme","cremo","crepe","creps","cresa","creso","creta","creyo","criad","crian","criar","crias","criba","cribe","cribo","crica","crics","crida","crien","cries","crina","crine","crino","crios","croad","croan","croar","croas","croco","croen","croes","croma","crome","cromo","crono","cross","croto","croza","cruce","cruda","crudo","cruel","cruja","cruje","cruji","crujo","cruor","crups","cruza","cruzo","cuaba","cuaco","cuada","cuado","cuaja","cuaje","cuajo","cuape","cuasi","cuata","cuate","cuati","cubas","cubil","cubos","cubra","cubre","cubri","cubro","cucad","cucan","cucar","cucas","cucha","cuche","cuchi","cucho","cucos","cucus","cucuy","cueca","cuece","cueco","cuela","cuele","cuelo","cuera","cuero","cuete","cueto","cueva","cueza","cuezo","cuica","cuico","cuida","cuide","cuido","cuija","cuilo","cuina","cuino","cuita","cujas","cujes","cujin","cujis","cujon","cular","culas","culea","culee","culen","culeo","culia","culio","culis","culle","culon","culos","culpa","culpe","culpo","culta","culto","cumas","cumba","cumbe","cumbo","cumel","cumpa","cunad","cunan","cunar","cunas","cunda","cunde","cundi","cundo","cunea","cunee","cunen","cuneo","cunes","cuota","cupes","cuple","cupon","cupos","cuque","curad","cural","curan","curar","curas","curca","curco","curda","curdo","curen","cures","curia","curie","curil","curio","curis","curos","curra","curre","curro","curry","cursa","curse","cursi","curso","curta","curte","curti","curto","curul","curva","curve","curvo","cusan","cusas","cusca","cusco","cuscu","cusen","cuses","cusia","cusid","cusio","cusir","cusis","cusma","cuspa","cusul","cutas","cuter","cutes","cutio","cutir","cutis","cutos","cutra","cutre","cuyas","cuyeo","cuyes","cuyos","cuzas","cuzco","cuzma","cuzos","cuzul","cu\u00f1ad","cu\u00f1al","cu\u00f1an","cu\u00f1ar","cu\u00f1as","cu\u00f1en","cu\u00f1es","cu\u00f1os","daban","dabas","dable","dacha","dacia","dacio","dadas","dador","dados","dagas","dahir","daifa","dajao","dalas","dalgo","dalia","dalla","dalle","dallo","damas","damil","damos","dance","dandi","dando","danes","dango","danta","dante","danto","danza","danzo","daqui","daran","daras","dardo","dares","darga","daria","datad","datan","datar","datas","datea","datee","daten","dateo","dates","datil","datos","dauco","dauda","dazas","da\u00f1ad","da\u00f1an","da\u00f1ar","da\u00f1as","da\u00f1en","da\u00f1es","da\u00f1os","deban","debas","debda","debdo","debed","deben","deber","debes","debia","debil","debio","debla","debos","debut","decae","decai","decia","decid","decir","decis","decor","dedal","dedeo","dedil","dedos","deesa","dejad","dejan","dejar","dejas","dejen","dejes","dejos","delco","deles","delga","delia","delio","della","dello","delta","demas","demos","dende","densa","denso","denta","dente","dento","depon","deque","derbi","desca","desda","desde","desdi","desea","desee","deseo","deses","desga","desoi","desta","deste","desto","desus","detal","deten","deuda","deudo","deven","deyes","dezma","dezme","dezmo","de\u00f1ar","diada","diado","diana","dia\u00f1o","dicaz","dicen","dices","dicha","dicho","dicta","dicte","dicto","diego","diera","diere","diese","diesi","dieta","diete","dieto","digan","digas","digna","digne","digno","dijes","dilui","diman","dimas","dimen","dimes","dimia","dimid","dimio","dimir","dimis","dimos","dinar","dinas","dines","dinos","diodo","diosa","dioso","dique","diran","diras","diria","disca","disco","dison","dista","diste","disto","ditas","diuca","divan","divas","divos","di\u00f1ad","di\u00f1an","di\u00f1ar","di\u00f1as","di\u00f1en","di\u00f1es","dobla","doble","doblo","docas","doces","docil","docta","docto","dodos","dogal","dogas","dogma","dogos","dogre","dolad","dolar","dolas","doled","doler","doles","dolia","dolio","dolor","dolos","domad","doman","domar","domas","dombo","domen","domes","domos","donad","donan","donar","donas","donde","donen","doneo","dones","dopad","dopan","dopar","dopas","dopen","dopes","dorad","doral","doran","dorar","doras","doren","dores","doria","dorio","dormi","dorna","dorso","dosel","doses","dosis","dotad","dotal","dotan","dotar","dotas","doten","dotes","dotor","do\u00f1as","do\u00f1ea","do\u00f1ee","do\u00f1eo","draba","draga","drago","drama","dreas","drena","drene","dreno","drias","drino","driza","droga","drogo","drope","drupa","drusa","druso","dseda","dubas","dubda","dubio","ducal","ducas","duces","ducha","duche","ducho","ducos","ducto","dudad","dudan","dudar","dudas","duden","dudes","duela","duele","duelo","dueto","due\u00f1a","due\u00f1o","dugos","dujos","dular","dulas","dulce","dulia","duman","dumas","dumen","dumes","dumia","dumid","dumio","dumir","dumis","dunas","dunda","dundo","dupla","duplo","duque","durad","duran","durar","duras","duren","dures","duros","ebano","ebria","ebrio","echad","echan","echar","echas","echen","eches","ecuas","ecuos","edema","edila","edita","edite","edito","edrad","edran","edrar","edras","edren","edres","educa","educe","educi","educo","eduje","edujo","efebo","efeta","efeto","eflui","eforo","egena","egeno","egida","eguar","eiras","ejido","ejion","ejote","elami","elata","elato","elche","elega","elegi","elego","elemi","elepe","eleta","eleto","eleva","eleve","elevo","elfos","elida","elide","elidi","elido","elige","elija","elije","elijo","elite","ellas","elles","ellos","elote","eluda","elude","eludi","eludo","emana","emane","emano","embai","emita","emite","emiti","emito","empos","empra","empre","empro","emues","emula","emule","emulo","enana","enano","encia","eneal","eneas","eneja","eneje","enejo","enema","eneos","enero","enoja","enoje","enojo","enria","enrie","enrio","ensay","enteo","entes","entra","entre","entro","enula","enves","envia","envie","envio","enzas","eolia","eolio","eones","epale","epata","epate","epato","epica","epico","epoca","epoda","epodo","epota","epoto","epoxi","equis","eraba","erada","erado","erais","eraje","erala","erara","erare","erase","erbio","ercer","erebo","ereis","ergio","ergui","erial","erias","erice","erige","erigi","erija","erijo","erina","erios","eriza","erizo","ermar","eroga","erogo","errad","erraj","erran","errar","erras","erren","erres","error","erros","eruta","erute","eruto","escas","escay","escoa","esmui","esnob","espay","espia","espie","espin","espio","esqui","estad","estan","estar","estas","estay","esten","ester","estes","estil","estio","estol","estor","estos","estoy","estro","esula","etano","etapa","etica","etico","etilo","etimo","etnea","etneo","etnia","etola","etolo","etusa","eubea","eubeo","euros","evada","evade","evadi","evado","evita","evite","evito","evoca","evoco","evohe","exida","exige","exigi","exija","exijo","exila","exile","exilo","exima","exime","eximi","eximo","exito","exodo","exora","exore","exoro","expia","expie","expio","expon","extra","exuda","exude","exudo","fabas","fabla","fabos","fabro","facas","facer","faces","facha","fache","facho","facil","facon","facto","fadas","fados","faena","faene","faeno","fagos","fagot","faina","faino","fajad","fajan","fajar","fajas","fajea","fajee","fajen","fajeo","fajes","fajin","fajol","fajon","fajos","falaz","falca","falce","falco","falda","falla","falle","fallo","falos","falsa","false","falso","falta","falte","falto","falua","famas","fanal","fanes","fango","faqui","farad","faras","farda","farde","fardo","faria","fario","farol","faron","faros","farpa","farra","farro","farsa","farte","fases","fasol","fasos","fasta","fasto","fatal","fatas","fator","fatos","fatua","fatuo","fauna","fauno","favor","favos","faxea","faxee","faxeo","faxes","fayas","fa\u00f1ad","fa\u00f1an","fa\u00f1ar","fa\u00f1as","fa\u00f1en","fa\u00f1es","febea","febeo","feble","fecal","feces","fecha","feche","fecho","feeza","fejes","feliz","felon","felpa","felpe","felpo","felus","femad","feman","femar","femas","femen","femes","femur","fenal","fenda","fendi","fenix","fenol","feral","feraz","feria","ferie","ferio","ferir","fermi","feroz","ferra","ferre","ferro","ferry","festa","fetal","fetas","feten","fetor","fetos","fetua","feuca","feuco","feuda","feude","feudo","feura","fiaba","fiaca","fiada","fiado","fiais","fiana","fiara","fiare","fiase","fiats","fibra","ficar","ficen","fices","ficha","fiche","ficho","ficus","fideo","fieis","fiemo","fiera","fiero","fifad","fifan","fifar","fifas","fifen","fifes","fifis","figle","figon","fijad","fijan","fijar","fijas","fijen","fijes","fijon","fijos","filad","filan","filar","filas","filen","files","filfa","filia","filie","filin","filio","filis","fillo","filma","filme","filmo","films","filon","filos","fimos","finad","final","finan","finar","finas","finca","finco","finen","fines","finge","fingi","finia","finid","finio","finir","finis","finja","finjo","finos","finta","finte","finto","fique","firma","firme","firmo","fisan","fisco","fisga","fisgo","fista","fisto","fizad","fizan","fizar","fizas","fizon","fi\u00f1es","flaca","flaco","flama","flaon","flash","flato","flava","flavo","fleco","fleja","fleje","flejo","flema","fleme","fleos","fleta","flete","fleto","flexo","flipa","flipe","flipo","floja","flojo","flora","flore","floro","flota","flote","floto","fluia","fluid","fluir","fluis","flujo","fluor","fluya","fluye","fluyo","fobia","focal","focas","focha","focia","focio","focos","fofas","fofos","fogon","foisa","foiso","fojas","folga","folgo","folia","folie","folio","folla","folle","follo","foluz","fomes","fonda","fondo","fones","fonil","fonio","fonje","fonos","foque","foral","foras","forca","force","forja","forje","forjo","forma","forme","formo","forno","foros","forra","forre","forro","forte","forum","forza","forzo","fosad","fosal","fosan","fosar","fosas","fosca","fosco","fosen","foses","fosil","fosor","fosos","foton","fotos","fovea","fracs","frada","frade","frado","fraga","frase","fra\u00f1a","fra\u00f1e","fra\u00f1i","fra\u00f1o","frece","fredo","frega","frego","freia","freid","freir","freis","frena","frene","freno","freon","freos","fresa","frese","freso","freta","frete","freto","freza","frezo","frian","frias","frica","frico","frien","fries","frior","frios","frisa","frise","friso","frita","frite","frito","froga","frogo","frota","frote","froto","fruia","fruid","fruir","fruis","fruta","frute","fruto","fruya","fruye","fruyo","fucar","fuchi","fucia","fucos","fudre","fuego","fuera","fuere","fuero","fuesa","fuese","fuets","fufad","fufan","fufar","fufas","fufen","fufes","fufos","fufus","fugan","fugar","fugas","fugaz","fugir","fugue","fuina","fular","fulas","fulge","fulgi","fulja","fuljo","fulla","fumad","fuman","fumar","fumas","fumen","fumes","fumon","funca","funco","funda","funde","fundi","fundo","funge","fungi","funja","funjo","furas","furia","furor","furos","furto","fusas","fusca","fusco","fusil","fusor","fusos","fusta","fuste","fusto","futil","futon","futre","fu\u00f1ar","gaban","gabar","gacel","gacha","gache","gachi","gacho","gafad","gafan","gafar","gafas","gafea","gafee","gafen","gafeo","gafes","gafos","gagas","gagos","gaita","gajes","gajos","galan","galas","galce","galea","galeo","gales","galga","galgo","galio","galla","galle","gallo","galon","galop","galos","galua","gamas","gamba","gamma","gamon","gamos","ganad","ganan","ganar","ganas","ganen","ganes","ganga","gansa","ganso","ganta","gante","garas","garay","garba","garbe","garbo","garfa","garia","gario","garla","garle","garlo","garma","garos","garpa","garpe","garpo","garra","garre","garri","garro","garua","garue","garuo","garza","garzo","gasas","gasea","gasee","gaseo","gases","gason","gasta","gaste","gasto","gatas","gatea","gatee","gateo","gatos","gauss","gavia","gayad","gayan","gayar","gayas","gayen","gayes","gayos","gazas","gazna","gazne","gazno","ga\u00f1an","ga\u00f1as","ga\u00f1en","ga\u00f1es","ga\u00f1ia","ga\u00f1id","ga\u00f1il","ga\u00f1in","ga\u00f1ir","ga\u00f1is","ga\u00f1on","gelan","gelar","gelas","gelen","geles","gelfe","gemas","gemia","gemid","gemir","gemis","genes","genio","genol","gente","geoda","gerbo","gesta","geste","gesto","getas","gibad","giban","gibao","gibar","gibas","giben","gibes","gibon","gigas","gilas","giles","gilis","gilva","gilvo","giman","gimas","gimen","gimes","gimio","ginea","girad","giran","girar","giras","giren","gires","giros","gises","giste","glase","glayo","gleba","glera","glial","glias","glide","glifo","globo","glosa","glose","gloso","gluma","gneis","gnomo","goben","gobio","gocen","goces","gocha","gocho","godas","godeo","godos","gofas","gofio","gofos","gofra","gofre","gofro","golas","golea","golee","goleo","goles","golfa","golfo","golfs","golpe","gomar","gomas","gomel","gomer","gomia","gonce","gongo","gorda","gordo","gorga","gorja","gorma","gorme","gormo","gorra","gorro","gotas","gotea","gotee","goteo","goton","goyas","goyos","gozad","gozan","gozar","gozas","gozne","gozon","gozos","graba","grabe","grabo","grada","grade","grado","grafo","grais","graja","grajo","grama","grame","gramo","grana","grand","grane","grano","grant","graos","grapa","grape","grapo","grasa","graso","grata","grate","grato","grava","grave","gravo","greba","greca","greco","greda","green","grelo","greno","gre\u00f1a","grial","grida","grifa","grife","grifo","grija","grill","grima","gripa","gripe","gripo","grisa","grisu","grita","grite","grito","groad","groan","groar","groas","groen","groes","grogs","grojo","gromo","grosa","groso","gruas","gruia","gruid","gruir","gruis","gruja","gruje","gruji","grujo","grumo","grupa","grupi","grupo","gruta","gruya","gruye","gruyo","gru\u00f1a","gru\u00f1e","gru\u00f1i","gru\u00f1o","guaba","guabo","guaca","guaco","guado","guais","guaja","guaje","guala","guama","guame","guamo","guano","guaos","guapa","guape","guapo","guara","guare","guari","guaro","guasa","guaso","guata","guate","guato","guaya","guaye","guayo","gubia","guera","guero","gueto","gue\u00f1a","guiad","guian","guiar","guias","guida","guido","guien","guies","guifa","guija","guijo","guila","guilo","guina","guino","guion","guipa","guipe","guipo","guira","guire","guiri","guiro","guisa","guise","guiso","guita","guite","guito","guiye","gui\u00f1a","gui\u00f1e","gui\u00f1o","gujas","gulag","gular","gulas","gulay","gules","gumia","gurda","gurdo","guris","gurus","gusta","guste","gusto","guzga","guzgo","guzla","habar","habas","haber","habia","habil","habiz","habla","hable","hablo","habon","habra","habre","habus","hacan","haced","hacen","hacer","haces","hacha","hache","hacho","hacia","hadar","hadas","hados","hafiz","hagan","hagas","haiga","halad","halan","halar","halas","halda","halen","hales","halla","halle","hallo","halon","halos","hamez","hampa","hampo","hanzo","hapax","haran","haras","harba","harbe","harbo","harca","harda","harem","haren","haria","harma","haron","harpa","harre","harta","harte","harto","hasta","hatea","hatee","hateo","hatos","haute","havar","havos","hayal","hayan","hayas","hayos","hazas","heben","hebra","heces","hecha","hecho","heded","heder","hedes","hedia","hedio","hedor","helad","helar","helas","helea","helee","heleo","helio","helor","hemos","henal","henar","hende","hendi","henil","henos","henry","herba","herbe","herbo","heria","herid","heril","herir","heris","herma","heroe","herpe","herra","herre","herro","hertz","herve","hervi","hespa","hespe","hespi","hespo","hetea","heteo","hevea","he\u00f1ia","he\u00f1id","he\u00f1ir","he\u00f1is","hiato","hicos","hidra","hieda","hiede","hiedo","hiela","hiele","hielo","hiena","hiera","hiere","hiero","higas","higos","higui","hijas","hijea","hijee","hijeo","hijos","hilad","hilan","hilar","hilas","hilen","hiles","hilio","hilos","himen","himno","himpa","himpe","himpo","hinca","hinco","hindi","hindu","hipad","hipan","hipar","hipas","hipen","hiper","hipes","hipos","hippy","hirco","hirio","hirma","hirme","hirmo","hisca","hispa","hispe","hispi","hispo","hitad","hitan","hitar","hitas","hiten","hites","hiton","hitos","hi\u00f1an","hi\u00f1as","hi\u00f1en","hi\u00f1es","hi\u00f1ia","hi\u00f1id","hi\u00f1ir","hi\u00f1is","hobby","hobos","hocen","hoces","hogar","hogos","hojas","hojea","hojee","hojeo","holan","holco","holea","holee","holeo","holga","holgo","holla","holle","hollo","homes","honda","hondo","hongo","honor","honra","honre","honro","hopan","hopar","hopas","hopea","hopee","hopen","hopeo","hopes","hopos","hoque","horas","horca","horco","horda","horma","horna","horne","horno","horra","horre","horro","hosca","hosco","hospa","hoste","hotel","hotos","hoves","hoyad","hoyan","hoyar","hoyas","hoyen","hoyes","hoyos","hozad","hozan","hozar","hozas","huaca","huaco","huaje","huaos","hucha","hucho","hucia","hueca","hueco","huego","huela","huele","huelo","huera","huero","huesa","hueso","hueva","hueve","huevo","huian","huias","huich","huida","huido","huifa","huila","huilo","huira","huire","huiro","hulad","hulan","hular","hulas","hulea","hulee","hulen","huleo","hules","hulla","hulte","humad","human","humar","humas","humea","humee","humen","humeo","humes","humil","humor","humos","humus","hunas","hunda","hunde","hundi","hundo","hunos","hupes","huras","hurga","hurgo","huris","huron","hurra","hurta","hurte","hurto","husar","husma","husme","husmo","husos","hutas","hutia","huyan","huyas","huyen","huyes","ibais","ibera","ibero","ibice","icaco","iceis","ichal","ichos","ichus","icono","ictus","idead","ideal","idean","idear","ideas","ideay","ideen","idees","ideos","idolo","iglus","ignea","igneo","igual","iguar","ijada","ijiyo","ijuju","ileon","ileos","ilesa","ileso","ilion","ilota","iluda","ilude","iludi","iludo","ilusa","iluso","imada","imana","imane","imano","imbui","imela","imita","imite","imito","impar","impia","impio","impla","imple","implo","impon","inane","incas","incoa","incoe","incoo","indas","index","india","indio","indos","infla","infle","inflo","ingas","ingle","ingon","ingre","inope","input","inris","insta","inste","insto","inter","intis","intui","invar","iones","iotas","ipsis","irada","irado","irani","ireis","irgan","irgas","irgue","irian","irias","iride","irisa","irise","iriso","irrui","irupe","isbas","islam","islan","islas","isleo","isoca","istmo","itala","italo","items","itera","itere","itero","itria","itrio","itzaj","izaba","izada","izado","izais","izara","izare","izase","izote","jabas","jabis","jable","jabon","jabra","jabre","jabri","jabro","jacal","jacas","jacer","jacha","jacos","jacta","jacte","jacto","jadas","jadea","jadee","jadeo","jades","jadia","jadie","jadio","jaece","jaeza","jaezo","jagua","jaiba","jaima","jajay","jalad","jalan","jalar","jalas","jalda","jalde","jaldo","jalea","jalee","jalen","jaleo","jales","jalma","jalon","jamad","jaman","jamar","jamas","jamba","jambe","jambo","jamen","james","jamon","janes","japon","jaque","jaral","jaras","jarba","jarbe","jarbo","jarca","jarda","jaros","jarra","jarre","jarro","jasad","jasan","jasar","jasas","jasen","jases","jaspe","jatas","jateo","jates","jatib","jatos","jauda","jaudo","jauja","jaula","jauta","jauto","javas","javos","jayan","ja\u00f1as","ja\u00f1os","jebes","jedad","jedan","jedar","jedas","jeden","jedes","jefas","jefes","jeito","jejen","jeliz","jemal","jemes","jeque","jeras","jerbo","jerez","jerga","jerpa","jetad","jetan","jetar","jetas","jetea","jetee","jeten","jeteo","jetes","jeton","jetos","jibes","jibia","jicos","jifas","jifia","jigas","jigue","jijas","jijea","jijee","jijeo","jimad","jiman","jimar","jimas","jimen","jimes","jimia","jimio","jinda","jines","jiote","jipas","jipia","jipie","jipio","jipis","jiras","jirel","jiron","jisca","jitad","jitan","jitar","jitas","jiten","jites","ji\u00f1ad","ji\u00f1an","ji\u00f1ar","ji\u00f1as","ji\u00f1en","ji\u00f1es","jobar","jobos","jocha","joche","jocho","jocon","jocos","jodan","jodas","joded","joden","joder","jodes","jodia","jodio","jodon","jofor","jolin","jondo","jonia","jonio","jopan","jopar","jopas","jopea","jopee","jopen","jopeo","jopes","jopos","joras","jorco","jorfe","jorga","jorge","jorro","josas","jotas","jotes","jotos","joule","joven","joyas","joyel","joyon","joyos","juana","jubas","jubon","jubos","jucas","jucos","judas","judia","judio","judos","juega","juego","juera","jueza","jugad","jugar","jugas","jugos","jugue","jujea","jujee","jujeo","julia","julio","julos","juman","jumar","jumas","jumea","jumee","jumen","jumeo","jumes","jumil","jumos","junce","junci","junco","junio","junta","junte","junto","junza","junzo","jupas","jupea","jupee","jupeo","jupon","jurad","juran","jurar","juras","jurco","jurel","juren","jures","juros","jusis","justa","juste","justo","jutas","jutia","juvia","juzga","juzgo","ju\u00f1an","ju\u00f1as","ju\u00f1en","ju\u00f1es","ju\u00f1ia","ju\u00f1id","ju\u00f1ir","ju\u00f1is","labeo","labes","labia","labil","labio","labor","labra","labre","labro","lacad","lacan","lacar","lacas","lacea","lacee","lacen","laceo","laces","lacha","lacho","lacia","lacio","lacon","lacra","lacre","lacro","lacta","lacte","lacto","ladas","ladea","ladee","ladeo","ladon","lados","ladra","ladre","ladro","lagar","lagos","lagua","laica","laico","laida","laido","lajas","laman","lamas","lamba","lambe","lambi","lambo","lamed","lamen","lamer","lames","lamia","lamin","lamio","lampa","lampe","lampo","lanar","lanas","lance","landa","lande","lando","langa","lania","lanio","lanza","lanzo","lapas","lapiz","lapon","lapos","lapsa","lapso","laque","larda","larde","lardo","lares","larga","largo","larra","larva","lasar","lasas","lasca","lasco","laser","lasos","lasta","laste","lasto","lasun","latan","latas","lataz","latea","latee","laten","lateo","lates","latex","latia","latid","latin","latio","latir","latis","laton","latos","lauda","laude","laudo","launa","lauro","lauta","lauto","lavad","lavan","lavar","lavas","laven","laves","laxad","laxan","laxar","laxas","laxen","laxes","laxos","layad","layan","layar","layas","layen","layes","lazad","lazan","lazar","lazas","lazos","la\u00f1ad","la\u00f1an","la\u00f1ar","la\u00f1as","la\u00f1en","la\u00f1es","leais","lecha","leche","lecho","lecos","ledas","ledon","ledos","leeis","leera","leere","legad","legal","legan","legar","legas","legon","legos","legra","legre","legro","legua","legue","legui","leian","leias","leida","leido","leila","leima","lejas","lejia","lejio","lejos","lelas","lelos","leman","lemas","lembo","lempo","lemur","lenas","lenca","lenes","lenon","lenta","lente","lento","leona","lepra","leras","lerda","lerdo","lesas","lesea","lesee","leseo","lesna","lesos","leste","letal","letea","leteo","leton","letra","leuco","leuda","leude","leudo","levad","levan","levar","levas","leven","leves","leyes","lezda","lezna","lezne","le\u00f1ad","le\u00f1an","le\u00f1ar","le\u00f1as","le\u00f1en","le\u00f1es","le\u00f1os","liaba","liada","liado","liais","liana","liara","liare","liase","liaza","libad","liban","libar","libas","liben","liber","libes","libia","libio","libon","libra","libre","libro","liceo","licia","licio","licor","licua","licue","licuo","lider","lides","lidia","lidie","lidio","lidon","liega","liego","lieis","lieva","lieve","ligad","ligan","ligar","ligas","light","ligio","ligon","ligue","ligur","lijad","lijan","lijar","lijas","lijen","lijes","lilac","lilao","lilas","lilio","lilos","limad","liman","limar","limas","limbo","limen","limes","limon","limos","linao","linar","lince","linda","linde","lindo","linea","linee","lineo","linfa","linio","linon","linos","liosa","lioso","lipas","lipes","lipis","lipon","liras","liria","lirio","liron","lisas","lises","lisia","lisie","lisio","lisis","lisol","lisos","lista","liste","listo","litad","litan","litar","litas","liten","lites","litio","litis","litre","litro","lituo","liuda","liude","liudo","livor","lizas","lizos","li\u00f1os","llaca","llaga","llago","llama","llame","llamo","llana","llano","llapa","llape","llapo","llave","lleca","lleco","llega","llego","llena","llene","lleno","llera","lleva","lleve","llevo","llora","llore","lloro","llosa","llove","llovi","loaba","loada","loado","loais","loara","loare","loase","lobas","lobby","lobea","lobee","lobeo","lobos","local","locas","locea","locee","loceo","locha","loche","locos","locro","lodon","lodos","lodra","loeis","logar","logia","logis","logos","logra","logre","logro","loica","loina","loino","lolas","lolea","lolee","loleo","lolio","lolis","lolos","lomas","lomba","lombo","lomea","lomee","lomeo","lomos","lonas","lonco","longa","longo","lonja","loras","lorea","loree","loreo","lores","loros","lorza","losad","losan","losar","losas","losen","loses","lotas","lotea","lotee","loteo","lotes","lotin","lotos","lozas","lucas","lucen","luces","lucha","luche","lucho","lucia","lucid","lucio","lucir","lucis","lucra","lucre","lucro","ludan","ludas","luden","ludes","ludia","ludid","ludie","ludio","ludir","ludis","ludos","luego","lue\u00f1e","lugar","lugre","luian","luias","luida","luido","luira","luire","luisa","lujad","lujan","lujar","lujas","lujen","lujes","lujos","lulos","lulus","lumas","lumbo","lumen","lumia","lunar","lunas","lunch","lunea","lunee","lunel","luneo","lunes","lunfa","lupas","lupia","lupus","lurte","lusas","lusca","lusco","lusos","lutea","luteo","lutos","luvia","luxad","luxan","luxar","luxas","luxen","luxes","luyan","luyas","luyen","luyes","luzca","luzco","lycra","mabis","mable","macal","macan","macar","macas","macea","macee","macen","maceo","maces","macha","mache","machi","macho","macia","macio","macis","macla","macon","macro","macua","mador","madre","maesa","maese","maeso","mae\u00f1a","mae\u00f1o","mafia","magas","magia","magie","magin","magio","magma","magna","magno","magos","magra","magro","mague","mahon","maido","majad","majal","majan","majar","majas","majea","majee","majen","majeo","majes","majos","malar","malas","malea","malee","maleo","males","malis","malla","malle","mallo","malon","malos","malta","malva","malve","malvo","mamad","maman","mamar","mamas","mambi","mambo","mamen","mames","mamey","mamia","mamon","mamua","mamut","manad","manal","manan","manar","manas","manca","manco","manda","mande","mandi","mando","manea","manee","manen","maneo","manes","manga","mango","mania","manid","manio","manir","manis","manos","mansa","manso","manta","manto","manus","maoma","maori","mapas","mapea","mapee","mapeo","mapos","maque","maqui","maras","marca","marce","marci","marco","marea","maree","mareo","mares","marga","margo","maria","marlo","maron","maros","marra","marre","marro","marsa","marso","marta","marte","marza","marzo","masad","masan","masar","masas","masca","masco","masea","masee","masen","maseo","mases","masia","maslo","mason","maste","masto","matad","matan","matar","matas","matea","matee","maten","mateo","mates","matiz","maton","matos","matul","maula","maule","maulo","maura","maure","mauro","mayad","mayal","mayan","mayar","mayas","mayea","mayee","mayen","mayeo","mayes","mayor","mayos","mazad","mazan","mazar","mazas","mazna","mazne","mazno","mazos","ma\u00f1as","ma\u00f1ea","ma\u00f1ee","ma\u00f1eo","ma\u00f1io","ma\u00f1os","mbaya","meaba","meada","meado","meais","meaja","meano","meara","meare","mease","meato","mecas","meced","mecen","mecer","meces","mecha","meche","mecho","mecia","mecio","mecos","medas","media","medid","medie","medio","medir","medis","medos","medra","medre","medro","meeis","megas","megos","meiga","meigo","mejan","mejas","mejed","mejen","mejer","mejes","mejia","mejio","mejor","melad","melar","melas","melca","melga","melgo","melis","mella","melle","mello","melon","melsa","melva","memas","memez","memos","menad","menan","menar","menas","menda","menea","menee","menen","meneo","menes","menge","menor","menos","mensa","menso","mensu","menta","mente","menti","mento","menus","meona","merad","meran","merar","meras","merca","merco","meren","meres","merey","mergo","merla","merlo","merma","merme","mermo","merol","meros","mersa","mesad","mesan","mesar","mesas","mesen","meses","mesma","mesmo","meson","mesta","mesto","metad","metal","metan","metas","meted","meten","meter","metes","metia","metio","metra","metro","meyas","meyor","mezan","mezas","miaba","miado","miaga","miago","miais","miaja","miara","miare","miase","miaus","mia\u00f1a","mia\u00f1e","mia\u00f1o","micas","micer","mices","micha","miche","micho","micos","micra","micro","midan","midas","miden","mides","midio","miedo","mieis","miela","miele","mielo","miera","migad","migan","migar","migas","migra","migre","migro","migue","mijos","milan","miles","milis","milla","millo","milpa","mimad","miman","mimar","mimas","mimen","mimes","mimos","minad","minal","minan","minar","minas","minaz","minen","mines","minga","mingo","minia","minie","minio","minue","mioma","miona","miope","mirad","miran","mirar","miras","miren","mires","mirla","mirle","mirlo","miron","mirra","mirto","mirza","misad","misal","misan","misar","misas","misen","mises","misia","misil","misio","misma","mismo","mista","miste","misto","mitad","mitan","mitas","mitin","miton","mitos","mitra","mitre","mitro","miura","mixta","mixto","mizas","mizos","mi\u00f1on","moais","moare","moble","mocad","mocan","mocar","mocas","mocea","mocee","moceo","mocha","moche","mocho","mocil","mocos","modal","modas","modem","modio","modos","mofad","mofan","mofar","mofas","mofen","mofes","mogas","mogol","mogon","mogos","mohin","mohos","mohur","mojad","mojan","mojar","mojas","mojel","mojen","mojes","mojil","mojis","mojon","mojos","molad","molan","molar","molas","molda","molde","moldo","moled","molen","moler","moles","molia","molio","molla","molle","molon","molos","molsa","molso","momea","momee","momeo","momia","momio","momos","monas","monda","monde","mondo","monea","monee","moneo","monfi","monga","mongo","monis","monja","monje","monos","monra","monse","monta","monte","monto","mopan","mopas","moque","morad","moral","moran","morar","moras","morbo","morca","morco","morde","mordi","morea","moren","moreo","mores","morfa","morfe","morfo","morga","moria","morid","morir","moris","morma","morme","mormo","moron","moros","morra","morro","morsa","morse","mosca","mosco","mosen","moste","mosto","motas","motea","motee","motel","moteo","motes","motil","motin","moton","motor","motos","moved","mover","moves","movia","movil","movio","moxas","moxte","moyas","moyos","mozas","mozos","mo\u00f1as","mo\u00f1on","mo\u00f1os","muare","muble","mucas","mucha","mucho","mucos","mudad","mudan","mudar","mudas","muden","mudes","mudez","mudos","mueca","muela","muele","muelo","muera","muere","muero","mueso","mueva","mueve","muevo","mufas","mufla","mufti","mugad","mugan","mugar","mugas","mugen","muges","mugia","mugid","mugil","mugio","mugir","mugis","mugle","mugor","mugre","mugue","muian","muias","muida","muido","muira","muire","mujan","mujas","mujer","mujol","mular","mulas","muleo","mules","mulla","mulle","mulli","mullo","mulos","mulsa","mulso","multa","multe","multo","munas","mundo","murad","mural","muran","murar","muras","muren","mures","murga","muria","murio","muros","murta","murto","musan","musar","musas","musca","musco","musen","museo","muses","musga","musgo","musia","musio","musir","musis","muslo","musos","mutad","mutan","mutar","mutas","muten","mutes","mutis","mutra","mutro","mutua","mutuo","muyan","muyas","muyen","muyes","mu\u00f1an","mu\u00f1as","mu\u00f1en","mu\u00f1es","mu\u00f1ia","mu\u00f1id","mu\u00f1ir","mu\u00f1is","mu\u00f1on","nabab","nabal","nabar","nabas","nabis","nabla","nabos","nacar","nacas","naced","nacen","nacer","naces","nacha","nacho","nacia","nacio","nacos","nacre","nadad","nadal","nadan","nadar","nadas","naden","nades","nadga","nadie","nadir","nafra","nafre","nafro","nafta","nagua","nahoa","nahua","naife","naifs","naipe","naire","najas","nalca","nalga","nanas","nanay","nance","nanea","nanee","naneo","nansa","nansu","nanta","nante","nanto","napas","napea","napeo","naque","narco","nardo","nares","nariz","narra","narre","narro","nasal","nasas","nason","nasos","natal","natas","natia","natio","natos","natri","nauta","naval","navas","naves","navio","nazca","nazco","nazis","nebel","nebis","nebli","nebro","necea","necee","neceo","necia","necio","negad","negar","negas","negra","negro","negue","negus","nejas","nejos","neldo","neles","nemas","nemea","nemeo","nemes","nemon","nenas","nenes","nenia","nepes","neron","nesga","nesgo","netas","netos","neuma","nevad","nevar","nevas","nevos","nevus","nexos","niara","niazo","niche","nicho","nicle","nicol","nidal","nidia","nidio","nidos","niega","niego","niela","niele","nielo","nieta","nieto","nieva","nieve","nievo","nigua","nilad","nilon","nimba","nimbe","nimbo","nimia","nimio","ninfa","ninfo","ninot","nioto","nipas","nipis","nipon","nipos","niqui","niste","nitor","nitos","nitra","nitre","nitro","nivea","nivel","niveo","nixte","ni\u00f1as","ni\u00f1ea","ni\u00f1ee","ni\u00f1eo","ni\u00f1ez","ni\u00f1os","nobel","noble","nocas","noche","nocir","nocla","nodal","nodos","noema","nogal","nolis","nolit","nomas","nomon","nomos","nonas","nones","nonio","nonos","nopal","noque","noray","noria","norma","norme","normo","norte","notad","notan","notar","notas","noten","notes","notos","notro","novad","noval","novan","novar","novas","novel","noven","noves","novia","novie","novio","noyos","nubes","nubia","nubil","nubio","nubla","nuble","nublo","nucas","nuche","nucir","nucos","nudas","nudos","nuera","nuesa","nueso","nueva","nueve","nuevo","nueza","nulas","nulos","numen","numos","nunca","nutra","nutre","nutri","nutro","nu\u00f1os","oasis","obelo","obesa","obeso","obice","obito","oblea","oboes","obolo","obrad","obran","obrar","obras","obren","obres","obsta","obste","obsto","obten","obues","obvia","obvie","obvio","ocapi","ocaso","ocelo","ocena","ochos","ociad","ocian","ociar","ocias","ocien","ocies","ocios","ocles","oclui","ocote","ocras","ocres","ocrey","ocuje","ocume","ocumo","ocupa","ocupe","ocupo","odeon","odiad","odian","odiar","odias","odien","odies","odios","odres","oeste","ofita","oga\u00f1o","ogros","ohmio","oiais","oible","oidas","oidio","oidor","oidos","oigan","oigas","oimos","oiran","oiras","oiria","oislo","oiste","ojala","ojale","ojalo","ojead","ojean","ojear","ojeas","ojeen","ojees","ojeos","ojera","ojete","ojito","ojiva","ojosa","ojoso","ojota","ojuda","ojudo","olais","olaje","olead","olean","olear","oleas","oleen","olees","oleis","oleos","olera","olere","olian","olias","olida","olido","olios","oliva","olive","olivo","ollao","ollar","ollas","olmas","olmos","olote","olura","omani","omaso","ombus","omega","omero","omeya","omina","omine","omino","omisa","omiso","omita","omite","omiti","omito","omoto","oncea","oncee","onceo","onces","ondas","ondea","ondee","ondeo","ondra","onece","oneci","onice","onoto","onzas","opaca","opaco","opada","opado","opalo","opera","opere","opero","opila","opile","opilo","opima","opimo","opina","opine","opino","opios","opone","optad","optan","optar","optas","opten","optes","opuse","opuso","oraba","orada","orado","orais","oraje","orale","orara","orare","orase","orate","orbes","orcas","orcen","orces","orcos","orden","oread","orean","orear","oreas","oreen","orees","oreis","oreja","oreos","orero","orfos","orfre","orgia","oribe","ories","orina","orine","orino","oriol","orive","orlad","orlan","orlar","orlas","orlen","orles","orlos","ornad","ornan","ornar","ornas","ornea","ornee","ornen","orneo","ornes","oroya","ortos","oruga","orujo","orzad","orzan","orzar","orzas","osaba","osada","osado","osais","osara","osare","osase","oscas","oscos","osead","osean","osear","oseas","oseen","osees","oseis","oseos","osera","osero","oseta","osmio","ososa","ososo","ostas","ostia","ostra","ostro","osuda","osudo","osuna","osuno","otate","otead","otean","otear","oteas","oteen","otees","otero","otila","otile","otilo","otoba","oto\u00f1a","oto\u00f1e","oto\u00f1o","otras","otres","otris","otros","ovaba","ovada","ovado","ovais","ovala","ovale","ovalo","ovara","ovare","ovase","oveis","oveja","overa","overo","ovido","ovina","ovino","ovnis","ovolo","ovosa","ovoso","ovula","ovule","ovulo","oxead","oxean","oxear","oxeas","oxeen","oxees","oxida","oxide","oxido","oyera","oyere","oyese","ozena","ozona","ozono","pacae","pacas","pacay","paced","pacen","pacer","paces","pacha","pacho","pacia","pacio","pacon","pacos","pacta","pacte","pacto","pacus","padre","pafia","pafio","pagad","pagan","pagar","pagas","pagel","pagos","pagro","pagua","pague","pahua","paico","paila","paina","paira","paire","pairo","pajar","pajas","pajea","pajee","pajel","pajeo","pajes","pajil","pajla","pajon","pajos","pajuz","palas","palay","palca","palco","palea","palee","paleo","pales","palia","palie","palio","palis","palla","palle","pallo","palma","palme","palmo","palon","palor","palos","palpa","palpe","palpi","palpo","palta","palto","pamba","pampa","pamue","panal","panas","panca","panco","panda","pando","panel","panes","panga","panji","panos","pansa","panty","panul","panza","papad","papal","papan","papar","papas","papaz","papea","papee","papel","papen","papeo","papes","papin","papon","papos","papua","papus","parad","paral","paran","parao","parar","paras","parca","parce","parco","parda","pardo","parea","pared","paree","parel","paren","pareo","pares","pargo","paria","parid","pario","parir","paris","parla","parle","parlo","parne","paros","parpa","parpe","parpo","parra","parre","parro","parsi","parta","parte","parti","parto","parva","parvo","pasad","pasan","pasar","pasas","pasco","pasea","pasee","pasen","paseo","pases","pasil","pasma","pasme","pasmo","pasos","paspa","paspe","paspo","pasta","paste","pasto","patan","patao","patas","patax","patay","patea","patee","pateo","pater","pates","patin","patio","patis","paton","patos","pauji","paula","paule","paulo","pausa","pause","pauso","pauta","paute","pauto","pavas","paves","pavia","pavon","pavor","pavos","paxte","payad","payan","payar","payas","payen","payes","payos","pazca","pazco","pazos","pa\u00f1al","pa\u00f1il","pa\u00f1ol","pa\u00f1os","peais","peaje","peala","peale","pealo","peana","pea\u00f1a","pebre","pecad","pecan","pecar","pecas","peces","pecha","peche","pecho","pecio","pecta","pecte","pecto","pedal","pedia","pedid","pedio","pedir","pedis","pedos","pedro","peeis","peera","peere","pegad","pegan","pegar","pegas","pegon","pegos","pegue","peian","peias","peido","peina","peine","peino","pejes","pejin","pelad","pelan","pelar","pelas","pelde","pelea","pelee","pelen","peleo","peles","pelis","pella","pello","pelma","pelon","pelos","pelta","pelus","pelvi","pemon","penad","penal","penan","penar","penas","penca","penco","penda","pende","pendi","pendo","penen","penes","penis","penol","penos","pensa","pense","penso","peora","pepas","pepes","pepla","peplo","pepon","pepus","peque","peral","peras","perca","perde","perdi","peris","perla","perle","perlo","perna","perno","perol","peros","perra","perro","persa","perta","perus","pesad","pesan","pesar","pesas","pesca","pesce","pesco","pesen","peses","pesga","pesgo","pesia","pesol","pesor","pesos","peste","petad","petan","petar","petas","peten","petes","petos","petra","peuco","peumo","pezon","pe\u00f1as","pe\u00f1ol","pe\u00f1on","pe\u00f1os","piaba","piada","piado","piafa","piafe","piafo","piais","piala","piale","pialo","piano","piara","piare","piase","pibas","pibes","pibil","picad","pical","pican","picar","picas","picea","piceo","picha","piche","pichi","picho","picon","picor","picos","picuy","pidan","pidas","piden","pides","pidio","pidon","pieis","piejo","pieza","pifas","pifia","pifie","pifio","pigra","pigre","pigro","pigua","pihua","pijas","pijes","pijin","pijos","pijul","pijuy","pilad","pilan","pilar","pilas","pilca","pilen","pileo","piles","pilla","pille","pillo","pilme","pilon","pilos","pinal","pinar","pinas","pince","pines","pinga","pingo","pinna","pinol","pinos","pinta","pinte","pinto","pinza","pinzo","piojo","piola","piole","piolo","piona","pipad","pipan","pipar","pipas","pipen","pipes","pipia","pipie","pipil","pipio","pipis","pipon","pipos","pique","pirad","piral","piran","pirar","piras","pirca","pirco","piren","pires","pirla","piron","piros","pirra","pirre","pirri","pirro","pirul","pirus","pisad","pisan","pisar","pisas","pisca","pisco","pisen","pises","pison","pisos","pispa","pispe","pispo","pista","piste","pisto","pitad","pital","pitan","pitao","pitar","pitas","pitea","pitee","piten","piteo","pites","pitia","pitio","pitis","piton","pitos","piula","piule","piulo","piune","piure","pivot","pixel","pizca","pizco","pizza","pi\u00f1al","pi\u00f1as","pi\u00f1en","pi\u00f1on","pi\u00f1os","placa","place","placi","placo","plaga","plago","plana","plano","plata","plato","playa","playe","playo","plaza","plazo","pla\u00f1a","pla\u00f1e","pla\u00f1i","pla\u00f1o","plebe","pleca","plega","plego","plena","pleno","pleon","plepa","plexo","plica","plisa","plise","pliso","ploma","plome","plomo","plugo","pluma","pobla","poble","poblo","pobos","pobra","pobre","pocas","pocha","pocho","pocos","podad","podal","podan","podar","podas","poded","poden","poder","podes","podia","podio","podon","podra","podre","poema","poeta","poino","poisa","poise","polar","polca","polco","polea","polen","poleo","polex","polin","polio","polir","polis","polla","pollo","polos","polvo","pomar","pomas","pomez","pomos","pompa","pompo","ponci","poned","ponen","poner","pones","poney","ponga","pongo","ponia","ponis","ponto","popad","popan","popar","popas","popel","popen","popes","popos","popti","porco","porga","porgo","porno","poros","porra","porro","porta","porte","porto","posad","posan","posar","posas","posca","posea","posee","posei","posen","poseo","poses","posma","posmo","poson","posos","posta","poste","potad","potan","potar","potas","potea","potee","poten","poteo","potes","potos","potra","potro","poyad","poyal","poyan","poyar","poyas","poyen","poyes","poyos","pozal","pozas","pozol","pozos","prado","praos","prava","pravo","praza","prear","preas","preda","presa","preso","prest","preve","previ","pre\u00f1a","pre\u00f1e","pre\u00f1o","prima","prime","primo","prion","prior","prisa","priva","prive","privo","proal","proas","proba","probe","probo","proco","proel","profa","profe","prois","proiz","prole","prona","prono","prora","prosa","pruna","pruno","psies","puaba","puada","puado","puais","puara","puare","puase","puber","pubes","pubis","pucha","pucho","pucia","pudin","pudio","pudir","pudor","pudra","pudre","pudri","pudro","pudus","pueda","puede","puedo","pueis","pufos","pugas","pugil","pugna","pugne","pugno","pujad","pujan","pujar","pujas","pujen","pujes","pujos","pulan","pulas","pulen","pules","pulga","pulia","pulid","pulio","pulir","pulis","pulla","pulle","pullo","pulpa","pulpo","pulsa","pulse","pulso","pumas","pumba","punan","punar","punas","punce","punen","punes","punga","punge","pungi","punia","punid","punio","punir","punis","punja","punjo","punta","punte","punto","punza","punzo","pupad","pupan","pupar","pupas","pupen","pupes","pupos","pupus","puras","purea","puree","pureo","pures","purga","purgo","purin","puros","purra","purre","purri","purro","puses","puspa","puspo","putal","putas","putea","putee","puteo","puton","putos","puyad","puyan","puyar","puyas","puyen","puyes","puyon","puyos","puzle","puzol","pu\u00f1al","pu\u00f1ar","pu\u00f1ir","pu\u00f1os","pymes","queco","queda","quede","quedo","queja","queje","quejo","quema","queme","quemi","quemo","quena","quepa","quepi","quepo","quera","quere","quero","queso","quias","quien","quier","quifs","quijo","quila","quilo","quima","quimo","quina","quino","quios","quipa","quipu","quisa","quise","quiso","quita","quite","quito","quitu","quivi","quiza","qui\u00f1a","qui\u00f1e","qui\u00f1o","rabal","rabas","rabea","rabee","rabel","rabeo","rabia","rabie","rabil","rabio","rabis","rabon","rabos","racea","racee","racel","raceo","racha","rache","racho","racor","racos","radal","radar","radas","rades","radia","radie","radio","radon","raeis","raera","raere","rafal","rafas","rafea","rafee","rafeo","rafes","rafez","rafia","ragua","ragus","rahez","raian","raias","raice","raida","raido","raiga","raigo","raijo","raiza","raizo","rajad","rajan","rajar","rajas","rajen","rajes","rajon","ralas","ralba","ralbe","ralbo","ralea","ralee","raleo","ralla","ralle","rallo","rally","ralos","ralva","ralve","ralvo","ramal","ramas","ramea","ramee","rameo","ramio","ramon","ramos","rampa","rampe","rampo","ranas","randa","rands","rango","ranos","rapad","rapan","rapar","rapas","rapaz","rapen","rapes","rapos","rapta","rapte","rapto","raque","raras","rarea","raree","rareo","raros","rasad","rasan","rasar","rasas","rasca","rasco","rasel","rasen","rases","rasga","rasgo","rasis","rasos","raspa","raspe","raspo","ratas","ratea","ratee","rateo","ratio","raton","ratos","rauca","rauco","rauda","raudo","rauli","rauta","rayad","rayan","rayar","rayas","rayen","rayes","rayon","rayos","razar","razas","razia","razon","ra\u00f1as","ra\u00f1os","reaje","reala","reama","reame","reamo","reara","reare","rearo","reata","reate","reato","rebla","reble","reblo","rebol","rebus","recae","recai","recel","recen","reces","recia","recio","recle","recre","recta","recte","recto","recua","redad","redan","redar","redas","redel","reden","redes","redil","redol","redor","redro","refez","regad","regar","regas","regia","regid","regio","regir","regis","regla","regle","reglo","regue","rehaz","rehen","rehui","rehus","reian","reias","reida","reido","reila","reile","reilo","reina","reine","reino","reira","reire","rejal","rejas","rejin","rejon","rejos","rejus","relax","relea","relee","relei","relej","releo","reles","reloj","relsa","relso","relva","relve","relvo","remad","reman","remar","remas","remen","remes","remos","renal","renca","renco","renda","rende","rendi","rendo","renes","renga","rengo","renil","renio","renos","renta","rente","rento","reoca","reojo","repon","repos","repta","repte","repto","resal","reses","resma","resol","respe","resta","reste","resto","retad","retal","retan","retar","retas","retel","reten","retes","retin","retor","retos","retro","reuma","reuna","reune","reuni","reuno","revea","reved","reven","reveo","rever","reves","revio","reyad","reyan","reyar","reyas","reyen","reyes","rezad","rezan","rezar","rezas","rezno","rezon","rezos","re\u00f1ia","re\u00f1id","re\u00f1ir","re\u00f1is","riada","riais","riata","ribas","ricas","ricen","rices","ricia","ricio","ricos","riega","riego","riela","riele","rielo","riera","riere","riese","rifad","rifan","rifar","rifas","rifen","rifes","rifle","rigen","riges","rigil","rigio","rigor","rigua","rigue","rijan","rijas","rijos","rilad","rilan","rilar","rilas","rilen","riles","rimad","riman","rimar","rimas","rimel","rimen","rimes","rimus","rinda","rinde","rindo","ringa","ringo","rioja","ripia","ripie","ripio","risas","risca","risco","risos","rispa","rispe","rispo","ritma","ritme","ritmo","riton","ritos","rival","rizad","rizal","rizan","rizar","rizas","rizon","rizos","ri\u00f1an","ri\u00f1as","ri\u00f1en","ri\u00f1es","ri\u00f1on","roais","roana","roano","robad","roban","robar","robas","robda","roben","robes","robin","robla","roble","roblo","robos","robot","robra","robre","rocas","rocea","rocee","rocen","roceo","roces","rocha","roche","rocho","rocia","rocie","rocin","rocio","rocos","rodad","rodal","rodao","rodar","rodas","rodea","rodee","rodeo","rodia","rodil","rodio","rodos","roeis","roela","roera","roere","roete","rogad","rogar","rogas","rogos","rogue","roian","roias","roida","roido","roiga","roigo","rojal","rojas","rojea","rojee","rojeo","rojez","rojos","rolad","rolan","rolar","rolas","rolda","rolde","roldo","rolen","roleo","roles","rolla","rolle","rollo","rolos","roman","romas","rombo","romea","romeo","romin","romis","romos","rompa","rompe","rompi","rompo","ronca","ronce","ronco","ronda","ronde","rondo","rones","ronza","ronzo","ropas","ropon","roque","rorad","roran","rorar","roras","roren","rores","rorro","rosal","rosan","rosar","rosas","rosca","rosco","rosea","rosee","rosen","roseo","roses","rosjo","roson","rosos","rosta","roste","rosti","rosto","rotad","rotal","rotan","rotar","rotas","roten","rotes","rotor","rotos","rouge","royan","royas","royos","rozad","rozan","rozar","rozas","rozna","rozne","rozno","rozon","rozos","ro\u00f1ad","ro\u00f1al","ro\u00f1an","ro\u00f1ar","ro\u00f1as","ro\u00f1en","ro\u00f1es","ro\u00f1ia","ruaba","ruada","ruado","ruais","ruana","ruano","ruara","ruare","ruase","rubea","rubeo","rubia","rubin","rubio","rubis","rublo","rubor","rubra","rubro","rucad","rucan","rucar","rucas","rucha","ruche","rucho","rucia","rucio","rucos","rudas","rudos","rueca","rueda","ruede","ruedo","ruega","ruego","rueis","ruejo","rue\u00f1o","rufas","rufon","rufos","rugad","rugan","rugar","rugas","rugby","rugen","ruges","rugia","rugid","rugio","rugir","rugis","rugue","ruido","ruina","ruine","ruino","rujan","rujas","rujia","rujie","rujio","rulad","rulan","rular","rulas","rulen","rules","rulos","rumba","rumbe","rumbo","rumia","rumie","rumio","rumis","rumor","rumos","runas","runes","runga","rungo","runos","rupia","ruque","rural","rurru","rusas","rusco","rusel","ruses","rusia","rusos","rusta","ruste","rusti","rusto","rutad","rutan","rutar","rutas","rutel","ruten","rutes","ru\u00f1ad","ru\u00f1an","ru\u00f1ar","ru\u00f1as","ru\u00f1en","ru\u00f1es","ru\u00f1ia","ru\u00f1id","ru\u00f1ir","ru\u00f1is","sabea","sabed","saben","sabeo","saber","sabes","sabia","sabio","sabir","sable","sabor","sabra","sabre","sacad","sacan","sacar","sacas","saces","sacha","sache","sacho","sacia","sacie","sacio","sacon","sacos","sacra","sacre","sacro","saeta","saete","saeti","saeto","safir","sagas","sagaz","sagus","saina","saine","saino","sajad","sajan","sajar","sajas","sajen","sajes","sajia","sajon","salad","salan","salar","salas","salaz","salce","salda","salde","saldo","salea","salee","salen","saleo","salep","sales","salga","salgo","salia","salid","salin","salio","salir","salis","salla","salle","sallo","salma","salme","salmo","salol","salon","salpa","salsa","salso","salta","salte","salto","salud","salva","salve","salvo","saman","samas","samba","sambo","samia","samio","sampa","sanad","sanan","sanar","sanas","sanco","sanea","sanee","sanen","saneo","sanes","sango","sanie","sanja","sanje","sanjo","sanos","sansa","sanso","santa","santo","sapas","sapea","sapee","sapeo","sapos","saque","saran","sarao","sarda","sarde","sardo","sarga","sargo","saria","saris","sarna","sarro","sarta","sarza","sarzo","sasal","satan","satas","saten","satin","satis","satos","sauce","sauco","saudi","sauna","savia","saxea","saxeo","saxos","sayal","sayas","sayon","sayos","sazon","sa\u00f1as","seais","sebes","sebos","secad","secan","secar","secas","secon","secos","secta","secua","sedad","sedal","sedan","sedar","sedas","sedea","sedee","seden","sedeo","sedes","segad","segar","segas","segri","segue","segui","segun","segur","seibo","seico","seise","sejes","seles","sella","selle","sello","selva","semas","semen","semis","senas","senda","senes","senil","senos","senta","sente","senti","sento","seora","sepan","sepas","sepes","sepia","septo","seque","seran","seras","serba","serbo","seres","seria","serie","serio","serna","seron","serpa","serra","serre","serro","servi","servo","sesea","sesee","sesen","seseo","seses","sesga","sesgo","sesil","sesis","sesma","sesmo","sesos","setal","setas","setos","sexad","sexan","sexar","sexas","sexen","sexes","sexma","sexmo","sexos","sexta","sexto","se\u00f1al","se\u00f1as","se\u00f1or","short","shuar","sibil","siclo","sicus","sidas","sidra","siega","siego","siena","sieso","siete","sifon","sifue","sigan","sigas","sigla","siglo","sigma","signa","signe","signo","sigua","sigue","sijes","sijus","silba","silbe","silbo","siles","silex","silfo","silga","silgo","silla","silos","silva","simas","simia","simil","simio","simon","simpa","simun","singa","singo","sinos","sioux","sipes","sique","siras","sirga","sirgo","siria","sirin","sirio","sirle","siros","sirte","sirva","sirve","sirvo","sisad","sisal","sisan","sisar","sisas","sisca","sisea","sisee","sisen","siseo","sises","sismo","sison","sitas","sitia","sitie","sitio","sitos","situa","situe","situo","soasa","soase","soaso","sobad","soban","sobar","sobas","soben","sobeo","sobes","sobon","sobos","sobra","sobre","sobro","socas","socaz","soche","socia","socio","socol","sodas","sodio","soeza","sofas","sofis","sogas","sogun","sojas","solad","solar","solas","solaz","solda","solde","soldo","solea","solee","solen","soleo","soler","soles","solfa","solia","solio","solla","sollo","solos","solta","solte","solto","somas","somos","sonad","sonar","sonas","sonda","sonde","sondo","sones","sonio","sonsa","sonso","sonta","sonto","sopad","sopan","sopar","sopas","sopea","sopee","sopen","sopeo","sopes","sopie","sopla","sople","soplo","sopon","sopor","sorba","sorbe","sorbi","sorbo","sorce","sorda","sordo","sores","sorgo","sorna","sorne","sorno","soror","soros","sorra","sosal","sosar","sosas","sosia","sosos","sotad","sotan","sotar","sotas","soten","sotes","sotil","sotol","sotos","sovoz","soyas","so\u00f1ad","so\u00f1ar","so\u00f1as","sport","spray","stand","suaba","suabo","suata","suato","suave","suazi","suban","subas","suben","subeo","subes","subia","subid","subio","subir","subis","subte","suche","sucia","sucio","sucos","sucre","sucus","sudad","sudan","sudar","sudas","suden","sudes","sudor","sueca","sueco","suela","suele","suelo","suena","suene","sueno","suero","sueva","suevo","sue\u00f1a","sue\u00f1e","sue\u00f1o","sufis","sufra","sufre","sufri","sufro","suido","suita","suite","suiza","suizo","sulas","sulco","sulla","sumad","suman","sumar","sumas","sumen","sumes","sumia","sumid","sumio","sumir","sumis","sumos","sumus","sunca","sunco","super","supla","suple","supli","suplo","supon","supra","sural","suras","surca","surco","surda","surde","surdi","surdo","sures","surfs","surge","surgi","suris","surja","surjo","surta","surte","surti","surto","suses","susto","sutas","sutes","sutil","suyas","suyos","suzon","tabal","tabas","tabea","tabes","tabis","tabla","table","tablo","tabon","tabor","tabos","tabus","tacar","tacas","tacen","taces","tacet","tacha","tache","tacho","tacon","tacos","tacto","tafia","tafon","tafos","tafur","tagua","tahas","tahur","taifa","taiga","taima","taime","taimo","taina","taino","taipa","taira","taire","taita","tajad","tajan","tajar","tajas","tajea","tajee","tajen","tajeo","tajes","tajin","tajon","tajos","tajus","talad","talan","talar","talas","talco","talea","taled","talen","tales","talgo","talin","talio","talla","talle","tallo","talma","talon","talos","talpa","talud","tamal","tamba","tambo","tamil","tamiz","tamos","tamul","tanas","tanca","tanco","tanda","tanes","tanga","tange","tangi","tango","tanja","tanjo","tanor","tanos","tanta","tanto","tanza","tapad","tapan","tapar","tapas","tapea","tapee","tapen","tapeo","tapes","tapia","tapie","tapin","tapio","tapir","tapis","tapiz","tapon","taque","tarad","taran","tarar","taras","taray","tarca","tarco","tarda","tarde","tardo","tarea","taren","tares","tarin","tarja","tarje","tarjo","tarma","tarot","tarra","tarro","tarso","tarta","tasad","tasan","tasar","tasas","tasca","tasco","tasen","tases","tasia","tasio","tasis","tasto","tatas","tatay","tatos","tatua","tatue","tatuo","tatus","tauca","tauco","taula","tauro","taxis","taxon","tayos","tayul","tazad","tazan","tazar","tazas","tazon","ta\u00f1ad","ta\u00f1an","ta\u00f1ar","ta\u00f1as","ta\u00f1ed","ta\u00f1en","ta\u00f1er","ta\u00f1es","ta\u00f1ia","ta\u00f1os","teame","tebea","tebeo","tecas","teces","techa","teche","techo","tecla","tecle","teclo","tecol","tedas","tedio","tefes","tegea","tegeo","tegua","tegue","tehul","teina","tejad","tejan","tejar","tejas","tejed","tejen","tejer","tejes","tejia","tejio","tejon","tejos","telar","telas","teles","telex","telon","temad","teman","temar","temas","temed","temen","temer","temes","temia","temio","temor","tempo","temus","tenas","tenaz","tenca","tende","tendi","tened","tener","tenes","tenga","tengo","tenia","tenio","tenis","tenor","tensa","tense","tenso","tenta","tente","tento","tenue","teosa","teoso","tepes","tepus","tepuy","teque","terca","terco","terma","termo","terna","terne","terno","teros","tersa","terse","terso","tesad","tesan","tesar","tesas","tesen","teses","tesis","tesla","teson","tesos","testa","teste","testo","tetad","tetan","tetar","tetas","teten","tetes","teton","tetra","tetro","texes","texto","teyas","teyos","teyus","te\u00f1as","te\u00f1ia","te\u00f1id","te\u00f1ir","te\u00f1is","tiaca","tiara","tibar","tibes","tibia","tibie","tibio","tibor","ticas","ticos","tiene","tiesa","tieso","tifas","tifon","tifos","tifus","tigra","tigre","tigua","tigue","tijas","tijos","tijul","tilas","tilda","tilde","tildo","tiles","tilia","tilin","tilla","tille","tillo","tilma","tilos","timad","timan","timar","timas","timba","timbo","timen","times","timol","timon","timos","timpa","tinas","tinca","tinco","tinea","tineo","tinge","tinos","tinta","tinte","tinto","tipas","tipis","tiple","tipoi","tipos","tipoy","tique","tiqui","tirad","tiran","tirar","tiras","tiren","tires","tiria","tirio","tiron","tiros","tirro","tirso","tirte","tisis","tiste","tisus","titad","titan","titar","titas","titea","titee","titen","titeo","tites","titil","titis","titos","tizas","tizna","tizne","tizno","tizon","tizos","ti\u00f1an","ti\u00f1as","ti\u00f1en","ti\u00f1es","tlaco","toaba","toada","toado","toais","toara","toare","toase","tobar","tobas","tocad","tocan","tocar","tocas","tocen","toces","tocha","toche","tocho","tocia","tocio","tocon","tocos","tocte","todas","todia","todos","toeis","toesa","tofos","togan","togar","togas","togue","tojal","tojos","tolas","tolda","tolde","toldo","toles","tolla","tollo","tolmo","tolon","tolva","tomad","toman","tomar","tomas","tomen","tomes","tomin","tomon","tomos","tonad","tonal","tonan","tonar","tonas","tonca","tondo","tonel","tonen","toner","tones","tonga","tongo","tonos","tonta","tonto","topad","topan","topar","topas","topea","topee","topen","topeo","topes","topia","topil","topon","topos","toque","toqui","toral","toras","torax","torca","torce","torci","torco","torda","tordo","torea","toree","toreo","tores","torga","torgo","toril","torio","tormo","torna","torne","torno","toron","toros","torpe","torra","torre","torro","torso","torta","torva","torvo","tosan","tosas","tosca","tosco","tosed","tosen","toser","toses","tosia","tosio","tosta","toste","tosto","total","totem","totes","totis","totol","tovas","tozad","tozal","tozan","tozar","tozas","tozos","to\u00f1as","to\u00f1il","traba","trabe","trabo","traca","trace","traed","traen","traer","traes","trafa","traga","trago","traia","traje","trajo","trama","trame","tramo","trapa","trape","trapo","traro","trata","trate","trato","travo","traza","trazo","trebo","trece","trefe","treja","trema","treme","tremi","tremo","trena","treno","treos","trepa","trepe","trepo","treta","triad","trial","trian","triar","trias","tribu","trice","trien","tries","triga","trigo","trile","trina","trine","trino","trios","tripa","tripe","trisa","trise","triso","triza","trizo","troca","troce","troco","troja","troje","trola","trole","trona","trone","trono","tropa","tropo","trota","trote","troto","trova","trove","trovo","troza","trozo","truca","truco","trues","trufa","trufe","trufo","truja","trusa","trust","tuani","tubas","tubos","tucan","tucas","tucia","tucos","tucun","tudas","tudel","tueca","tueco","tuera","tuero","tufea","tufee","tufeo","tufos","tuina","tular","tules","tulio","tulla","tulle","tulli","tullo","tulpa","tumba","tumbe","tumbo","tumor","tumos","tunad","tunal","tunan","tunar","tunas","tunca","tunco","tunda","tunde","tundi","tundo","tunea","tunee","tunel","tunen","tuneo","tunes","tunjo","tunos","tunta","tupan","tupas","tupen","tupes","tupia","tupid","tupin","tupio","tupir","tupis","tupos","turar","turba","turbe","turbo","turca","turco","turma","turna","turne","turno","turon","turra","turre","turro","tusad","tusan","tusar","tusas","tusca","tusco","tusen","tuses","tuson","tusos","tutas","tutea","tutee","tuteo","tutes","tutia","tutor","tutos","tutus","tuyas","tuyos","tuzas","ubica","ubico","ubies","ubios","ubres","ucase","uchus","uebos","ufana","ufane","ufano","ugres","ujier","ujule","ulaga","ulala","ulano","ulema","ulpos","ultra","uluas","ulula","ulule","ululo","umbra","umbro","umero","unais","uncen","unces","uncia","uncid","uncio","uncir","uncis","ungen","unges","ungia","ungid","ungio","ungir","ungis","unian","unias","unica","unico","unida","unido","union","unira","unire","unjan","unjas","untad","untan","untar","untas","unten","untes","untos","unzan","unzas","upaba","upada","upado","upais","upara","upare","upase","upeis","upupa","uraos","urape","urato","urbes","urcas","urces","urdan","urdas","urden","urdes","urdia","urdid","urdio","urdir","urdis","urdus","ureas","urgen","urges","urgia","urgid","urgio","urgir","urgis","urica","urico","urjan","urjas","urnas","urtas","urubu","urucu","uruga","usaba","usada","usado","usais","usaje","usara","usare","usase","useis","usgos","usias","usier","usina","usted","usual","usura","usure","usuro","utero","uvada","uvate","uveas","uvera","uvero","uviar","uvula","u\u00f1ada","u\u00f1ado","u\u00f1ais","u\u00f1ate","u\u00f1era","u\u00f1ere","u\u00f1ero","u\u00f1ese","u\u00f1eta","u\u00f1ian","u\u00f1ias","u\u00f1ida","u\u00f1ido","u\u00f1ira","u\u00f1ire","u\u00f1osa","u\u00f1oso","u\u00f1udo","vacad","vacan","vacar","vacas","vacia","vacie","vacio","vacos","vacua","vacuo","vadea","vadee","vadeo","vades","vados","vafea","vafee","vafeo","vagad","vagan","vagar","vagas","vagon","vagos","vague","vahad","vahan","vahar","vahas","vahea","vahee","vahen","vaheo","vahes","vahos","vaida","vaina","vajea","vajee","vajeo","valar","valed","valen","valer","vales","valet","valga","valgo","valia","valio","valis","valla","valle","vallo","valon","valor","valsa","valse","valso","valua","value","valuo","valva","vamos","vanas","vanea","vanee","vaneo","vanos","vapor","vaque","varad","varal","varan","varar","varas","varea","varee","varen","vareo","vares","varga","varia","varie","vario","varis","variz","varon","vasar","vasas","vasca","vasco","vasos","vasta","vasto","vater","vates","vatio","vayan","vayas","veais","vecen","veces","vedad","vedan","vedar","vedas","veden","vedes","vegas","veian","veias","vejad","vejan","vejar","vejas","vejen","vejes","vejez","velad","velan","velar","velas","velay","velen","veles","velis","veliz","vello","velon","velos","veloz","vemos","venal","venas","vence","venci","venda","vende","vendi","vendo","venga","vengo","venia","venid","venir","venis","venta","vente","vento","venus","venza","venzo","veran","veras","veraz","verba","verbo","verde","veres","verga","verge","veria","veril","verja","verme","vermu","veros","versa","verse","verso","verte","verti","veste","vesti","vetad","vetan","vetar","vetas","vetea","vetee","veten","veteo","vetes","veton","vetos","vezad","vezan","vezar","vezas","viada","viaja","viaje","viajo","vibra","vibre","vibro","vicha","viche","vicho","vichy","vicia","vicie","vicio","vicos","victo","vidas","video","vides","vidon","vidro","vieja","viejo","viene","viera","viere","viesa","viese","vigas","vigia","vigie","vigio","vigor","viles","villa","vilos","vimos","vinal","vinar","vinca","vinco","vinos","vinta","viola","viole","violo","virad","viral","viran","virar","viras","viren","vireo","vires","virgo","viril","virio","virol","viron","virus","visad","visan","visar","visas","visco","visea","visee","visen","viseo","vises","visir","vison","visor","visos","vista","viste","visto","vitad","vital","vitan","vitar","vitas","viten","vites","vitor","vitos","vitre","viuda","viudo","vivac","vivad","vivan","vivar","vivas","vivaz","viven","vives","vivez","vivia","vivid","vivio","vivir","vivis","vivon","vivos","vi\u00f1as","voace","vocal","vocea","vocee","voceo","voces","vodca","vodus","voila","volad","volar","volas","volca","volco","volea","volee","voleo","volon","volts","volve","volvi","volvo","vomer","voraz","vosea","vosee","voseo","votad","votan","votar","votas","voten","votes","votos","votri","vozna","vozne","vozno","vudus","vuela","vuele","vuelo","vuesa","vueso","vulgo","vulto","vulva","vusco","xecas","xenon","xinca","xiote","xolas","xolos","yabas","yacal","yacas","yaced","yacen","yacer","yaces","yacia","yacio","yacon","yagan","yagas","yagua","yaiti","yales","yamao","yambo","yampa","yanas","yanta","yante","yanto","yapad","yapan","yapar","yapas","yapen","yapes","yapus","yaque","yaqui","yarda","yares","yarey","yaros","yatai","yatay","yates","yayas","yayos","yazca","yazco","yazga","yazgo","yebos","yecos","yedgo","yedra","yegua","yelgo","yelmo","yemas","yendo","yenes","yente","yeral","yerba","yerga","yergo","yerma","yerme","yermo","yerna","yerno","yeros","yerra","yerre","yerro","yersi","yerta","yerto","yervo","yesal","yesar","yesca","yeson","yesos","yetis","yeyes","yeyos","yezgo","yinas","yines","yiras","yiros","yodad","yodan","yodar","yodas","yoden","yodes","yodos","yogar","yogas","yogos","yogui","yogur","yolas","yoqui","yoris","yoses","yoyos","yucal","yucas","yucpa","yudos","yugos","yumba","yumbo","yunga","yunta","yunto","yuras","yures","yutas","yutes","yuyal","yuyos","zabra","zabro","zacas","zacea","zacee","zaceo","zades","zafad","zafan","zafar","zafas","zafen","zafes","zafia","zafio","zafir","zafon","zafos","zafra","zafre","zagal","zagas","zagua","zahen","zahon","zaida","zaina","zaino","zajon","zalas","zalba","zalbo","zalea","zalee","zaleo","zalla","zalle","zallo","zamba","zambo","zampa","zampe","zampo","zanas","zanca","zanco","zanga","zanja","zanje","zanjo","zapad","zapan","zapar","zapas","zapea","zapee","zapen","zapeo","zapes","zaque","zarbo","zarca","zarco","zares","zarja","zarpa","zarpe","zarpo","zarza","zarzo","zatas","zayas","zazas","zazos","zebra","zedas","zegri","zeina","zejel","zenda","zendo","zenes","zenit","zetas","zincs","zocad","zocan","zocar","zocas","zoclo","zocos","zofra","zoilo","zoizo","zolle","zomas","zombi","zomos","zompa","zompo","zonal","zonas","zonda","zonta","zonto","zonza","zonzo","zopas","zopes","zopos","zoque","zorra","zorro","zotal","zotes","zotol","zuavo","zubia","zudas","zueca","zueco","zuela","zuiza","zulla","zulle","zullo","zulus","zumas","zumba","zumbe","zumbo","zumos","zunas","zunza","zupia","zuras","zurba","zurce","zurci","zurda","zurde","zurdi","zurdo","zurea","zuree","zureo","zuros","zurra","zurre","zurri","zurro","zurza","zurzo","zuzar","zuzon","zu\u00f1an","zu\u00f1as","zu\u00f1en","zu\u00f1es","zu\u00f1ia","zu\u00f1id","zu\u00f1ir","zu\u00f1is","zu\u00f1os","\u00f1ajas","\u00f1ajos","\u00f1ames","\u00f1ampi","\u00f1andu","\u00f1anga","\u00f1ango","\u00f1apas","\u00f1aque","\u00f1atas","\u00f1atea","\u00f1atee","\u00f1ateo","\u00f1atos","\u00f1a\u00f1as","\u00f1a\u00f1os","\u00f1ecas","\u00f1ecla","\u00f1ecos","\u00f1enga","\u00f1engo","\u00f1eque","\u00f1inga","\u00f1ipes","\u00f1ique","\u00f1ires","\u00f1isca","\u00f1izca","\u00f1ocas","\u00f1ocha","\u00f1oclo","\u00f1ocos","\u00f1olas","\u00f1onga","\u00f1ongo","\u00f1oqui","\u00f1oras","\u00f1orbo","\u00f1ores","\u00f1o\u00f1as","\u00f1o\u00f1ez","\u00f1o\u00f1os","\u00f1ublo","\u00f1ucas","\u00f1ucos","\u00f1udos","\u00f1urda","\u00f1urdo","\u00f1utas","\u00f1utos","\u00f1uzco"]);
+const PARA = [["administracion","Solo la administración"],["residentes","Solo los residentes"],["todos","Todos"]];
+
+/* ---------- Datos compartidos ---------- */
+let toastTimer;
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.hidden=true,3200); }
+async function w(fn){
+  try { await fn(); }
+  catch(e){
+    if (e && e.code==="unavailable"){ try { await new Promise(r=>setTimeout(r,600+Math.random()*600)); await fn(); return; } catch(e2){ e=e2; } }
+    toast("No se ha podido guardar. Inténtalo de nuevo.");
+  }
+}
+const dbErr = e => { console.error(e); if (!S.resLoaded) { S.loadErr = (e && (e.code || e.message)) || "desconocido"; render(); } };
+S.db = { doc: mkDoc, collection: c => mkCol(c) };
+let subs = [];
+function limpiar(){
+  subs.forEach(u=>{ try { u(); } catch(e){} }); subs = [];
+  Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, efeOpen:{}});
+}
+function mezclar(){
+  S.residentes = Object.entries(S.pub).map(([id,p])=>({id, ...p, ...(S.priv[id]||{})})).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),"es"));
+}
+function revisarPeticion(){
+  const yo = S.session && resById(S.session.uid);
+  if (yo && S.prevPedir!==undefined && yo.pedirGustos && yo.pedirGustos!==S.prevPedir && pideActualizar(yo)){ S.perfilAplazado=false; toast("La administración te pide que actualices tus gustos."); }
+  S.prevPedir = yo ? (yo.pedirGustos||0) : undefined;
+}
+function suscribir(pid, rol){
+  const add = u => subs.push(u), gest = rol==="admin" || rol==="cocina";
+  add(S.db.collection("usuarios").onSnapshot(q => {
+    const o = {}; q.docs.forEach(d=>o[d.id]=d.data()); S.pub = o; S.resLoaded = true; mezclar();
+    if (!o[pid] || o[pid].activo===false){ toast("Tu usuario ya no está activo."); signOut(auth); return; }
+    revisarPeticion(); render();
+  }, dbErr));
+  if (gest) add(S.db.collection("privados").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.priv=o; mezclar(); revisarPeticion(); render(); }, dbErr));
+  else add(S.db.doc("privados/"+pid).onSnapshot(s => { S.priv = s.exists ? {[pid]: s.data()} : {}; mezclar(); revisarPeticion(); render(); }, dbErr));
+  add(S.db.collection("plantillas").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.plantillas=o; render(); }, dbErr));
+  add(S.db.collection("pedidos").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.pedidos=o; render(); }, dbErr));
+  add(S.db.collection("extras").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => {
+    const prev = S.extrasCargados; const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.extras=o; S.extrasCargados = true;
+    const me = S.session && resById(S.session.uid);
+    if (prev && me && rolDe(me)==="residente") avisosResidente().filter(x=>!x.visto).slice(0,1).forEach(x=>toast("Nuevo aviso para el "+fmtLong(x.fecha).toLowerCase()+"."));
+    render();
+  }, dbErr));
+  if (rol!=="cocina") add(S.db.collection("wordle").where("fecha",">=",addDays(today(),-62)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.wordle=o; render(); }, dbErr));
+  if (gest){
+    add(S.db.collection("eventos").onSnapshot(q => { S.eventos = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))); render(); }, dbErr));
+    add(S.db.collection("mensajes").onSnapshot(q => {
+      const prev = S.msgIds;
+      S.mensajes = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(a.ts||0)-(b.ts||0));
+      S.msgIds = new Set(S.mensajes.map(m=>m.id));
+      if (prev) S.mensajes.filter(m=>!prev.has(m.id) && m.para===rol && !m.leido).forEach(notificar);
+      render();
+    }, dbErr));
+  }
+}
+async function entrarCon(user){
+  limpiar();
+  if (!user){ S.authListo = true; render(); return; }
+  try {
+    const c = await S.db.doc("cuentas/"+user.uid).get();
+    if (!c.exists){ S.loginErr = "Este acceso ya no es válido. Pide al administrador una contraseña nueva."; await signOut(auth); return; }
+    const pid = c.data().perfil, p = await S.db.doc("usuarios/"+pid).get();
+    if (!p.exists || p.data().activo===false){ S.loginErr = "Tu usuario está dado de baja."; await signOut(auth); return; }
+    S.session = {uid:pid}; S.authListo = true; S.loginErr = "";
+    suscribir(pid, p.data().rol || "residente");
+    cargarEfemerides();
+  } catch(e){ console.error(e); S.loginErr = e.code==="permission-denied" ? "Tu usuario está dado de baja o no tiene acceso. Habla con el administrador." : "No se ha podido entrar ("+(e.code||e.message)+")."; S.authListo = true; try { await signOut(auth); } catch(e2){} }
+  render();
+}
+S.db.doc("config/general").onSnapshot(s => { S.config = s.exists ? s.data() : null; S.cfgLoaded = true; render(); }, e => { console.error(e); S.loadErr = e.code||e.message; S.cfgLoaded = true; render(); });
+onAuthStateChanged(auth, user => { if (S.enAlta) return; entrarCon(user); });
+
+/* ---------- Efeméride del día (calendario de Google) ---------- */
+async function cargarEfemerides(){
+  const f = today();
+  try { const c = JSON.parse(localStorage.getItem("mizar.efe")||"null"); if (c && c.f===f){ S.efe = c; render(); return; } } catch(e){}
+  try {
+    const ini = parse(f), fin = parse(addDays(f,1));
+    const url = "https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(CAL_ID)+"/events?key="+CAL_KEY+"&singleEvents=true&orderBy=startTime&maxResults=10&timeMin="+encodeURIComponent(ini.toISOString())+"&timeMax="+encodeURIComponent(fin.toISOString());
+    const r = await fetch(url), j = await r.json();
+    if (!r.ok) throw new Error((j.error && (j.error.status||j.error.message)) || r.status);
+    const items = (j.items||[]).filter(e=>!e.start || !e.start.date || e.start.date===f).map(e=>({id:e.id, t:e.summary||"(Sin título)", d:aTexto(e.description||"")}));
+    S.efe = {f, items}; try { localStorage.setItem("mizar.efe", JSON.stringify(S.efe)); } catch(e){}
+  } catch(e){ console.warn("Efeméride:", e); S.efe = {f, items:[], error:String(e.message||e)}; }
+  render();
+}
+function aTexto(html){
+  const d = new DOMParser().parseFromString("<div>"+String(html).replace(/<br\s*\/?>/gi,"\n").replace(/<\/(p|div|li)>/gi,"\n")+"</div>", "text/html");
+  return (d.body.textContent||"").replace(/\n{3,}/g,"\n\n").trim();
+}
+const enlazar = t => esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+function efemerideHTML(u){
+  if (!S.efe || S.efe.f!==today()) return "";
+  if (S.efe.error) return rolDe(u)==="admin" ? `<div class="efe"><span class="efe-k">No se ha podido cargar la efeméride del día (${esc(S.efe.error)}).</span></div>` : "";
+  if (!S.efe.items.length) return "";
+  return `<section class="efe" aria-label="Efeméride del día"><span class="efe-k">Hoy, ${esc(fmtDay(today()))}</span>
+    ${S.efe.items.map(x=>`<button class="efe-t" data-a="efe" data-v="${esc(x.id)}" aria-expanded="${!!S.efeOpen[x.id]}">${esc(x.t)}</button>${S.efeOpen[x.id] ? `<div class="efe-b">${x.d ? enlazar(x.d) : '<span class="muted">Sin más contenido.</span>'}</div>` : ""}`).join("")}
+  </section>`;
+}
+
+/* ---------- Render ---------- */
+function notificar(m){
+  const quien = m.de==="admin" ? "los administradores" : "la administración";
+  toast("Nueva nota de "+quien+".");
+  try { if ("Notification" in window && Notification.permission==="granted") new Notification("Libro de comidas - Mizar", {body:"Nota de "+quien+": "+String(m.texto).slice(0,120)}); } catch(e){}
+}
+function render(){
+  try { const me = S.session && resById(S.session.uid), rol = me && rolDe(me); const n = rol ? S.mensajes.filter(m=>m.para===rol && !m.leido).length : 0; document.title = (n?"("+n+") ":"")+"Libro de comidas - Mizar"; } catch(e){}
+  const a = document.activeElement, fid = a && a.id, sel = a && a.selectionStart;
+  $app.innerHTML = view();
+  if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); try { if (sel!=null) el.setSelectionRange(sel,sel); } catch(e){} } }
+}
+function view(){
+  if (!S.cfgLoaded || !S.authListo) return `<p class="muted">Abriendo el libro…</p>`;
+  if (S.loadErr && S.session && !S.resLoaded) return `<div class="cover"><div class="cover-inner"><h1>No se pueden cargar los datos</h1><p class="lead">Comprueba la conexión a internet y vuelve a intentarlo.</p><p class="muted small">Código del problema: ${esc(S.loadErr)}</p><div class="row"><button class="btn" data-a="reload">Volver a intentarlo</button><button class="btn ghost" data-a="logout">Salir</button></div></div></div>`;
+  if (!S.config) return viewSetup();
+  if (!S.session) return viewLogin();
+  const u = resById(S.session.uid);
+  if (!S.resLoaded || !u) return `<p class="muted">Abriendo el libro…</p>`;
+  return viewApp(u);
+}
+const draft = (k, def="") => S.drafts[k] ?? def;
+
+function viewSetup(){
+  return `<div class="cover"><div class="cover-inner">
+    <h1>Puesta en marcha</h1>
+    <p class="lead">Crea el usuario del administrador principal y define la hora a la que se cierra el parte de cada día. Esta pantalla solo aparece una vez.</p>
+    <div class="field"><label for="su_nombre">Tu nombre</label><input class="input" id="su_nombre" data-draft="su_nombre" value="${esc(draft("su_nombre","Nacho"))}"></div>
+    <div class="field"><label for="su_usuario">Usuario</label><input class="input" id="su_usuario" data-draft="su_usuario" autocapitalize="none" value="${esc(draft("su_usuario","nacho"))}"></div>
+    <div class="field"><label for="su_pin">Contraseña (mínimo 6 caracteres)</label><input class="input" id="su_pin" type="password" autocomplete="new-password" data-draft="su_pin" value="${esc(draft("su_pin"))}"></div>
+    <div class="field"><label for="su_hora">Hora de cierre diaria</label><input class="input" type="time" id="su_hora" data-draft="su_hora" value="${esc(draft("su_hora","09:30"))}"></div>
+    ${S.loginErr?`<p class="err">${esc(S.loginErr)}</p>`:""}
+    <button class="btn" data-a="setup" ${S.entrando?"disabled":""}>Guardar y empezar</button>
+  </div></div>`;
+}
+
+function viewLogin(){
+  return `<div class="cover"><div class="cover-inner">
+    <h1>Libro de comidas - Mizar</h1>
+    <p class="lead">Entra con el usuario y la contraseña que te ha dado el administrador. Este dispositivo te recordará hasta que pulses «Salir».</p>
+    <div class="field"><label for="lg_user">Usuario</label><input class="input" id="lg_user" data-draft="lg_user" autocomplete="username" autocapitalize="none" spellcheck="false" value="${esc(draft("lg_user"))}"></div>
+    <div class="field"><label for="pin">Contraseña</label><input class="input" id="pin" type="password" autocomplete="current-password" data-draft="pin" value="${esc(draft("pin"))}"></div>
+    ${S.loginErr?`<p class="err">${esc(S.loginErr)}</p>`:""}
+    <button class="btn" data-a="login" ${S.entrando?"disabled":""}>${S.entrando?"Entrando…":"Entrar"}</button>
+  </div></div>`;
+}
+
+function cabecera(nombre){
+  return `<div class="top"><div class="brand"><h1>Libro de comidas - Mizar</h1><span class="who">${esc(nombre)}</span></div><div class="row" style="gap:14px"><button class="link" data-a="pw-ver">Contraseña</button><button class="link" data-a="logout">Salir</button></div></div>`;
+}
+function panelPw(){
+  if (!S.verPw) return "";
+  return `<div class="panel no-print"><h2 style="margin-bottom:10px">Cambiar mi contraseña</h2>
+    <div class="field"><label for="pw_act">Contraseña actual</label><input class="input" id="pw_act" type="password" autocomplete="current-password" data-draft="pw_act" value="${esc(draft("pw_act"))}"></div>
+    <div class="field"><label for="pw_new">Nueva contraseña (mínimo 6 caracteres)</label><input class="input" id="pw_new" type="password" autocomplete="new-password" data-draft="pw_new" value="${esc(draft("pw_new"))}"></div>
+    <div class="field"><label for="pw_rep">Repite la nueva contraseña</label><input class="input" id="pw_rep" type="password" autocomplete="new-password" data-draft="pw_rep" value="${esc(draft("pw_rep"))}"></div>
+    <div class="row"><button class="btn" data-a="pw-save">Cambiar contraseña</button><button class="btn ghost" data-a="pw-ver">Cancelar</button></div></div>`;
+}
+function tabs(list){
+  return `<nav class="tabs">${list.map(([k,l,b])=>`<button class="tab" data-a="tab" data-v="${k}" aria-current="${S.tab===k}">${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</nav>`;
+}
+
+/* --- Editor de un día (para día concreto o plantilla) --- */
+function editor(sel, ctx, f, disabled){
+  const manana = f ? DIAS[wd(addDays(f,1))].toLowerCase() : null;
+  const dis = disabled ? "disabled" : "";
+  const seg = (k, opts) => `<div class="seg" role="group">${opts.map(([v,l])=>`<button class="opt" ${dis} data-a="set" data-ctx="${ctx}" data-k="${k}" data-v="${v}" aria-pressed="${String(sel[k])===v}">${l}</button>`).join("")}</div>`;
+  const yn = k => seg(k, [["false","No"],["true","Sí"]]);
+  return `
+    <div class="q"><h3>Comida</h3>${seg("comida", COMIDA)}
+      ${sel.comida==="bolsa" ? `<div class="hora"><label for="h_${ctx}">Hora a la que quieres la bolsa</label><input class="input" type="time" id="h_${ctx}" data-hora="${ctx}" value="${esc(sel.horaBolsa)}" ${dis}></div>` : ""}
+    </div>
+    <div class="q"><h3>Cena</h3>${yn("cena")}</div>
+    <div class="q"><h3>Desayuno ${manana ? "del "+manana : "del día siguiente"}</h3>${yn("desayuno")}</div>
+    <div class="q"><h3>Para llevar ${manana ? "el "+manana : "al día siguiente"}</h3>${seg("llevar", LLEVAR)}</div>`;
+}
+
+function vistaComensal(r){
+  let main;
+  if (S.tab==="semana"){
+    const lunes = addDays(mondayOf(today()), 7*S.weekOffset);
+    const domingo = addDays(lunes,6);
+    const days = [0,1,2,3,4,5,6].map(i=>addDays(lunes,i));
+    main = `
+      <div class="weeknav">
+        <button class="arrow" data-a="week" data-v="-1" aria-label="Semana anterior" ${S.weekOffset<=-2?"disabled":""}>‹</button>
+        <h2>Semana del ${fmtDay(lunes)} al ${fmtDay(domingo)}</h2>
+        <button class="arrow" data-a="week" data-v="1" aria-label="Semana siguiente" ${S.weekOffset>=8?"disabled":""}>›</button>
+      </div>
+      ${S.weekOffset!==0?`<p class="row"><button class="link" data-a="week" data-v="0">Volver a esta semana</button></p>`:""}
+      <div class="days">${days.map(f=>{
+        const {sel, fuente} = efectiva(r.id, f);
+        const lk = locked(f), isToday = f===today(), open = S.openDay===f;
+        const tag = lk ? `<span class="tag cerrado">Cerrado</span>` : isToday ? `<span class="tag abierto">Hasta las ${esc(horaCierre())}</span>` : fuente==="plantilla" ? `<span class="tag plantilla">Plantilla</span>` : "";
+        return `<div class="day ${isToday?"today":""} ${lk?"locked":""}">
+          <button class="day-head" data-a="openday" data-f="${f}" aria-expanded="${open}">
+            <span class="day-name">${DIAS[wd(f)]}<small>${fmtDay(f)}</small></span>
+            <span class="day-sum">${esc(resumen(sel,f))}</span>
+            <span class="tagcol">${tag}</span>
+          </button>
+          ${open ? `<div class="editor">
+            ${lk?`<p class="muted small">Este día ya está cerrado y la administración tiene el parte. Para un cambio de última hora, habla directamente con ellos.</p>`:""}
+            ${editor(sel, "d:"+f, f, lk)}
+            ${!lk ? `<div class="editor-foot"><span class="muted small">${fuente==="pedido"?"Cambiado a mano para este día.":fuente==="plantilla"?"Viene de tu plantilla fija. Cualquier cambio afecta solo a este día.":"Sin plantilla para este día."}</span>
+              ${fuente==="pedido" && S.plantillas[r.id] && S.plantillas[r.id]["d"+wd(f)] ? `<button class="btn ghost" data-a="reset" data-f="${f}">Volver a la plantilla</button>`:""}</div>`:""}
+          </div>`:""}
+        </div>`;
+      }).join("")}</div>`;
+  } else {
+    main = `<p class="muted">Lo que marques aquí se aplica automáticamente todas las semanas. Si un día concreto cambias de plan, modifícalo en «Mi semana» y solo afectará a ese día.</p>
+      <div class="days">${[0,1,2,3,4,5,6].map(i=>{
+        const t = S.plantillas[r.id] && S.plantillas[r.id]["d"+i];
+        const sel = norm(t), open = S.openWd===i;
+        return `<div class="day">
+          <button class="day-head" data-a="openwd" data-v="${i}" aria-expanded="${open}">
+            <span class="day-name">${DIAS[i]}<small>Todas las semanas</small></span>
+            <span class="day-sum">${t?esc(resumen(sel)):'<span class="muted">Sin plantilla</span>'}</span><span></span>
+          </button>
+          ${open?`<div class="editor">${editor(sel, "t:"+i, null, false)}
+            ${t?`<div class="editor-foot"><span></span><button class="btn ghost" data-a="clearwd" data-v="${i}">Quitar plantilla de este día</button></div>`:""}</div>`:""}
+        </div>`;
+      }).join("")}</div>`;
+  }
+  return main;
+}
+
+/* --- Parte del día --- */
+function datosParte(f){
+  const filas = activos().map(r=>({r, ...efectiva(r.id,f)}));
+  const g = fn => filas.filter(fn);
+  const ex = extrasDe(f), exM = extrasDe(addDays(f,1));
+  const avisos = S.mensajes.filter(m=>m.de==="admin" && m.fecha===f).map(m=>m.texto);
+  if (ex.nota && notaParaDe(ex)!=="residentes") avisos.push(ex.nota);
+  return {
+    filas, avisos,
+    turnos: [["1.er turno", g(o=>o.sel.comida==="primer"), ex.primer||0], ["Turno normal", g(o=>o.sel.comida==="normal"), ex.normal||0], ["2.º turno", g(o=>o.sel.comida==="segundo"), ex.segundo||0]],
+    bolsasExtra: Object.fromEntries(Object.entries(ex.bolsas||{}).filter(([h,n])=>n>0)),
+    bolsas: g(o=>o.sel.comida==="bolsa").sort((a,b)=>String(a.sel.horaBolsa).localeCompare(String(b.sel.horaBolsa))),
+    cena: [g(o=>o.sel.cena), ex.cena||0],
+    desayuno: [g(o=>o.sel.desayuno), exM.desayuno||0],
+    tupper: g(o=>o.sel.llevar==="tupper"), bolsaM: g(o=>o.sel.llevar==="bolsa")
+  };
+}
+const proxParte = () => locked(today()) ? addDays(today(),1) : today();
+/* Textos de régimen: con nombres para administradores, con iniciales para la administración */
+function regTxt(list, anon){
+  const x = list.filter(o=>o.r.regimen);
+  if (!x.length) return "";
+  return anon ? "Con régimen: "+x.map(o=>iniciales(o.r)).join(", ") : "Régimen: "+x.map(o=>o.r.nombre+" ("+o.r.regimen+")").join(", ");
+}
+function bolsasPorHora(bolsas, extraB, anon){
+  const by = {};
+  bolsas.forEach(o=>{ const h=o.sel.horaBolsa||"Sin hora"; (by[h]=by[h]||{l:[],e:0}).l.push(o); });
+  Object.entries(extraB||{}).forEach(([h,n])=>{ if (n>0) (by[h]=by[h]||{l:[],e:0}).e += n; });
+  return Object.keys(by).sort().map(h=>{
+    const {l,e} = by[h], n = l.length+e, parts = [];
+    if (anon){ if (e) parts.push(e+" extra"); const r=l.filter(o=>o.r.regimen); if (r.length) parts.push("con régimen: "+r.map(o=>iniciales(o.r)).join(", ")); }
+    else { l.forEach(o=>parts.push(o.r.nombre+(o.r.regimen?" ("+o.r.regimen+")":""))); if (e) parts.push(e+" extra"); }
+    return {h, n, det: parts.join(anon?"; ":", ")};
+  });
+}
+const sumaBolsas = b => Object.values(b||{}).reduce((a,n)=>a+(n>0?n:0),0);
+function parteHTML(f, anon){
+  const d = datosParte(f), lk = locked(f), manana = DIAS[wd(addDays(f,1))].toLowerCase();
+  const line = (label, list, extra) => { const rt = regTxt(list, anon); return `<div class="count"><span>${label}</span><b>${list.length+(extra||0)}</b></div>${extra?`<div class="muted small" style="margin:-2px 0 4px">Incluye ${extra} comensal${extra>1?"es":""} extra</div>`:""}${rt?`<div class="reg">${esc(rt)}</div>`:""}`; };
+  const exB = sumaBolsas(d.bolsasExtra);
+  const totalComida = d.turnos.reduce((a,t)=>a+t[1].length+t[2],0) + d.bolsas.length + exB;
+  const bt = bolsasPorHora(d.bolsas, d.bolsasExtra, anon);
+  const llevarNombres = !anon && (d.tupper.length+d.bolsaM.length) ? `<ul class="list">${[...d.tupper,...d.bolsaM].map(o=>`<li>${esc(o.r.nombre)}: ${o.sel.llevar==="tupper"?"tupper":"bolsa de comida"}</li>`).join("")}</ul>` : "";
+  return `
+    <div class="status ${lk?"def":"prov"}">${lk ? "Parte cerrado. Es el definitivo." : `Provisional: puede cambiar hasta las ${esc(horaCierre())} del ${fmtLong(f).toLowerCase()}.`}</div>
+    ${d.avisos.length ? `<div class="alert"><strong>Avisos para este parte</strong>${d.avisos.map(t=>`<p style="margin:6px 0 0">${esc(t).replace(/\n/g,"<br>")}</p>`).join("")}</div>` : ""}
+    <div class="blocks">
+      <section class="block"><h3>Comida (${totalComida})</h3>
+        ${d.turnos.map(t=>line(t[0], t[1], t[2])).join("")}
+        ${line("En bolsa", d.bolsas, exB)}
+        ${bt.length?`<ul class="list">${bt.map(x=>`<li><strong>${esc(x.h)}</strong>: ${x.n} ${x.n===1?"bolsa":"bolsas"}${x.det?` <span class="muted">(${esc(x.det)})</span>`:""}</li>`).join("")}</ul>`:""}
+      </section>
+      <section class="block"><h3>Cena</h3>${line("Cenan hoy", d.cena[0], d.cena[1])}</section>
+      <section class="block"><h3>Desayuno del ${manana}</h3>${line("Desayunan", d.desayuno[0], d.desayuno[1])}</section>
+      <section class="block"><h3>Para llevar el ${manana}</h3>${line("Tupper", d.tupper)}${line("Bolsa de comida", d.bolsaM)}${llevarNombres}</section>
+    </div>
+    ${anon ? "" : `<h2 style="margin-bottom:10px">Detalle por persona</h2>
+    ${d.filas.length ? `<div class="tablewrap"><table>
+      <thead><tr><th>Persona</th><th>Comida</th><th>Cena</th><th>Desayuno ${manana}</th><th>Llevar ${manana}</th></tr></thead>
+      <tbody>${d.filas.map(o=>`<tr><td>${esc(o.r.nombre)}${o.r.regimen?`<span class="regcell">${esc(o.r.regimen)} (${esc(iniciales(o.r))})</span>`:""}</td>
+        <td>${o.sel.comida==="no"?"—":esc(comidaTxt(o.sel))}</td><td>${o.sel.cena?"Sí":"—"}</td><td>${o.sel.desayuno?"Sí":"—"}</td>
+        <td>${o.sel.llevar==="nada"?"—":(o.sel.llevar==="tupper"?"Tupper":"Bolsa")}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No hay comensales activos.</div>`}`}`;
+}
+function parteView(){
+  const f = S.parteFecha, me = resById(S.session.uid), anon = rolDe(me)!=="admin";
+  return `<div class="weeknav no-print">
+      <button class="arrow" data-a="parteday" data-v="-1" aria-label="Día anterior">‹</button>
+      <h2>${fmtLong(f)}</h2>
+      <button class="arrow" data-a="parteday" data-v="1" aria-label="Día siguiente">›</button>
+    </div>
+    <div class="row no-print" style="margin-bottom:14px;justify-content:space-between">
+      ${f!==today()?`<button class="link" data-a="parteday" data-v="0">Ir a hoy</button>`:"<span></span>"}
+      <div class="row"><button class="btn" data-a="pdf" data-f="${f}">Descargar PDF</button><button class="btn ghost" data-a="print">Imprimir</button></div>
+    </div>
+    ${parteHTML(f, anon)}`;
+}
+
+/* --- Datos personales: cumpleaños y gustos --- */
+function formDatos(u){
+  const [m0,d0] = (u.cumple||"-").split("-");
+  const dia = draft("pf_dia", d0 ? String(Number(d0)) : ""), mes = draft("pf_mes", m0 ? String(Number(m0)) : ""), anio = draft("pf_anio", u.anioNac ? String(u.anioNac) : "");
+  const anioHoy = parse(today()).getFullYear();
+  return `<div class="row" style="align-items:flex-end">
+      <div class="field"><label for="pf_dia">Fecha de nacimiento</label><select class="input" id="pf_dia" data-draft="pf_dia" style="min-width:110px"><option value="">Día</option>${Array.from({length:31},(_,i)=>`<option ${dia===String(i+1)?"selected":""}>${i+1}</option>`).join("")}</select></div>
+      <div class="field"><label for="pf_mes">Mes</label><select class="input" id="pf_mes" data-draft="pf_mes" style="min-width:160px"><option value="">Mes</option>${MESES.map((x,i)=>`<option value="${i+1}" ${mes===String(i+1)?"selected":""}>${x}</option>`).join("")}</select></div>
+      <div class="field"><label for="pf_anio">Año</label><select class="input" id="pf_anio" data-draft="pf_anio" style="min-width:110px"><option value="">Año</option>${Array.from({length:anioHoy-1919},(_,i)=>anioHoy-i).map(a=>`<option ${anio===String(a)?"selected":""}>${a}</option>`).join("")}</select></div>
+    </div>
+    <div class="field"><label for="pf_gustos">Qué te gusta</label><textarea class="input" id="pf_gustos" data-draft="pf_gustos" placeholder="Comidas, postres, aficiones… Lo que quieras que la administración tenga en cuenta.">${esc(draft("pf_gustos", u.gustos||""))}</textarea></div>`;
+}
+function avisoDatos(u){
+  if (S.perfilAplazado || S.tab==="datos" || !(faltanDatos(u) || pideActualizar(u))) return "";
+  const pide = pideActualizar(u) && !faltanDatos(u);
+  return `<div class="panel no-print" role="alertdialog" aria-labelledby="pf_t">
+    <h2 id="pf_t" style="margin-bottom:6px">${pide ? "¿Quieres actualizar tus gustos?" : "Completa tus datos"}</h2>
+    <p class="muted" style="margin-top:0">${pide ? "La administración te pide que revises lo que te gusta. Cambia lo que quieras y guarda." : "Indica tu fecha de nacimiento y lo que te gusta. Solo lo ve la administración."}</p>
+    ${formDatos(u)}
+    <div class="row"><button class="btn" data-a="pf-save">Guardar</button><button class="btn ghost" data-a="pf-luego">Ahora no</button></div>
+  </div>`;
+}
+function datosView(u){
+  return `<p class="muted">Tu fecha de nacimiento y tus gustos los ve la administración.</p>${formDatos(u)}<button class="btn" data-a="pf-save">Guardar</button>`;
+}
+function cumplesView(){
+  const me = resById(S.session.uid);
+  const lista = activos().map(r=>({r, d:diasHasta(r.cumple)})).sort((a,b)=>a.d-b.d || String(a.r.nombre).localeCompare(String(b.r.nombre),"es"));
+  const cuando = d => d===0 ? '<span class="tag abierto">Hoy</span>' : d===1 ? '<span class="tag plantilla">Mañana</span>' : d<9999 ? `<span class="muted small">dentro de ${d} días</span>` : "";
+  return (lista.length ? lista.map(({r,d})=>{
+    const pend = pideActualizar(r);
+    return `<div class="res" style="grid-template-columns:1fr">
+      <div class="row" style="justify-content:space-between"><strong>${esc(r.nombre)}</strong><span>${r.cumple?`${esc(fmtCumple(r.cumple))}${r.anioNac?` de ${r.anioNac}`:""} ${cuando(d)}`:'<span class="tag cerrado">Sin cumpleaños</span>'}</span></div>
+      ${r.cumple && r.anioNac ? `<div class="small"><strong>${d===0?"Hoy cumple":"Cumplirá"} ${edadProx(r)} años</strong>${d===0?"":` el ${esc(fmtCumple(r.cumple))}`}</div>` : (r.cumple ? `<div class="small muted">Falta el año de nacimiento.</div>` : "")}
+      <div class="small">${String(r.gustos||"").trim() ? esc(r.gustos).replace(/\n/g,"<br>") : '<span style="color:var(--danger)">Todavía no ha indicado sus gustos.</span>'}</div>
+      <div>${pend ? '<span class="muted small">Actualización pedida. Pendiente de respuesta.</span>' : `<button class="link" data-a="pedir-gustos" data-id="${r.id}">Pedir que actualice sus gustos</button>`}</div>
+    </div>`;}).join("") : `<div class="empty">No hay residentes activos.</div>`);
+}
+function avisoCumples(){
+  const l = activos().filter(r=>diasHasta(r.cumple)<=1);
+  if (!l.length) return "";
+  const conEdad = r => r.nombre + (edadProx(r)!=null ? " ("+edadProx(r)+" años)" : "");
+  const hoy = l.filter(r=>diasHasta(r.cumple)===0).map(conEdad), man = l.filter(r=>diasHasta(r.cumple)===1).map(conEdad);
+  return `<div class="alert no-print">${hoy.length?`<strong>Hoy cumple años: ${esc(hoy.join(", "))}.</strong> `:""}${man.length?`Mañana: ${esc(man.join(", "))}.`:""} <button class="link" data-a="tab" data-v="cumples">Ver gustos</button></div>`;
+}
+
+/* --- Palabra del día --- */
+function palabraDe(f){ const d = Math.round((parse(f) - new Date(2026,0,1))/86400000), n = WL_SOL.length; return WL_SOL[((d*7919) % n + n) % n]; }
+function evaluar(g, sol){
+  const r = Array(5).fill("a"), cnt = {};
+  for (let i=0;i<5;i++){ if (g[i]===sol[i]) r[i]="c"; else cnt[sol[i]]=(cnt[sol[i]]||0)+1; }
+  for (let i=0;i<5;i++){ if (r[i]!=="c" && cnt[g[i]]>0){ r[i]="p"; cnt[g[i]]--; } }
+  return r;
+}
+const juegoDe = (uid, f) => S.wordle[f+"_"+uid] || {intentos:[], estado:"jugando"};
+const mini = (j, f) => `<span class="mini">${j.intentos.map(g=>evaluar(g, palabraDe(f)).map(c=>`<i class="${c}"></i>`).join("")).join("")}</span>`;
+function wordleView(u){
+  const f = today(), sol = palabraDe(f), j = juegoDe(u.id, f), fin = j.estado!=="jugando";
+  const filas = [];
+  for (let i=0;i<6;i++){
+    const g = j.intentos[i], ev = g ? evaluar(g, sol) : null, t = (!g && i===j.intentos.length && !fin) ? S.wlTyped : "";
+    filas.push(`<div class="wl-row">${[0,1,2,3,4].map(k=>`<div class="wl-c ${ev?ev[k]:""}">${esc(g ? g[k] : (t[k]||""))}</div>`).join("")}</div>`);
+  }
+  const est = {};
+  j.intentos.forEach(g=>evaluar(g,sol).forEach((c,k)=>{ const l=g[k], o=est[l]; if (c==="c" || (c==="p" && o!=="c") || (!o)) est[l]=c; }));
+  const kb = ["qwertyuiop","asdfghjklñ","+zxcvbnm-"].map(r=>`<div class="wl-kr">${[...r].map(ch=> ch==="+" ? `<button class="wl-k wide" data-a="wl-key" data-v="enter">Enviar</button>` : ch==="-" ? `<button class="wl-k wide" data-a="wl-key" data-v="back" aria-label="Borrar">Borrar</button>` : `<button class="wl-k ${est[ch]||""}" data-a="wl-key" data-v="${ch}">${ch}</button>`).join("")}</div>`).join("");
+  const res = fin ? `<div class="status ${j.estado==="ganado"?"def":"prov"}">${j.estado==="ganado" ? `¡Acertaste en ${j.intentos.length} intento${j.intentos.length>1?"s":""}! Sumas ${j.puntos} punto${j.puntos>1?"s":""}.` : `Hoy no ha podido ser. La palabra era «${sol.toUpperCase()}».`} Mañana, palabra nueva.</div>` : "";
+  // resultados de hoy
+  const jugadores = activos().filter(r=>rolDe(r)!=="cocina").map(r=>({r, j:S.wordle[f+"_"+r.id]})).filter(x=>x.j && x.j.intentos && x.j.intentos.length);
+  const hoyHTML = jugadores.length ? jugadores.sort((a,b)=>(b.j.puntos||0)-(a.j.puntos||0)).map(({r,j:x})=>`<div class="count"><span>${esc(r.nombre)}</span><span>${fin ? (x.estado==="jugando" ? '<span class="muted small">Jugando</span>' : `${mini(x,f)} <b style="font-size:16px;margin-left:6px">${x.estado==="ganado"?x.intentos.length:"X"}/6</b>`) : `<span class="muted small">${x.estado==="jugando"?"Jugando":"Ha terminado"}</span>`}</span></div>`).join("") + (fin ? "" : `<p class="muted small">Verás cómo ha quedado cada uno cuando termines tu partida.</p>`) : `<p class="muted">Todavía no ha jugado nadie hoy.</p>`;
+  // ranking mensual
+  const mes = S.wlMes || f.slice(0,7), [yy,mm] = mes.split("-").map(Number);
+  const tot = {};
+  Object.values(S.wordle).forEach(x=>{ if (String(x.fecha).slice(0,7)===mes && x.estado && x.estado!=="jugando"){ const t = tot[x.uid] = tot[x.uid] || {p:0, n:0, a:0}; t.p += x.puntos||0; t.n++; if (x.estado==="ganado") t.a++; } });
+  const rk = Object.entries(tot).map(([uid,t])=>({r:resById(uid), t})).filter(x=>x.r).sort((a,b)=>b.t.p-a.t.p || b.t.a-a.t.a);
+  const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
+  const rkHTML = rk.length ? `<div class="tablewrap"><table><thead><tr><th></th><th>Persona</th><th>Puntos</th><th>Aciertos</th><th>Partidas</th></tr></thead><tbody>${rk.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.r.nombre)}</td><td><b>${x.t.p}</b></td><td>${x.t.a}</td><td>${x.t.n}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Nadie ha terminado ninguna partida este mes.</div>`;
+  return `<p class="muted" style="margin-top:0">Adivina la palabra de 5 letras en 6 intentos. Verde: letra en su sitio. Amarillo: está en la palabra, en otro sitio. Gris: no está.</p>
+    <div class="wl-board">${filas.join("")}</div>
+    ${res}${fin ? "" : `<div class="wl-kb">${kb}</div>`}
+    <h2 style="margin:18px 0 8px">Hoy</h2>${hoyHTML}
+    <div class="weeknav" style="margin-top:24px"><button class="arrow" data-a="wl-mes" data-v="${mesAnt}" aria-label="Mes anterior">‹</button><h2>Ranking de ${MESES[mm-1]}</h2><button class="arrow" data-a="wl-mes" data-v="${mesSig}" aria-label="Mes siguiente" ${mesSig>f.slice(0,7)?"disabled":""}>›</button></div>
+    ${rkHTML}
+    <p class="muted small">Puntos: 6 si aciertas al primer intento, 5 al segundo, y así hasta 1 al sexto. Si no aciertas, 0.</p>`;
+}
+async function wlTecla(k){
+  const u = resById(S.session.uid), f = today(), j = juegoDe(u.id, f);
+  if (j.estado!=="jugando" || j.intentos.length>=6) return;
+  if (k==="back"){ S.wlTyped = S.wlTyped.slice(0,-1); render(); return; }
+  if (k==="enter"){
+    const g = S.wlTyped;
+    if (g.length<5){ toast("Faltan letras."); return; }
+    if (!WL_VAL.has(g) && !WL_SOL.includes(g)){ toast("Esa palabra no está en el diccionario."); return; }
+    const intentos = [...j.intentos, g], sol = palabraDe(f);
+    const estado = g===sol ? "ganado" : intentos.length>=6 ? "perdido" : "jugando";
+    const doc = {fecha:f, uid:u.id, intentos, estado, puntos: estado==="ganado" ? 7-intentos.length : 0, ts:Date.now()};
+    S.wordle[f+"_"+u.id] = doc; S.wlTyped = ""; render();
+    await w(()=>S.db.doc("wordle/"+f+"_"+u.id).set(doc)); return;
+  }
+  if (/^[a-zñ]$/.test(k) && S.wlTyped.length<5){ S.wlTyped += k; render(); }
+}
+
+/* --- Calendario de la residencia --- */
+function eventosEntre(desde, hasta){
+  const out = [];
+  S.eventos.forEach(e=>{ if (e.fecha>=desde && e.fecha<=hasta) out.push({fecha:e.fecha, tipo:"evento", texto:e.titulo, detalle:e.detalle, id:e.id}); });
+  for (let f=desde; f<=hasta; f=addDays(f,1)){ const md=f.slice(5); activos().forEach(r=>{ if (r.cumple===md) { const e = edadEn(r, Number(f.slice(0,4))); out.push({fecha:f, tipo:"cumple", texto:"Cumpleaños de "+r.nombre+(e!=null?" ("+e+" años)":""), corto:r.nombre+(e!=null?" "+e:"")}); } }); }
+  return out.sort((a,b)=>a.fecha.localeCompare(b.fecha) || (a.tipo==="cumple"?-1:1));
+}
+function calendarioView(editable){
+  const mes = S.calMes || today().slice(0,7), [yy,mm] = mes.split("-").map(Number);
+  const primero = mes+"-01", ultimo = iso(new Date(yy, mm, 0)), items = eventosEntre(primero, ultimo);
+  const celdas = [];
+  for (let i=0;i<wd(primero);i++) celdas.push(`<div class="cal-d vacio"></div>`);
+  for (let f=primero; f<=ultimo; f=addDays(f,1)){
+    const its = items.filter(x=>x.fecha===f);
+    celdas.push(`<div class="cal-d ${f===today()?"hoy":""}"><div class="cal-n">${Number(f.slice(8))}</div>${its.map(x=>`<span class="cal-i ${x.tipo}" title="${esc(x.texto)}">${esc(x.tipo==="cumple"?x.corto:x.texto)}</span>`).join("")}</div>`);
+  }
+  const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
+  const form = editable ? `<div class="panel"><h3 style="margin-bottom:10px">Añadir un evento</h3>
+      <div class="field"><label for="ev_fecha">Día</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" value="${esc(draft("ev_fecha", today()))}" style="max-width:220px"></div>
+      <div class="field"><label for="ev_tit">Qué se celebra</label><input class="input" id="ev_tit" data-draft="ev_tit" maxlength="80" placeholder="Por ejemplo: fiesta de Navidad" value="${esc(draft("ev_tit"))}"></div>
+      <div class="field"><label for="ev_det">Detalles para la administración (opcional)</label><textarea class="input" id="ev_det" data-draft="ev_det" placeholder="Hora, número de personas, qué se necesita…">${esc(draft("ev_det"))}</textarea></div>
+      <button class="btn" data-a="ev-add">Añadir al calendario</button></div>` : "";
+  return `<div class="weeknav"><button class="arrow" data-a="cal-mes" data-v="${mesAnt}" aria-label="Mes anterior">‹</button><h2>${MESES[mm-1].charAt(0).toUpperCase()+MESES[mm-1].slice(1)} de ${yy}</h2><button class="arrow" data-a="cal-mes" data-v="${mesSig}" aria-label="Mes siguiente">›</button></div>
+    <div class="cal">${["L","M","X","J","V","S","D"].map(d=>`<div class="cal-h">${d}</div>`).join("")}${celdas.join("")}</div>
+    <h2 style="margin-bottom:8px">Este mes</h2>
+    ${items.length ? items.map(x=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong> <span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span><div>${esc(x.texto)}</div>${x.detalle?`<div class="small muted">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>${editable && x.tipo==="evento" ? `<button class="link" data-a="ev-del" data-id="${x.id}">Borrar</button>` : "<span></span>"}</div>`).join("") : `<div class="empty">No hay cumpleaños ni eventos este mes.</div>`}
+    ${form}`;
+}
+function avisoEventos(){
+  const l = S.eventos.filter(e=>e.fecha>=today() && e.fecha<=addDays(today(),3));
+  return l.length ? `<div class="alert no-print"><strong>Próximos eventos:</strong> ${l.map(e=>esc(fmtLong(e.fecha))+": "+esc(e.titulo)).join("; ")}. <button class="link" data-a="tab" data-v="calendario">Ver calendario</button></div>` : "";
+}
+
+/* --- Comensales extra (solo administradores) --- */
+function extrasView(){
+  const f = S.exFecha || proxParte(), ex = extrasDe(f);
+  const filas = [["desayuno","Desayuno", locked(addDays(f,-1))],["primer","Comida, 1.er turno", locked(f)],["normal","Comida, turno normal", locked(f)],["segundo","Comida, 2.º turno", locked(f)],["cena","Cena", locked(f)]];
+  const para = draft("ex_para", notaParaDe(ex));
+  return `<p class="muted">Suma comensales a los apuntados por los residentes: invitados, visitas o cualquier persona más. Cuentan en el parte de la administración.</p>
+    <div class="weeknav">
+      <button class="arrow" data-a="exday" data-v="-1" aria-label="Día anterior" ${f<=today()?"disabled":""}>‹</button>
+      <h2>${fmtLong(f)}</h2>
+      <button class="arrow" data-a="exday" data-v="1" aria-label="Día siguiente">›</button>
+    </div>
+    <div class="block" style="margin-bottom:16px">${filas.map(([k,l,lk])=>`<div class="count" style="align-items:center">
+      <span>${l}${lk?' <span class="tag cerrado">Cerrado</span>':""}</span>
+      <span class="row" style="gap:12px"><button class="arrow" data-a="exmas" data-k="${k}" data-v="-1" aria-label="Quitar uno" ${lk||!(ex[k]>0)?"disabled":""}>−</button><b style="min-width:28px;text-align:center">${ex[k]||0}</b><button class="arrow" data-a="exmas" data-k="${k}" data-v="1" aria-label="Añadir uno" ${lk?"disabled":""}>+</button></span>
+    </div>`).join("")}</div>
+    <div class="block" style="margin-bottom:16px"><h3>Comida en bolsa</h3>
+      ${Object.entries(ex.bolsas||{}).filter(([h,n])=>n>0).sort().map(([h,n])=>`<div class="count" style="align-items:center"><span>Bolsas a las <strong>${esc(h)}</strong></span>
+        <span class="row" style="gap:12px"><button class="arrow" data-a="exbolsa" data-k="${esc(h)}" data-v="-1" aria-label="Quitar una" ${locked(f)?"disabled":""}>−</button><b style="min-width:28px;text-align:center">${n}</b><button class="arrow" data-a="exbolsa" data-k="${esc(h)}" data-v="1" aria-label="Añadir una" ${locked(f)?"disabled":""}>+</button></span></div>`).join("") || '<p class="muted small" style="margin:0 0 8px">Ninguna bolsa extra.</p>'}
+      ${locked(f) ? '<span class="tag cerrado">Cerrado</span>' : `<div class="row" style="align-items:flex-end;margin-top:8px"><div class="field" style="margin:0"><label for="ex_hora">Hora a la que se quiere la bolsa</label><input class="input" type="time" id="ex_hora" data-draft="ex_hora" value="${esc(draft("ex_hora","14:00"))}" style="max-width:150px"></div><button class="btn ghost" data-a="exbolsa-add">Añadir bolsa</button></div>`}
+    </div>
+    <div class="field"><label for="ex_nota">Nota sobre los comensales de este día (opcional)</label>
+      <textarea class="input" id="ex_nota" data-draft="ex_nota" placeholder="Por ejemplo: comen con nosotros Pedro Gómez y su mujer.">${esc(draft("ex_nota", ex.nota||""))}</textarea></div>
+    <div class="field"><label>Quién ve la nota</label><div class="seg">
+      ${PARA.map(([k,l])=>`<button class="opt" data-a="ex-para" data-v="${k}" aria-pressed="${para===k}">${l}</button>`).join("")}</div>
+      <p class="muted small" style="margin:0">${para==="administracion"?"Aparece en el parte del día y en el PDF.":para==="residentes"?"A cada residente le aparece un aviso al abrir la aplicación. No sale en el parte.":"Aparece en el parte y en el PDF, y a cada residente le aparece un aviso al abrir la aplicación."}</p></div>
+    <div class="row"><button class="btn" data-a="ex-nota">Guardar nota</button>${ex.nota?`<button class="btn danger" data-a="ex-borrar">Borrar nota</button>`:""}</div>`;
+}
+/* Avisos para todos que ven los residentes */
+function avisosResidente(){
+  return Object.entries(S.extras).filter(([f,e])=>e.nota && notaParaDe(e)!=="administracion" && f>=today() && f<=addDays(today(),7))
+    .map(([f,e])=>({fecha:f, texto:e.nota, clave:f+"|"+(e.notaTs||0)})).map(x=>({...x, visto:S.vistos.includes(x.clave)})).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+}
+
+/* --- Notas entre administración y administrador --- */
+function unread(role){ return S.mensajes.filter(m=>m.para===role && !m.leido).length; }
+function notasView(role){
+  const otro = role==="admin" ? "cocina" : "admin";
+  const nombre = r => r==="admin" ? "Administrador" : "Administración";
+  const cargo = (resById(principalHoy())||{}).nombre;
+  const aviso = role==="cocina" && cargo ? `<p class="muted small">Tus notas las ven todos los administradores. Hoy está al cargo ${esc(cargo)}.</p>` : "";
+  const list = S.mensajes.filter(m=>(m.de===role&&m.para===otro)||(m.de===otro&&m.para===role)).slice(-60);
+  return aviso + `<div class="field"><label for="msg">${role==="admin"?"Aviso para la administración":"Nota para el administrador"}</label>
+      <textarea class="input" id="msg" data-draft="msg" placeholder="${role==="admin"?"Por ejemplo: el jueves comemos antes por una reunión.":"Por ejemplo: falta reponer bolsas de picnic."}">${esc(draft("msg"))}</textarea></div>
+    ${role==="admin" ? `<div class="field"><label for="msg_fecha">Aparece en el parte del</label><input class="input" type="date" id="msg_fecha" data-draft="msg_fecha" min="${proxParte()}" value="${esc(draft("msg_fecha", proxParte()))}" style="max-width:220px"></div>` : ""}
+    <button class="btn" data-a="sendmsg" ${draft("msg").trim()?"":"disabled"}>Enviar</button>
+    <div class="notes">${list.length ? list.slice().reverse().map(m=>{
+      const d = new Date(m.ts||0);
+      return `<div class="note ${m.de===role?"mine":""}"><div class="meta">${nombre(m.de)}, ${d.getDate()} de ${MESES[d.getMonth()]} a las ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}${m.de===role?(m.leido?". Leída":". Sin leer"):""}${m.fecha?`. Para el parte del ${fmtLong(m.fecha).toLowerCase()}`:""}</div>${esc(m.texto).replace(/\n/g,"<br>")}</div>`;
+    }).join("") : `<div class="empty">Todavía no hay mensajes.</div>`}</div>`;
+}
+
+function avisoCocina(){
+  const n = S.mensajes.filter(m=>m.para==="cocina" && !m.leido).length;
+  return n ? `<div class="alert no-print"><strong>Tienes ${n} aviso${n>1?"s":""} del administrador.</strong> <button class="link" data-a="tab" data-v="notas">Leer</button></div>` : "";
+}
+
+function usuariosView(){
+  const rol = draft("rf_rol","residente"), com = rol==="residente" || draft("rf_com",false)===true;
+  const me = resById(S.session.uid), can = puedeGestionarAdmins(me), alCargo = principalHoy();
+  const yn = (k,val) => `<div class="seg"><button class="opt" data-a="${k}" data-v="false" aria-pressed="${!val}">No</button><button class="opt" data-a="${k}" data-v="true" aria-pressed="${!!val}">Sí</button></div>`;
+  const form = S.editRes ? `<div class="panel">
+      <h2 style="margin-bottom:12px">${S.editRes==="new"?"Nuevo usuario":"Editar usuario"}</h2>
+      <div class="field"><label for="rf_nombre">Nombre</label><input class="input" id="rf_nombre" data-draft="rf_nombre" value="${esc(draft("rf_nombre"))}"></div>
+      <div class="field"><label>Perfil</label><div class="seg">${Object.entries(ROLES).filter(([k])=>k!=="admin"||can).map(([k,l])=>`<button class="opt" data-a="rf-rol" data-v="${k}" aria-pressed="${rol===k}">${l}</button>`).join("")}</div></div>
+      ${rol!=="residente"?`<div class="field"><label>¿Come en la residencia?</label>${yn("rf-com", draft("rf_com",false)===true)}</div>`:""}
+      ${com?`<div class="field"><label for="rf_ini">Iniciales (las que verá la administración)</label><input class="input" id="rf_ini" data-draft="rf_ini" placeholder="${esc(iniciales({nombre:draft("rf_nombre")}))}" value="${esc(draft("rf_ini"))}" style="max-width:160px;text-transform:uppercase"></div>
+      <div class="field"><label for="rf_regimen">Régimen de comida</label><input class="input" id="rf_regimen" data-draft="rf_regimen" placeholder="Déjalo vacío si no sigue ninguno" value="${esc(draft("rf_regimen"))}"></div>`:""}
+      <div class="field"><label for="rf_usuario">Usuario</label><input class="input" id="rf_usuario" data-draft="rf_usuario" autocapitalize="none" spellcheck="false" value="${esc(draft("rf_usuario"))}"></div>
+      ${S.editRes==="new" ? `<div class="field"><label for="rf_pin">Contraseña inicial (mínimo 6 caracteres)</label><input class="input" id="rf_pin" data-draft="rf_pin" value="${esc(draft("rf_pin"))}"><span class="muted small">Dísela a la persona. Después podrá cambiarla desde «Contraseña».</span></div>` : ""}
+      <div class="row"><button class="btn" data-a="res-save" ${S.entrando?"disabled":""}>Guardar</button><button class="btn ghost" data-a="res-cancel">Cancelar</button></div>
+      ${S.editRes!=="new" && S.editRes!==S.session.uid ? `<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px"><h3 style="margin-bottom:6px">¿Ha olvidado su contraseña?</h3>
+        <p class="muted small" style="margin-top:0">Escribe una nueva y pulsa el botón. La anterior dejará de funcionar.</p>
+        <div class="row" style="align-items:flex-end"><div class="field" style="margin:0"><label for="rf_newpw">Nueva contraseña</label><input class="input" id="rf_newpw" data-draft="rf_newpw" value="${esc(draft("rf_newpw"))}" style="max-width:220px"></div><button class="btn ghost" data-a="res-reset" ${S.entrando?"disabled":""}>Restablecer contraseña</button></div></div>` : ""}
+    </div>` : `<p><button class="btn" data-a="res-new">Añadir usuario</button></p>`;
+  const orden = ["admin","cocina","residente"];
+  const lista = S.residentes.slice().sort((a,b)=>orden.indexOf(rolDe(a))-orden.indexOf(rolDe(b)) || String(a.nombre).localeCompare(String(b.nombre),"es"));
+  return form + (lista.length ? lista.map(r=>`<div class="res ${r.activo===false?"off":""}">
+      <div><strong>${esc(r.nombre)}</strong> <span class="tag ${rolDe(r)==="residente"?"abierto":"plantilla"}">${ROLES[rolDe(r)]}${rolDe(r)!=="residente"&&esComensal(r)?" y comensal":""}</span>${esTitular(r)?' <span class="tag abierto">Principal</span>':""}${r.id===alCargo&&!esTitular(r)?' <span class="tag abierto">Principal por delegación</span>':""}${r.activo===false?' <span class="tag cerrado">De baja</span>':""}
+        <div class="small muted">Usuario: ${esc(r.usuario||"sin asignar")}${esComensal(r)?". Iniciales: "+esc(iniciales(r)):""}</div>
+        ${esComensal(r)?`<div class="small ${r.regimen?"":"muted"}" style="${r.regimen?"color:var(--danger)":""}">${r.regimen?"Régimen: "+esc(r.regimen):"Sin régimen"}</div>`:""}</div>
+      <div class="row">${rolDe(r)!=="admin"||can||r.id===S.session.uid?`<button class="link" data-a="res-edit" data-id="${r.id}">Editar</button>`:""}${r.id!==S.session.uid&&!esTitular(r)&&(rolDe(r)!=="admin"||can)?`<button class="link" data-a="res-toggle" data-id="${r.id}">${r.activo===false?"Dar de alta":"Dar de baja"}</button>`:""}</div>
+    </div>`).join("") : `<div class="empty">Añade usuarios para que puedan empezar a usar la aplicación.</div>`);
+}
+function ajustesView(){
+  const me = resById(S.session.uid), c = S.config||{}, d = c.delegacion, tit = resById(c.principal);
+  const otros = S.residentes.filter(r=>rolDe(r)==="admin" && r.activo!==false && r.id!==c.principal);
+  const vigente = d && d.uid && d.hasta>=today() && resById(d.uid);
+  const dsel = draft("dl_uid", "");
+  let deleg = `<h2 style="margin:28px 0 8px">Administrador principal</h2>
+    <p>Titular: <strong>${esc(tit?tit.nombre:"sin asignar")}</strong>. Hoy está al cargo: <strong>${esc((resById(principalHoy())||{}).nombre||"sin asignar")}</strong>.</p>
+    <p class="muted">${vigente ? `Delegación ${d.desde<=today()?"activa":"programada"}: ${esc(resById(d.uid).nombre)}, del ${fmtLong(d.desde).toLowerCase()} al ${fmtLong(d.hasta).toLowerCase()}.` : "No hay ninguna delegación programada."}</p>`;
+  if (esTitular(me)){
+    deleg += `<div class="panel"><h3 style="margin-bottom:10px">Delegar durante una ausencia</h3>
+      ${otros.length ? `<div class="field"><label>En quién</label><div class="seg">${otros.map(o=>`<button class="opt" data-a="dl-uid" data-v="${o.id}" aria-pressed="${dsel===o.id}">${esc(o.nombre)}</button>`).join("")}</div></div>
+      <div class="row" style="align-items:flex-end">
+        <div class="field"><label for="dl_desde">Desde</label><input class="input" type="date" id="dl_desde" data-draft="dl_desde" min="${today()}" value="${esc(draft("dl_desde", today()))}"></div>
+        <div class="field"><label for="dl_hasta">Hasta (incluido)</label><input class="input" type="date" id="dl_hasta" data-draft="dl_hasta" min="${today()}" value="${esc(draft("dl_hasta", addDays(today(),6)))}"></div>
+      </div>
+      <div class="row"><button class="btn" data-a="dl-save">Guardar delegación</button>${vigente?`<button class="btn danger" data-a="dl-clear">Anular delegación</button>`:""}</div>`
+      : `<p class="muted">No hay otros administradores activos en quien delegar.</p>`}
+    </div>`;
+    const tsel = draft("tr_uid","");
+    deleg += `<div class="panel" style="border-color:var(--danger)"><h3 style="margin-bottom:6px">Ceder definitivamente la titularidad</h3>
+      <p class="muted small">Para cuando dejes de encargarte de la residencia. El elegido pasa a ser el administrador principal de forma permanente y tú quedas como administrador.</p>
+      ${otros.length ? `<div class="field"><label>Nuevo titular</label><div class="seg">${otros.map(o=>`<button class="opt" data-a="tr-uid" data-v="${o.id}" aria-pressed="${tsel===o.id}">${esc(o.nombre)}</button>`).join("")}</div></div>
+      ${S.drafts.tr_confirm && tsel ? `<p class="err">¿Seguro? Dejarás de ser el titular y no podrás recuperarlo salvo que ${esc(resById(tsel).nombre)} te lo devuelva.</p><div class="row"><button class="btn danger" data-a="tr-do">Sí, ceder la titularidad</button><button class="btn ghost" data-a="tr-cancel">Cancelar</button></div>` : `<button class="btn danger" data-a="tr-ask" ${tsel?"":"disabled"}>Ceder la titularidad</button>`}`
+      : `<p class="muted">Primero tiene que haber otro administrador activo.</p>`}
+    </div>`;
+  } else deleg += `<p class="muted small">Solo el titular puede programar o anular una delegación o ceder la titularidad.</p>`;
+  return `<div class="field"><label for="cf_hora">Hora de cierre diaria</label><input class="input" type="time" id="cf_hora" data-draft="cf_hora" value="${esc(draft("cf_hora", horaCierre()))}" style="max-width:180px"></div>
+    <button class="btn" data-a="cfg-save">Guardar hora de cierre</button>` + deleg;
+}
+function viewApp(u){
+  const rol = rolDe(u), t = [];
+  if (esComensal(u)) t.push(["semana","Mi semana"],["plantilla","Plantilla fija"],["datos","Mis datos"]);
+  if (esComensal(u) && rol!=="cocina") t.splice(2, 0, ["wordle","Palabra del día"]);
+  if (rol==="cocina") t.push(["parte","Parte del día"],["cumples","Cumpleaños"],["calendario","Calendario"],["notas","Notas", unread("cocina")||""]);
+  if (rol==="admin") t.push(["usuarios","Usuarios"],["extras","Comensales extra"],["parte","Parte"],["cumples","Cumpleaños"],["calendario","Calendario"],["notas","Notas", unread("admin")||""],["ajustes","Ajustes"]);
+  if (!t.length) return cabecera(u.nombre) + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
+  if (!t.find(x=>x[0]===S.tab)) S.tab = t[0][0];
+  let main;
+  if (S.tab==="semana"||S.tab==="plantilla") main = vistaComensal(u);
+  else if (S.tab==="parte") main = avisoCumples() + avisoEventos() + parteView();
+  else if (S.tab==="wordle") main = wordleView(u);
+  else if (S.tab==="calendario") main = calendarioView(rol==="admin");
+  else if (S.tab==="datos") main = datosView(u);
+  else if (S.tab==="cumples") main = cumplesView();
+  else if (S.tab==="notas") main = notasView(rol);
+  else if (S.tab==="extras") main = extrasView();
+  else if (S.tab==="usuarios") main = usuariosView();
+  else main = ajustesView();
+  const nuevas = (rol==="admin"||rol==="cocina") ? S.mensajes.filter(m=>m.para===rol && !m.leido) : [];
+  const banner = nuevas.length && S.tab!=="notas" ? `<div class="alert no-print" role="status"><strong>${nuevas.length===1?"Tienes una nota nueva":"Tienes "+nuevas.length+" notas nuevas"} de ${rol==="admin"?"la administración":"los administradores"}.</strong>
+      <p style="margin:6px 0">${esc(nuevas[nuevas.length-1].texto.slice(0,140))}${nuevas[nuevas.length-1].texto.length>140?"…":""}</p><button class="btn" data-a="tab" data-v="notas">Leer y marcar como leída</button></div>` : "";
+  const avs = esComensal(u) ? avisosResidente().filter(x=>!x.visto) : [];
+  const bannerAv = avs.length ? avs.map(x=>`<div class="alert no-print" role="status"><strong>Aviso para el ${esc(fmtLong(x.fecha).toLowerCase())}</strong><p style="margin:6px 0">${esc(x.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="${esc(x.clave)}">Entendido</button></div>`).join("") : "";
+  return cabecera(u.nombre) + panelPw() + (t.length>1 ? tabs(t) : "") + (S.tab===t[0][0] ? efemerideHTML(u) : "") + avisoDatos(u) + banner + bannerAv + main;
+}
+
+
+/* ---------- PDF del parte ---------- */
+async function descargarPDF(f){
+  if (!window.jspdf || !window.jspdf.jsPDF){ toast("No se ha podido preparar el PDF. Usa «Imprimir»."); return; }
+  const doc = new window.jspdf.jsPDF({unit:"mm", format:"a4"});
+  const W=210, H=297, M=16, CW=W-2*M;
+  const VERDE=[46,94,78], TINTA=[28,38,33], GRIS=[95,108,100], ROJO=[162,59,44], LINEA=[214,222,216], SUAVE=[232,240,235], OCRE=[246,236,214];
+  const anon = rolDe(resById(S.session.uid))!=="admin";
+  const D = datosParte(f), filas = D.filas, lk = locked(f), manana = DIAS[wd(addDays(f,1))].toLowerCase();
+  const ahora = new Date(), hh = d => String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  const col = c => doc.setTextColor(c[0],c[1],c[2]);
+  let y;
+
+  doc.setFillColor(...VERDE); doc.rect(0,0,W,5,"F");
+  y = 17; doc.setFont("helvetica","normal"); doc.setFontSize(10); col(GRIS); doc.text("Libro de comidas - Mizar", M, y);
+  y += 10; doc.setFont("helvetica","bold"); doc.setFontSize(21); col(TINTA); doc.text("Parte del "+fmtLong(f).toLowerCase(), M, y);
+  y += 7; doc.setFont("helvetica","normal"); doc.setFontSize(10);
+  if (lk){ col(VERDE); doc.text("Definitivo. Cerrado a las "+horaCierre()+".", M, y); }
+  else { col(ROJO); doc.text("Provisional, generado a las "+hh(ahora)+". Puede cambiar hasta las "+horaCierre()+".", M, y); }
+  y += 5; doc.setDrawColor(...LINEA); doc.setLineWidth(0.4); doc.line(M,y,W-M,y); y += 7;
+
+  const avisos = D.avisos;
+  if (avisos.length){
+    doc.setFontSize(10.5);
+    const lines = avisos.flatMap(t => doc.splitTextToSize("- "+t, CW-10));
+    const h = 10 + lines.length*5;
+    doc.setFillColor(...OCRE); doc.roundedRect(M, y, CW, h, 2, 2, "F");
+    doc.setFont("helvetica","bold"); col(TINTA); doc.text("Avisos para este parte", M+5, y+7);
+    doc.setFont("helvetica","normal"); doc.text(lines, M+5, y+12.5);
+    y += h + 7;
+  }
+
+  const cardW = (CW-6)/2;
+  function card(x, y0, titulo, filasCard, extras){
+    let yy = y0 + 8;
+    const body = [];
+    filasCard.forEach(([lab, list, extra]) => {
+      body.push({t:"row", lab, n:list.length+(extra||0)});
+      if (extra) body.push({t:"ext", l:"Incluye "+extra+" comensal"+(extra>1?"es":"")+" extra"});
+      const rt = regTxt(list, anon);
+      if (rt) doc.splitTextToSize(rt, cardW-10).forEach(l=>body.push({t:"reg", l}));
+    });
+    (extras||[]).forEach(l => doc.splitTextToSize(l, cardW-10).forEach(x=>body.push({t:"ext", l:x})));
+    const h = 12 + body.reduce((a,b)=>a+(b.t==="row"?7:4.6),0);
+    doc.setDrawColor(...LINEA); doc.setLineWidth(0.4); doc.roundedRect(x, y0, cardW, h, 2, 2, "S");
+    doc.setFont("helvetica","bold"); doc.setFontSize(12); col(VERDE); doc.text(titulo, x+5, yy);
+    yy += 7;
+    body.forEach(b => {
+      if (b.t==="row"){ doc.setFont("helvetica","normal"); doc.setFontSize(10.5); col(TINTA); doc.text(b.lab, x+5, yy);
+        doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text(String(b.n), x+cardW-5, yy, {align:"right"}); yy += 7; }
+      else { doc.setFont("helvetica","normal"); doc.setFontSize(8.8); col(b.t==="reg"?ROJO:GRIS); doc.text(b.l, x+5, yy-2.2); yy += 4.6; }
+    });
+    return y0 + h + 5;
+  }
+  const exB = sumaBolsas(D.bolsasExtra);
+  const totalComida = D.turnos.reduce((a,t)=>a+t[1].length+t[2],0) + D.bolsas.length + exB;
+  let yL = card(M, y, "Comida ("+totalComida+")", [...D.turnos, ["En bolsa", D.bolsas, exB]], bolsasPorHora(D.bolsas, D.bolsasExtra, anon).map(x=>"Bolsas a las "+x.h+": "+x.n+(x.det?" ("+x.det+")":"")));
+  yL = card(M, yL, "Cena", [["Cenan hoy", D.cena[0], D.cena[1]]]);
+  let yR = card(M+cardW+6, y, "Desayuno del "+manana, [["Desayunan", D.desayuno[0], D.desayuno[1]]]);
+  yR = card(M+cardW+6, yR, "Para llevar el "+manana, [["Tupper", D.tupper],["Bolsa de comida", D.bolsaM]], anon ? [] : [...D.tupper,...D.bolsaM].map(o=>o.r.nombre+": "+(o.sel.llevar==="tupper"?"tupper":"bolsa de comida")));
+  y = Math.max(yL, yR) + 4;
+
+  if (!anon){
+  const cols = [["Persona",60],["Comida",44],["Cena",22],["Desayuno",26],["Llevar",26]];
+  function cabeceraTabla(){
+    doc.setFillColor(...SUAVE); doc.rect(M, y, CW, 8, "F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(9.5); col(TINTA);
+    let x = M+3; cols.forEach(([t,w])=>{ doc.text(t, x, y+5.4); x += w; }); y += 8;
+  }
+  if (y > H-40){ doc.addPage(); y = M; }
+  doc.setFont("helvetica","bold"); doc.setFontSize(13); col(TINTA); doc.text("Detalle por persona", M, y); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); col(GRIS); doc.text("Desayuno y llevar: del "+manana, W-M, y, {align:"right"}); y += 4;
+  cabeceraTabla();
+  filas.forEach((o,i) => {
+    const rh = o.r.regimen ? 10.5 : 7.5;
+    if (y + rh > H-16){ doc.addPage(); y = M; cabeceraTabla(); }
+    if (i%2) { doc.setFillColor(248,250,248); doc.rect(M, y, CW, rh, "F"); }
+    const vals = [null, o.sel.comida==="no"?"-":comidaTxt(o.sel), o.sel.cena?"Sí":"-", o.sel.desayuno?"Sí":"-", o.sel.llevar==="nada"?"-":(o.sel.llevar==="tupper"?"Tupper":"Bolsa")];
+    let x = M+3;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9.8); col(TINTA);
+    doc.text(doc.splitTextToSize(o.r.nombre, cols[0][1]-4)[0], x, y+5);
+    if (o.r.regimen){ doc.setFontSize(8); col(ROJO); doc.text(doc.splitTextToSize(o.r.regimen, cols[0][1]-4)[0], x, y+8.8); doc.setFontSize(9.8); col(TINTA); }
+    x += cols[0][1];
+    for (let k=1;k<cols.length;k++){ doc.text(vals[k], x, y+5); x += cols[k][1]; }
+    y += rh; doc.setDrawColor(...LINEA); doc.setLineWidth(0.2); doc.line(M, y, W-M, y);
+  });
+  if (!filas.length){ doc.setFont("helvetica","normal"); col(GRIS); doc.text("No hay comensales este día.", M+3, y+6); }
+
+  }
+  const n = doc.getNumberOfPages();
+  for (let i=1;i<=n;i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); col(GRIS);
+    doc.text("Generado el "+ahora.getDate()+"/"+(ahora.getMonth()+1)+"/"+ahora.getFullYear()+" a las "+hh(ahora), M, H-8);
+    doc.text("Página "+i+" de "+n, W-M, H-8, {align:"right"}); }
+
+  const filename = "parte-"+f+".pdf", blob = doc.output("blob");
+  let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; } catch(e){}
+  if (dl){
+    try { await dl.save({filename, data: blob}); } catch(e){ if (!e || e.code!=="declined") toast("No se ha podido descargar el PDF."); }
+    return;
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+
+/* ---------- Acciones ---------- */
+async function guardarSel(ctx, sel){
+  const rid = S.session.uid;
+  if (ctx.startsWith("d:")){
+    const f = ctx.slice(2);
+    if (locked(f)){ toast("Este día ya está cerrado."); return; }
+    const id = f+"_"+rid, doc = {fecha:f, residente:rid, ...sel, ts:Date.now()};
+    S.pedidos[id] = doc; render();
+    await w(()=>S.db.doc("pedidos/"+id).set(doc));
+  } else {
+    const k = "d"+ctx.slice(2), t = {...(S.plantillas[rid]||{}), [k]:sel};
+    S.plantillas[rid] = t; render();
+    await w(()=>S.db.doc("plantillas/"+rid).set(t));
+  }
+}
+function selDe(ctx){
+  const rid = S.session.uid;
+  if (ctx.startsWith("d:")) return efectiva(rid, ctx.slice(2)).sel;
+  const t = S.plantillas[rid] && S.plantillas[rid]["d"+ctx.slice(2)];
+  return norm(t);
+}
+function marcarLeidos(role){
+  S.mensajes.filter(m=>m.para===role && !m.leido).forEach(m=>{ m.leido=true; w(()=>S.db.doc("mensajes/"+m.id).update({leido:true})); });
+}
+const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+document.addEventListener("input", e => {
+  const k = e.target.dataset && e.target.dataset.draft;
+  if (k){ S.drafts[k] = e.target.value; if (k==="msg"){ const b=document.querySelector('[data-a="sendmsg"]'); if (b) b.disabled = !e.target.value.trim(); } }
+});
+document.addEventListener("change", e => {
+  if (e.target.tagName==="SELECT" && e.target.dataset.draft){ S.drafts[e.target.dataset.draft] = e.target.value; return; }
+  const ctx = e.target.dataset && e.target.dataset.hora;
+  if (ctx) guardarSel(ctx, {...selDe(ctx), horaBolsa:e.target.value});
+});
+document.addEventListener("keydown", e => {
+  if (S.tab==="wordle" && S.session && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) && !e.ctrlKey && !e.metaKey && !e.altKey){
+    const k = e.key==="Enter" ? "enter" : e.key==="Backspace" ? "back" : e.key.toLowerCase();
+    if (k==="enter" || k==="back" || /^[a-zñ]$/.test(k)){ e.preventDefault(); wlTecla(k); return; }
+  }
+  if (e.key==="Enter" && e.target.id==="pin"){ e.preventDefault(); act("login", e.target); }
+});
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-a]");
+  if (!b || b.disabled) return;
+  act(b.dataset.a, b);
+});
+
+async function act(a, b){
+  const v = b.dataset.v;
+  switch(a){
+    case "setup": {
+      const nombre=String(draft("su_nombre","Nacho")).trim(), usuario=normU(draft("su_usuario","nacho")), pw=String(draft("su_pin")), h=draft("su_hora","09:30");
+      if (!nombre || !/^[a-z0-9._-]{2,30}$/.test(usuario)){ toast("Revisa el nombre y el usuario (solo letras, números, punto o guion)."); return; }
+      if (pw.length<6){ toast("La contraseña debe tener al menos 6 caracteres."); return; }
+      S.entrando=true; S.enAlta=true; render();
+      try {
+        const email = emailNuevo(usuario), cred = await createUserWithEmailAndPassword(auth, email, pw), pid = newId("u"), b = writeBatch(fs);
+        b.set(fdoc(fs,"cuentas/"+cred.user.uid), {perfil:pid});
+        b.set(fdoc(fs,"usuarios/"+pid), {nombre, usuario, rol:"admin", comensal:false, iniciales:"", activo:true});
+        b.set(fdoc(fs,"privados/"+pid), {regimen:"", authUid:cred.user.uid});
+        b.set(fdoc(fs,"logins/"+usuario), {email, perfil:pid});
+        b.set(fdoc(fs,"config/general"), {horaCierre:h, principal:pid});
+        await b.commit();
+        S.enAlta=false; S.drafts={}; await entrarCon(auth.currentUser);
+      } catch(e){ console.error(e); S.enAlta=false; S.loginErr = "No se ha podido completar ("+(e.code||e.message)+")."; }
+      S.entrando=false; break;
+    }
+    case "role": S.loginRole = v||null; S.loginRes=null; S.loginErr=""; S.drafts.pin=""; break;
+    case "pickres": S.loginRes = b.dataset.id; S.loginErr=""; break;
+    case "login": {
+      const un=normU(draft("lg_user")), pw=String(draft("pin")||"");
+      if (!un || !pw){ S.loginErr="Escribe tu usuario y tu contraseña."; break; }
+      S.entrando=true; S.loginErr=""; render();
+      try {
+        const l = await S.db.doc("logins/"+un).get();
+        if (!l.exists) throw {code:"auth/invalid-credential"};
+        await signInWithEmailAndPassword(auth, l.data().email, pw);
+        S.drafts={};
+      } catch(e){
+        S.loginErr = ["auth/invalid-credential","auth/wrong-password","auth/user-not-found","auth/invalid-email","auth/invalid-login-credentials"].includes(e.code) ? "Usuario o contraseña incorrectos."
+          : e.code==="auth/too-many-requests" ? "Demasiados intentos seguidos. Espera unos minutos." : "No se ha podido entrar. Comprueba la conexión ("+(e.code||e.message)+").";
+      }
+      S.entrando=false; break;
+    }
+    case "logout": S.drafts={}; S.openDay=null; S.openWd=null; await signOut(auth); return;
+    case "pw-ver": S.verPw=!S.verPw; delete S.drafts.pw_act; delete S.drafts.pw_new; delete S.drafts.pw_rep; break;
+    case "pw-save": {
+      const act=String(draft("pw_act")), nw=String(draft("pw_new")), rp=String(draft("pw_rep"));
+      if (nw.length<6){ toast("La nueva contraseña debe tener al menos 6 caracteres."); return; }
+      if (nw!==rp){ toast("Las dos contraseñas nuevas no coinciden."); return; }
+      try {
+        await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, act));
+        await updatePassword(auth.currentUser, nw);
+        S.verPw=false; delete S.drafts.pw_act; delete S.drafts.pw_new; delete S.drafts.pw_rep; toast("Contraseña cambiada.");
+      } catch(e){ toast(["auth/invalid-credential","auth/wrong-password","auth/invalid-login-credentials"].includes(e.code) ? "La contraseña actual no es correcta." : "No se ha podido cambiar ("+(e.code||e.message)+")."); return; }
+      break;
+    }
+    case "efe": S.efeOpen[v] = !S.efeOpen[v]; break;
+    case "tab":
+      S.tab=v; S.editRes=null;
+      if (v==="notas") marcarLeidos(rolDe(resById(S.session.uid)));
+      break;
+    case "week": S.weekOffset = v==="0" ? 0 : S.weekOffset + Number(v); S.openDay=null; break;
+    case "openday": S.openDay = S.openDay===b.dataset.f ? null : b.dataset.f; break;
+    case "openwd": S.openWd = S.openWd===Number(v) ? null : Number(v); break;
+    case "set": {
+      const ctx = b.dataset.ctx, k = b.dataset.k;
+      const val = (k==="cena"||k==="desayuno") ? v==="true" : v;
+      const sel = {...selDe(ctx), [k]:val};
+      if (k==="comida" && val==="bolsa" && !sel.horaBolsa) sel.horaBolsa = "14:00";
+      if (k==="comida" && val!=="bolsa") sel.horaBolsa = "";
+      await guardarSel(ctx, sel); return;
+    }
+    case "reset": {
+      const f=b.dataset.f, id=f+"_"+S.session.uid;
+      if (locked(f)) return;
+      delete S.pedidos[id]; render();
+      await w(()=>S.db.doc("pedidos/"+id).delete()); return;
+    }
+    case "clearwd": {
+      const rid=S.session.uid, t={...(S.plantillas[rid]||{})}; delete t["d"+v];
+      S.plantillas[rid]=t; S.openWd=null; render();
+      await w(()=>S.db.doc("plantillas/"+rid).set(t)); return;
+    }
+    case "parteday": S.parteFecha = v==="0" ? today() : addDays(S.parteFecha, Number(v)); break;
+    case "reload": location.reload(); return;
+    case "pdf": await descargarPDF(b.dataset.f); return;
+    case "print": try { window.print(); } catch(e){ toast("La impresión no está disponible aquí."); } return;
+    case "sendmsg": {
+      const t = draft("msg").trim(); if (!t) return;
+      const role = rolDe(resById(S.session.uid)), para = role==="admin"?"cocina":"admin";
+      S.drafts.msg = "";
+      const fecha = role==="admin" ? (draft("msg_fecha", proxParte()) || proxParte()) : null;
+      await w(()=>S.db.collection("mensajes").doc(newId("m")).set({de:role, para, texto:t.slice(0,2000), ts:Date.now(), leido:false, fecha}));
+      toast("Mensaje enviado."); break;
+    }
+    case "exday": S.exFecha = addDays(S.exFecha || proxParte(), Number(v)); if (S.exFecha<today()) S.exFecha=today(); S.drafts.ex_nota=undefined; S.drafts.ex_todos=undefined; delete S.drafts.ex_nota; delete S.drafts.ex_para; break;
+    case "exmas": {
+      const f = S.exFecha || proxParte(), k = b.dataset.k, lk = k==="desayuno" ? locked(addDays(f,-1)) : locked(f);
+      if (lk){ toast("Ese parte ya está cerrado."); return; }
+      const ex = {...extrasDe(f), fecha:f}; ex[k] = Math.max(0, (ex[k]||0) + Number(v));
+      S.extras[f] = ex; render(); await w(()=>S.db.doc("extras/"+f).set(ex)); return;
+    }
+    case "ex-para": S.drafts.ex_para = v; break;
+    case "exbolsa": case "exbolsa-add": {
+      const f = S.exFecha || proxParte();
+      if (locked(f)){ toast("Ese parte ya está cerrado."); return; }
+      const h = a==="exbolsa" ? b.dataset.k : String(draft("ex_hora","14:00"));
+      if (!/^\d{2}:\d{2}$/.test(h)){ toast("Indica la hora de la bolsa."); return; }
+      const ex = {...extrasDe(f), fecha:f}, bl = {...(ex.bolsas||{})};
+      bl[h] = Math.max(0, (bl[h]||0) + (a==="exbolsa" ? Number(v) : 1)); if (!bl[h]) delete bl[h];
+      ex.bolsas = bl; S.extras[f] = ex; render(); await w(()=>S.db.doc("extras/"+f).set(ex)); return;
+    }
+    case "ex-nota": {
+      const f = S.exFecha || proxParte(), ex = extrasDe(f), nota = String(draft("ex_nota", ex.nota||"")).trim().slice(0,600);
+      const para = draft("ex_para", notaParaDe(ex));
+      if (!nota){ toast("Escribe la nota o usa «Borrar nota»."); return; }
+      const limpio = {...ex}; delete limpio.notaTodos;
+      await w(()=>S.db.doc("extras/"+f).set({...limpio, fecha:f, nota, notaPara:para, notaTs:Date.now()}));
+      delete S.drafts.ex_nota; delete S.drafts.ex_para; toast(para==="todos"?"Nota guardada. La verán todos.":para==="residentes"?"Nota guardada. La verán los residentes.":"Nota guardada. La verá la administración."); break;
+    }
+    case "ex-borrar": {
+      const f = S.exFecha || proxParte(), ex = {...extrasDe(f)}; delete ex.nota; delete ex.notaTodos; delete ex.notaPara; delete ex.notaTs;
+      await w(()=>S.db.doc("extras/"+f).set({...ex, fecha:f})); delete S.drafts.ex_nota; toast("Nota borrada."); break;
+    }
+    case "av-visto": S.vistos = [...S.vistos, v].slice(-100); try { localStorage.setItem("comedor.avisos", JSON.stringify(S.vistos)); } catch(e){} break;
+    case "wl-key": await wlTecla(v); return;
+    case "wl-mes": S.wlMes = v; break;
+    case "cal-mes": S.calMes = v; break;
+    case "ev-add": {
+      const f = draft("ev_fecha", today()), t = String(draft("ev_tit")).trim().slice(0,80), d = String(draft("ev_det")).trim().slice(0,500);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(f)){ toast("Elige el día."); return; }
+      if (!t){ toast("Escribe qué se celebra."); return; }
+      await w(()=>S.db.doc("eventos/"+newId("e")).set({fecha:f, titulo:t, detalle:d, ts:Date.now()}));
+      delete S.drafts.ev_tit; delete S.drafts.ev_det; S.calMes = f.slice(0,7); toast("Evento añadido."); break;
+    }
+    case "ev-del": await w(()=>S.db.doc("eventos/"+b.dataset.id).delete()); toast("Evento borrado."); return;
+    case "pf-luego": S.perfilAplazado = true; break;
+    case "pf-save": {
+      const u = resById(S.session.uid), [m0,d0] = (u.cumple||"-").split("-");
+      const anio = Number(draft("pf_anio", u.anioNac?String(u.anioNac):""));
+      const dia = Number(draft("pf_dia", d0?String(Number(d0)):"")), mes = Number(draft("pf_mes", m0?String(Number(m0)):"")), gustos = String(draft("pf_gustos", u.gustos||"")).trim().slice(0,1000);
+      if (!dia || !mes || !anio){ toast("Indica el día, el mes y el año de tu nacimiento."); return; }
+      if (dia===29 && mes===2 && !((anio%4===0 && anio%100!==0) || anio%400===0)){ toast(anio+" no fue bisiesto: no tuvo 29 de febrero."); return; }
+      const maxDia = [31,29,31,30,31,30,31,31,30,31,30,31][mes-1];
+      if (dia > maxDia){ toast("Ese día no existe en "+MESES[mes-1]+"."); return; }
+      if (!gustos){ toast("Escribe al menos algo que te guste."); return; }
+      const cumple = String(mes).padStart(2,"0")+"-"+String(dia).padStart(2,"0");
+      await w(()=>S.db.doc("privados/"+u.id).update({cumple, anioNac:anio, gustos, gustosTs:Date.now()}));
+      delete S.drafts.pf_dia; delete S.drafts.pf_mes; delete S.drafts.pf_anio; delete S.drafts.pf_gustos; S.perfilAplazado = false;
+      toast("Datos guardados."); break;
+    }
+    case "pedir-gustos": {
+      const r = resById(b.dataset.id); if (!r) return;
+      await w(()=>S.db.doc("privados/"+r.id).update({pedirGustos:Date.now()}));
+      toast("Se ha pedido a "+r.nombre+" que actualice sus gustos."); break;
+    }
+    case "res-new": S.editRes="new"; Object.assign(S.drafts,{rf_nombre:"", rf_ini:"", rf_usuario:"", rf_regimen:"", rf_rol:"residente", rf_com:false, rf_pin:String(Math.floor(100000+Math.random()*900000))}); break;
+    case "res-edit": { const r=resById(b.dataset.id); S.editRes=r.id; Object.assign(S.drafts,{rf_nombre:r.nombre||"", rf_ini:r.iniciales||"", rf_usuario:r.usuario||"", rf_regimen:r.regimen||"", rf_rol:rolDe(r), rf_com:r.comensal===true, rf_newpw:""}); break; }
+    case "rf-rol": S.drafts.rf_rol=v; break;
+    case "rf-com": S.drafts.rf_com = v==="true"; break;
+    case "res-cancel": S.editRes=null; break;
+    case "res-save": {
+      const nombre=String(draft("rf_nombre")).trim(), usuario=normU(draft("rf_usuario")), rol=draft("rf_rol","residente"), nuevo = S.editRes==="new";
+      const comensal = rol==="residente" || draft("rf_com",false)===true, pw = String(draft("rf_pin"));
+      if (!nombre){ toast("Escribe el nombre."); return; }
+      if (!/^[a-z0-9._-]{2,30}$/.test(usuario)){ toast("El usuario solo puede tener letras sin tildes, números, punto o guion."); return; }
+      if (nuevo && pw.length<6){ toast("La contraseña inicial debe tener al menos 6 caracteres."); return; }
+      const id = nuevo ? newId("u") : S.editRes, prev = resById(id);
+      if (S.residentes.some(r=>r.id!==id && normU(r.usuario)===usuario)){ toast("Ese usuario ya existe. Elige otro."); return; }
+      if (id===S.session.uid && rol!=="admin"){ toast("No puedes quitarte a ti mismo el perfil de administrador."); return; }
+      const meU = resById(S.session.uid);
+      if ((rol==="admin" || (prev && rolDe(prev)==="admin")) && id!==S.session.uid && !puedeGestionarAdmins(meU)){ toast("Solo el administrador principal puede gestionar administradores."); return; }
+      if (prev && esTitular(prev) && rol!=="admin"){ toast("El titular siempre es administrador."); return; }
+      const pub = {nombre, usuario, rol, comensal, iniciales: comensal ? String(draft("rf_ini")).trim().toUpperCase().slice(0,6) : "", activo: prev ? prev.activo!==false : true};
+      const regimen = comensal ? String(draft("rf_regimen")).trim().slice(0,120) : "";
+      S.entrando=true; render();
+      try {
+        if (nuevo){
+          const ex = await S.db.doc("logins/"+usuario).get();
+          if (ex.exists){ toast("Ese usuario ya existe. Elige otro."); S.entrando=false; render(); return; }
+          const sa = authSecundaria(), email = emailNuevo(usuario), cred = await createUserWithEmailAndPassword(sa, email, pw);
+          await signOut(sa);
+          const b = writeBatch(fs);
+          b.set(fdoc(fs,"usuarios/"+id), pub);
+          b.set(fdoc(fs,"privados/"+id), {regimen, authUid:cred.user.uid});
+          b.set(fdoc(fs,"cuentas/"+cred.user.uid), {perfil:id});
+          b.set(fdoc(fs,"logins/"+usuario), {email, perfil:id});
+          await b.commit();
+          toast("Usuario creado. Contraseña inicial: "+pw);
+        } else {
+          const b = writeBatch(fs);
+          b.update(fdoc(fs,"usuarios/"+id), pub);
+          b.update(fdoc(fs,"privados/"+id), {regimen});
+          if (normU(prev.usuario)!==usuario){
+            const ex = await S.db.doc("logins/"+usuario).get();
+            if (ex.exists){ toast("Ese usuario ya existe. Elige otro."); S.entrando=false; render(); return; }
+            const old = await S.db.doc("logins/"+normU(prev.usuario)).get();
+            if (old.exists){ b.set(fdoc(fs,"logins/"+usuario), old.data()); b.delete(fdoc(fs,"logins/"+normU(prev.usuario))); }
+          }
+          await b.commit();
+          toast("Usuario guardado.");
+        }
+        S.editRes=null;
+      } catch(e){ console.error(e); toast(e.code==="auth/email-already-in-use" ? "Ese usuario ya existe." : "No se ha podido guardar ("+(e.code||e.message)+")."); }
+      S.entrando=false; break;
+    }
+    case "res-reset": {
+      const r = resById(S.editRes), pw = String(draft("rf_newpw"));
+      if (!r) return;
+      if (pw.length<6){ toast("La nueva contraseña debe tener al menos 6 caracteres."); return; }
+      if (rolDe(r)==="admin" && !puedeGestionarAdmins(resById(S.session.uid))){ toast("Solo el administrador principal puede hacerlo con otro administrador."); return; }
+      S.entrando=true; render();
+      try {
+        const sa = authSecundaria(), u = normU(r.usuario), email = emailNuevo(u), cred = await createUserWithEmailAndPassword(sa, email, pw);
+        await signOut(sa);
+        const b = writeBatch(fs);
+        b.set(fdoc(fs,"cuentas/"+cred.user.uid), {perfil:r.id});
+        b.set(fdoc(fs,"logins/"+u), {email, perfil:r.id});
+        b.update(fdoc(fs,"privados/"+r.id), {authUid:cred.user.uid});
+        if (r.authUid) b.delete(fdoc(fs,"cuentas/"+r.authUid));
+        await b.commit();
+        delete S.drafts.rf_newpw; toast("Contraseña restablecida. Nueva contraseña: "+pw);
+      } catch(e){ console.error(e); toast("No se ha podido restablecer ("+(e.code||e.message)+")."); }
+      S.entrando=false; break;
+    }
+    case "res-toggle": { const r=resById(b.dataset.id); if (r.id===S.session.uid || esTitular(r)) return;
+      if (rolDe(r)==="admin" && !puedeGestionarAdmins(resById(S.session.uid))) return; await w(()=>S.db.doc("usuarios/"+r.id).update({activo: r.activo===false})); return; }
+    case "dl-uid": S.drafts.dl_uid = v; break;
+    case "tr-uid": S.drafts.tr_uid = v; S.drafts.tr_confirm = false; break;
+    case "tr-ask": S.drafts.tr_confirm = true; break;
+    case "tr-cancel": S.drafts.tr_confirm = false; break;
+    case "tr-do": {
+      const me=resById(S.session.uid), nuevo=resById(draft("tr_uid",""));
+      if (!esTitular(me) || !nuevo || rolDe(nuevo)!=="admin") return;
+      await w(()=>S.db.doc("config/general").set({horaCierre:horaCierre(), principal:nuevo.id}));
+      S.drafts.tr_uid=""; S.drafts.tr_confirm=false; toast(nuevo.nombre+" es ahora el administrador principal."); break;
+    }
+    case "dl-save": {
+      if (!esTitular(resById(S.session.uid))) return;
+      const uid=draft("dl_uid",""), desde=draft("dl_desde",today()), hasta=draft("dl_hasta",addDays(today(),6));
+      if (!uid){ toast("Elige en quién delegas."); return; }
+      if (!desde || !hasta || hasta<desde || hasta<today()){ toast("Revisa las fechas: el final no puede ser anterior al inicio ni a hoy."); return; }
+      const desdeMs = parse(desde).getTime(), hastaMs = parse(addDays(hasta,1)).getTime()-1;
+      await w(()=>S.db.doc("config/general").update({delegacion:{uid, desde, hasta, desdeMs, hastaMs}}));
+      toast("Delegación guardada."); break;
+    }
+    case "dl-clear": {
+      if (!esTitular(resById(S.session.uid))) return;
+      await w(()=>S.db.doc("config/general").set({horaCierre:horaCierre(), principal:S.config.principal}));
+      toast("Delegación anulada."); break;
+    }
+    case "cfg-save": {
+      await w(()=>S.db.doc("config/general").update({horaCierre: draft("cf_hora", horaCierre())}));
+      toast("Ajustes guardados."); break;
+    }
+  }
+  render();
+}
+render();
+</script>
+</body>
+</html>
