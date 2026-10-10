@@ -351,7 +351,8 @@ function limpiar(){
   Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, nom:{}, consultas:[], cqTs:undefined, cqOpen:null, evIds:undefined, evA:{}, evM:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, vista:false, menu:false, migrado:false});
 }
 function mezclar(){
-  S.residentes = Object.entries(S.pub).map(([id,p])=>({id, ...p, ...(S.nom[id]||{}), ...(S.priv[id]||{})})).sort((a,b)=>String(a.nombre||a.iniciales||"").localeCompare(String(b.nombre||b.iniciales||""),"es"));
+  const sinNombres = S.miRol==="cocina";
+  S.residentes = Object.entries(S.pub).map(([id,p])=>{ const r = {id, ...p, ...(S.nom[id]||{}), ...(S.priv[id]||{})}; if (sinNombres){ delete r.nombre; delete r.usuario; } return r; }).sort((a,b)=>String(a.nombre||a.iniciales||"").localeCompare(String(b.nombre||b.iniciales||""),"es"));
 }
 function revisarPeticion(){
   const yo = S.session && resById(S.session.uid);
@@ -359,6 +360,7 @@ function revisarPeticion(){
   S.prevPedir = yo ? (yo.pedirGustos||0) : undefined;
 }
 function suscribir(pid, rol){
+  S.miRol = rol;
   const add = u => subs.push(u), gest = rol==="admin" || rol==="cocina";
   add(S.db.collection("usuarios").onSnapshot(q => {
     const o = {}; q.docs.forEach(d=>o[d.id]=d.data()); S.pub = o; S.resLoaded = true; mezclar();
@@ -432,9 +434,9 @@ async function limpiarAntiguos(){
 }
 
 /* Paso de los nombres a su propia colección (solo una vez, lo hace el administrador principal) */
-async function migrarNombres(){
+async function migrarNombres(manual){
   const me = resById(S.session && S.session.uid);
-  if (!me || !puedeGestionarAdmins(me)) return;
+  if (!me || !puedeGestionarAdmins(me)){ if (manual) toast("Solo el administrador principal puede hacerlo."); return; }
   const viejos = Object.entries(S.pub).filter(([id,p])=>("nombre" in p) || ("usuario" in p) || !p.iniciales);
   const sinCumple = Object.keys(S.pub).filter(id=>(S.priv[id]||{}).cumple && (S.nom[id]||{}).cumple !== S.priv[id].cumple && !viejos.some(v=>v[0]===id));
   const evViejos = S.eventos.filter(e=>!e.estado);
@@ -453,7 +455,8 @@ async function migrarNombres(){
     sinCumple.forEach(id=>b.set(fdoc(fs,"nombres/"+id), {cumple:S.priv[id].cumple}, {merge:true}));
     evViejos.forEach(e=>b.update(fdoc(fs,"eventos/"+e.id), {estado:"aprobado"}));
     await b.commit();
-  } catch(e){ console.warn("Migración de nombres:", e); }
+    if (manual) toast("Nombres protegidos correctamente.");
+  } catch(e){ console.warn("Migración de nombres:", e); if (manual) toast("No se ha podido completar ("+(e.code||e.message)+"). Envía una captura al responsable."); }
 }
 
 async function entrarCon(user){
@@ -804,18 +807,20 @@ function calendarioView(modo){
   const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
   const pendientes = S.eventos.filter(e=>e.estado==="pendiente");
   const misProp = modo==="residente" ? S.eventos.filter(e=>e.autor===S.session.uid && (e.estado==="pendiente" || e.estado==="rechazado")) : [];
-  const cola = modo==="admin" && pendientes.length ? `<div class="panel" style="border-color:var(--accent)"><h3 style="margin-bottom:8px">Propuestas de residentes pendientes (${pendientes.length})</h3>
+  const cola = modo==="admin" && pendientes.length ? `<div class="panel" style="border-color:var(--accent)"><h3 style="margin-bottom:4px">Propuestas de residentes pendientes (${pendientes.length})</h3><p class="muted small" style="margin-top:0">Si el texto incluye nombres de residentes, recházala: la administración no debe verlos.</p>
       ${pendientes.map(e=>`<div class="res"><div><strong>${esc(fmtLong(e.fecha))}</strong>: ${esc(e.titulo)}${e.detalle?`<div class="small muted">${esc(e.detalle).replace(/\n/g,"<br>")}</div>`:""}<div class="small muted">Propuesto por ${esc((resById(e.autor)||{}).nombre||"un residente")}</div></div>
         <div class="row"><button class="btn" data-a="ev-ok" data-id="${e.id}">Aprobar</button><button class="btn danger" data-a="ev-no" data-id="${e.id}">Rechazar</button></div></div>`).join("")}</div>` : "";
   const mias = misProp.length ? `<h3 style="margin:6px 0 8px">Tus propuestas</h3>${misProp.map(e=>`<div class="res"><div><strong>${esc(fmtLong(e.fecha))}</strong>: ${esc(e.titulo)}</div><div class="row"><span class="tag ${e.estado==="pendiente"?"plantilla":"cerrado"}">${e.estado==="pendiente"?"Pendiente de aprobar":"No aprobado"}</span><button class="link" data-a="ev-del" data-id="${e.id}">Quitar</button></div></div>`).join("")}` : "";
   const form = modo==="residente" ? `<div class="panel"><h3 style="margin-bottom:6px">Proponer un evento</h3><p class="muted small" style="margin-top:0">Un administrador lo revisará antes de que aparezca en el calendario.</p>
       <div class="field"><label for="ev_fecha">Día</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" min="${today()}" value="${esc(draft("ev_fecha", today()))}" style="max-width:220px"></div>
-      <div class="field"><label for="ev_tit">Qué se celebra</label><input class="input" id="ev_tit" data-draft="ev_tit" maxlength="80" placeholder="Por ejemplo: cena de cumpleaños de Luis" value="${esc(draft("ev_tit"))}"></div>
+      <div class="field"><label for="ev_tit">Qué se celebra</label><input class="input" id="ev_tit" data-draft="ev_tit" maxlength="80" placeholder="Por ejemplo: cena de inicio de curso" value="${esc(draft("ev_tit"))}"></div>
       <div class="field"><label for="ev_det">Detalles (opcional)</label><textarea class="input" id="ev_det" data-draft="ev_det" placeholder="Hora, número de personas, qué se necesita…">${esc(draft("ev_det"))}</textarea></div>
+      <p style="margin:-6px 0 10px"><span class="muted small">Lo verán todos, también la administración: no escribas nombres.</span></p>
       <button class="btn" data-a="ev-add">Enviar propuesta</button></div>` : editable ? `<div class="panel"><h3 style="margin-bottom:10px">Añadir un evento</h3>
       <div class="field"><label for="ev_fecha">Día</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" value="${esc(draft("ev_fecha", today()))}" style="max-width:220px"></div>
       <div class="field"><label for="ev_tit">Qué se celebra</label><input class="input" id="ev_tit" data-draft="ev_tit" maxlength="80" placeholder="Por ejemplo: fiesta de Navidad" value="${esc(draft("ev_tit"))}"></div>
       <div class="field"><label for="ev_det">Detalles para la administración (opcional)</label><textarea class="input" id="ev_det" data-draft="ev_det" placeholder="Hora, número de personas, qué se necesita…">${esc(draft("ev_det"))}</textarea></div>
+      <p style="margin:-6px 0 10px"><span class="muted small">La administración lo verá tal cual: usa iniciales, no nombres.</span></p>
       <button class="btn" data-a="ev-add">Añadir al calendario</button></div>` : "";
   return cola + `<div class="weeknav"><button class="arrow" data-a="cal-mes" data-v="${mesAnt}" aria-label="Mes anterior">‹</button><h2>${MESES[mm-1].charAt(0).toUpperCase()+MESES[mm-1].slice(1)} de ${yy}</h2><button class="arrow" data-a="cal-mes" data-v="${mesSig}" aria-label="Mes siguiente">›</button></div>
     <div class="cal">${["L","M","X","J","V","S","D"].map(d=>`<div class="cal-h">${d}</div>`).join("")}${celdas.join("")}</div>
@@ -849,7 +854,7 @@ function extrasView(){
       ${locked(f) ? '<span class="tag cerrado">Cerrado</span>' : `<div class="row" style="align-items:flex-end;margin-top:8px"><div class="field" style="margin:0"><label for="ex_hora">Hora a la que se quiere la bolsa</label><input class="input" type="time" id="ex_hora" data-draft="ex_hora" value="${esc(draft("ex_hora","14:00"))}" style="max-width:150px"></div><button class="btn ghost" data-a="exbolsa-add">Añadir bolsa</button></div>`}
     </div>
     <div class="field"><label for="ex_nota">Nota sobre los comensales de este día (opcional)</label>
-      <textarea class="input" id="ex_nota" data-draft="ex_nota" placeholder="Por ejemplo: comen con nosotros Pedro Gómez y su mujer.">${esc(draft("ex_nota", ex.nota||""))}</textarea></div>
+      <textarea class="input" id="ex_nota" data-draft="ex_nota" placeholder="Por ejemplo: comen dos invitados en el turno normal.">${esc(draft("ex_nota", ex.nota||""))}</textarea><span class="muted small">La administración lo verá tal cual: usa iniciales, no nombres.</span></div>
     <div class="field"><label>Quién ve la nota</label><div class="seg">
       ${PARA.map(([k,l])=>`<button class="opt" data-a="ex-para" data-v="${k}" aria-pressed="${para===k}">${l}</button>`).join("")}</div>
       <p class="muted small" style="margin:0">${para==="administracion"?"Aparece en el parte del día y en el PDF.":para==="residentes"?"A cada residente le aparece un aviso al abrir la aplicación. No sale en el parte.":"Aparece en el parte y en el PDF, y a cada residente le aparece un aviso al abrir la aplicación."}</p></div>
@@ -899,11 +904,11 @@ function unread(role){ return S.mensajes.filter(m=>m.para===role && !m.leido).le
 function notasView(role){
   const otro = role==="admin" ? "cocina" : "admin";
   const nombre = r => r==="admin" ? "Administrador" : "Administración";
-  const cargo = (resById(principalHoy())||{}).nombre;
+  const cargo = resById(principalHoy()) ? nombreVis(resById(principalHoy())) : "";
   const aviso = role==="cocina" && cargo ? `<p class="muted small">Tus notas las ven todos los administradores. Hoy está al cargo ${esc(cargo)}.</p>` : "";
   const list = S.mensajes.filter(m=>(m.de===role&&m.para===otro)||(m.de===otro&&m.para===role)).slice(-60);
   return aviso + `<div class="field"><label for="msg">${role==="admin"?"Aviso para la administración":"Nota para el administrador"}</label>
-      <textarea class="input" id="msg" data-draft="msg" placeholder="${role==="admin"?"Por ejemplo: el jueves comemos antes por una reunión.":"Por ejemplo: falta reponer bolsas de picnic."}">${esc(draft("msg"))}</textarea></div>
+      <textarea class="input" id="msg" data-draft="msg" placeholder="${role==="admin"?"Por ejemplo: el jueves comemos antes por una reunión.":"Por ejemplo: falta reponer bolsas de picnic."}">${esc(draft("msg"))}</textarea>${role==="admin"?'<span class="muted small">La administración lo verá tal cual: usa iniciales, no nombres.</span>':""}</div>
     ${role==="admin" ? `<div class="field"><label for="msg_fecha">Aparece en el parte del</label><input class="input" type="date" id="msg_fecha" data-draft="msg_fecha" min="${proxParte()}" value="${esc(draft("msg_fecha", proxParte()))}" style="max-width:220px"></div>` : ""}
     <button class="btn" data-a="sendmsg" ${draft("msg").trim()?"":"disabled"}>Enviar</button>
     <div class="notes">${list.length ? list.slice().reverse().map(m=>{
@@ -956,6 +961,13 @@ function historialHTML(){
     </div>
     <p class="small muted">${c.ultimaLimpieza ? "Último borrado: "+esc(fmtLong(c.ultimaLimpieza).toLowerCase())+" ("+(c.ultimaLimpiezaBorrados||0)+" registros)." : "Todavía no se ha borrado nada."}</p>`;
 }
+function proteccionHTML(){
+  const expuestos = Object.values(S.pub).filter(p=>("nombre" in p) || ("usuario" in p)).length;
+  return `<h2 style="margin:28px 0 8px">Privacidad de nombres</h2>
+    ${expuestos ? `<div class="status prov">Hay ${expuestos} usuario${expuestos>1?"s":""} cuyo nombre todavía podría llegar a la administración.</div><button class="btn" data-a="proteger">Proteger nombres ahora</button>`
+      : `<div class="status def">Correcto: la administración no recibe ningún nombre, solo iniciales.</div>`}
+    <p class="muted small">Recuerda que lo que escribáis a mano (notas, eventos, avisos) sí lo verá tal cual: no pongáis nombres de residentes, usad iniciales.</p>`;
+}
 function ajustesView(){
   const me = resById(S.session.uid), c = S.config||{}, d = c.delegacion, tit = resById(c.principal);
   const otros = S.residentes.filter(r=>rolDe(r)==="admin" && r.activo!==false && r.id!==c.principal);
@@ -988,7 +1000,7 @@ function ajustesView(){
       <div class="field"><label for="cf_hora">De lunes a viernes</label><input class="input" type="time" id="cf_hora" data-draft="cf_hora" value="${esc(draft("cf_hora", c.horaCierre||"09:30"))}" style="max-width:170px"></div>
       <div class="field"><label for="cf_hora_f">Sábados y domingos</label><input class="input" type="time" id="cf_hora_f" data-draft="cf_hora_f" value="${esc(draft("cf_hora_f", c.horaCierreFinde||"10:30"))}" style="max-width:170px"></div>
     </div>
-    <button class="btn" data-a="cfg-save">Guardar horas</button>` + historialHTML() + deleg;
+    <button class="btn" data-a="cfg-save">Guardar horas</button>` + proteccionHTML() + historialHTML() + deleg;
 }
 function viewApp(uReal){
   const u = S.vista ? {id:"vista", nombre:"Administración", rol:"cocina", comensal:false, activo:true} : uReal;
@@ -1227,6 +1239,7 @@ async function act(a, b){
     case "vista-admon": S.vista = true; S.tabReal = S.tab; S.tab = "parte"; S.verPw = false; S.menu = false; window.scrollTo(0,0); break;
     case "vista-salir": S.vista = false; S.tab = S.tabReal || null; S.menu = false; window.scrollTo(0,0); break;
     case "menu": S.menu = !S.menu; break;
+    case "proteger": await migrarNombres(true); return;
     case "cq-abrir": {
       S.cqOpen = b.dataset.id; const c = (S.consultas||[]).find(x=>x.id===S.cqOpen), rolA = rolDe(resById(S.session.uid));
       if (c && rolA==="admin" && !c.leidoAdmin) w(()=>S.db.doc("consultas/"+c.id).update({leidoAdmin:true}));
