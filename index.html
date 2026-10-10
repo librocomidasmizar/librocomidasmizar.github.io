@@ -216,7 +216,7 @@ window.addEventListener("unhandledrejection", e => { const a = document.getEleme
 /* ---------- Conexión con Firebase ---------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, initializeAuth, inMemoryPersistence, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsnap, query, where as fwhere, writeBatch, deleteField } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsnap, query, where as fwhere, writeBatch, deleteField, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const FB_CONFIG = {
   apiKey: "AIzaSyA5dr_N0Z8VqiRWTCDMHbrRsmK6gFsUDBM",
@@ -258,8 +258,9 @@ const today = () => iso(new Date());
 const mondayOf = s => addDays(s,-wd(s));
 const fmtDay = s => { const d = parse(s); return d.getDate()+" de "+MESES[d.getMonth()]; };
 const fmtLong = s => DIAS[wd(s)]+" "+fmtDay(s);
-const horaCierre = () => (S.config && S.config.horaCierre) || "09:30";
-function cierre(s){ const [h,m] = horaCierre().split(":").map(Number); const d = parse(s); d.setHours(h,m,0,0); return d; }
+const esFinde = f => wd(f)>=5;
+const horaCierre = (f) => { const c = S.config||{}; return esFinde(f||today()) ? (c.horaCierreFinde || "10:30") : (c.horaCierre || "09:30"); };
+function cierre(s){ const [h,m] = horaCierre(s).split(":").map(Number); const d = parse(s); d.setHours(h,m,0,0); return d; }
 const locked = s => new Date() >= cierre(s);
 
 const VACIO = {comida:"no", horaBolsa:"", cena:false, desayuno:false, llevar:"nada"};
@@ -347,7 +348,7 @@ S.db = { doc: mkDoc, collection: c => mkCol(c) };
 let subs = [];
 function limpiar(){
   subs.forEach(u=>{ try { u(); } catch(e){} }); subs = [];
-  Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, nom:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, vista:false, menu:false, migrado:false});
+  Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, nom:{}, consultas:[], cqTs:undefined, cqOpen:null, evIds:undefined, evA:{}, evM:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, vista:false, menu:false, migrado:false});
 }
 function mezclar(){
   S.residentes = Object.entries(S.pub).map(([id,p])=>({id, ...p, ...(S.nom[id]||{}), ...(S.priv[id]||{})})).sort((a,b)=>String(a.nombre||a.iniciales||"").localeCompare(String(b.nombre||b.iniciales||""),"es"));
@@ -376,9 +377,31 @@ function suscribir(pid, rol){
     if (prev && me && rolDe(me)==="residente") avisosResidente().filter(x=>!x.visto).slice(0,1).forEach(x=>toast("Nuevo aviso para el "+fmtLong(x.fecha).toLowerCase()+"."));
     render();
   }, dbErr));
+  const ordenEv = l => l.sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
+  if (gest) add(S.db.collection("eventos").onSnapshot(q => {
+    const prev = S.evIds; S.eventos = ordenEv(q.docs.map(d=>({id:d.id, ...d.data()}))); S.evIds = new Set(S.eventos.map(e=>e.id));
+    if (prev && rol==="admin" && S.eventos.some(e=>!prev.has(e.id) && e.estado==="pendiente")) toast("Un residente ha propuesto un evento para el calendario.");
+    render();
+  }, dbErr));
+  else {
+    const junta = () => { S.eventos = ordenEv(Object.values({...(S.evA||{}), ...(S.evM||{})})); render(); };
+    add(S.db.collection("eventos").where("estado","==","aprobado").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]={id:d.id, ...d.data()}); S.evA=o; junta(); }, dbErr));
+    add(S.db.collection("eventos").where("autor","==",pid).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]={id:d.id, ...d.data()}); S.evM=o; junta(); }, dbErr));
+  }
+  /* Conversaciones de residentes con los administradores */
+  if (rol!=="cocina"){
+    const cq = rol==="admin" ? S.db.collection("consultas") : S.db.collection("consultas").where("autor","==",pid);
+    add(cq.onSnapshot(q => {
+      const prev = S.cqTs || {}; S.consultas = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(b.ultimoTs||0)-(a.ultimoTs||0));
+      const ahora = {}; S.consultas.forEach(c=>ahora[c.id]=c.ultimoTs||0);
+      if (S.cqTs) S.consultas.forEach(c=>{ if ((c.ultimoTs||0) > (prev[c.id]||0)){ const ult = (c.mensajes||[]).slice(-1)[0]; if (ult && ult.quien!==pid) toast(rol==="admin" ? "Nuevo mensaje de un residente." : "Los administradores te han respondido."); } });
+      S.cqTs = ahora;
+      caducarConsultas();
+      render();
+    }, dbErr));
+  }
   if (rol!=="cocina") add(S.db.collection("wordle").where("fecha",">=",addDays(today(),-62)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.wordle=o; render(); }, dbErr));
   if (gest){
-    add(S.db.collection("eventos").onSnapshot(q => { S.eventos = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))); render(); }, dbErr));
     add(S.db.collection("mensajes").onSnapshot(q => {
       const prev = S.msgIds;
       S.mensajes = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(a.ts||0)-(b.ts||0));
@@ -413,17 +436,22 @@ async function migrarNombres(){
   const me = resById(S.session && S.session.uid);
   if (!me || !puedeGestionarAdmins(me)) return;
   const viejos = Object.entries(S.pub).filter(([id,p])=>("nombre" in p) || ("usuario" in p) || !p.iniciales);
-  if (!viejos.length) return;
+  const sinCumple = Object.keys(S.pub).filter(id=>(S.priv[id]||{}).cumple && (S.nom[id]||{}).cumple !== S.priv[id].cumple && !viejos.some(v=>v[0]===id));
+  const evViejos = S.eventos.filter(e=>!e.estado);
+  if (!viejos.length && !sinCumple.length && !evViejos.length) return;
   try {
     const b = writeBatch(fs);
     viejos.forEach(([id,p])=>{
       const nombre = p.nombre || (S.nom[id]||{}).nombre || "", usuario = p.usuario || (S.nom[id]||{}).usuario || "";
-      if (nombre || usuario) b.set(fdoc(fs,"nombres/"+id), {nombre, usuario});
+      if (nombre || usuario) b.set(fdoc(fs,"nombres/"+id), {nombre, usuario}, {merge:true});
       const upd = {iniciales: p.iniciales || inicialesDe(nombre)};
       if ("nombre" in p) upd.nombre = deleteField();
       if ("usuario" in p) upd.usuario = deleteField();
       b.update(fdoc(fs,"usuarios/"+id), upd);
+      if ((S.priv[id]||{}).cumple) b.set(fdoc(fs,"nombres/"+id), {cumple:S.priv[id].cumple}, {merge:true});
     });
+    sinCumple.forEach(id=>b.set(fdoc(fs,"nombres/"+id), {cumple:S.priv[id].cumple}, {merge:true}));
+    evViejos.forEach(e=>b.update(fdoc(fs,"eventos/"+e.id), {estado:"aprobado"}));
     await b.commit();
   } catch(e){ console.warn("Migración de nombres:", e); }
 }
@@ -504,7 +532,7 @@ function panelPw(){
 }
 function tabs(list){
   // Pocas secciones: botones a la vista. Muchas: un menú desplegable agrupado.
-  if (list.length<=4) return `<nav class="nav-chips" aria-label="Secciones">${list.map(([k,l,b])=>`<button class="chip" data-a="tab" data-v="${k}" aria-current="${S.tab===k}">${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</nav>`;
+  if (list.length<=6) return `<nav class="nav-chips" aria-label="Secciones">${list.map(([k,l,b])=>`<button class="chip" data-a="tab" data-v="${k}" aria-current="${S.tab===k}">${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</nav>`;
   const act = list.find(x=>x[0]===S.tab) || list[0], pend = list.reduce((n,x)=>n+(Number(x[2])||0),0);
   const grupos = [...new Set(list.map(x=>x[3]))];
   return `<nav class="no-print" aria-label="Secciones"><button class="menu-btn" data-a="menu" aria-expanded="${!!S.menu}"><span>${act[1]}${pend&&!S.menu?`<span class="badge">${pend}</span>`:""}</span><span class="muted small">${S.menu?"Cerrar":"Cambiar de sección"} ${S.menu?"▴":"▾"}</span></button>
@@ -542,7 +570,7 @@ function vistaComensal(r){
       <div class="days">${days.map(f=>{
         const {sel, fuente} = efectiva(r.id, f);
         const lk = locked(f), isToday = f===today(), open = S.openDay===f;
-        const tag = lk ? `<span class="tag cerrado">Cerrado</span>` : isToday ? `<span class="tag abierto">Hasta las ${esc(horaCierre())}</span>` : fuente==="plantilla" ? `<span class="tag plantilla">Plantilla</span>` : "";
+        const tag = lk ? `<span class="tag cerrado">Cerrado</span>` : isToday ? `<span class="tag abierto">Hasta las ${esc(horaCierre(f))}</span>` : fuente==="plantilla" ? `<span class="tag plantilla">Plantilla</span>` : "";
         return `<div class="day ${isToday?"today":""} ${lk?"locked":""}">
           <button class="day-head" data-a="openday" data-f="${f}" aria-expanded="${open}">
             <span class="day-name">${DIAS[wd(f)]}<small>${fmtDay(f)}</small></span>
@@ -619,7 +647,7 @@ function parteHTML(f, anon){
   const bt = bolsasPorHora(d.bolsas, d.bolsasExtra, anon);
   const llevarNombres = !anon && (d.tupper.length+d.bolsaM.length) ? `<ul class="list">${[...d.tupper,...d.bolsaM].map(o=>`<li>${esc(o.r.nombre)}: ${o.sel.llevar==="tupper"?"tupper":"bolsa de comida"}</li>`).join("")}</ul>` : "";
   return `
-    <div class="status ${lk?"def":"prov"}">${lk ? "Parte cerrado. Es el definitivo." : `Provisional: puede cambiar hasta las ${esc(horaCierre())} del ${fmtLong(f).toLowerCase()}.`}</div>
+    <div class="status ${lk?"def":"prov"}">${lk ? "Parte cerrado. Es el definitivo." : `Provisional: puede cambiar hasta las ${esc(horaCierre(f))} del ${fmtLong(f).toLowerCase()}.`}</div>
     ${d.avisos.length ? `<div class="alert"><strong>Avisos para este parte</strong>${d.avisos.map(t=>`<p style="margin:6px 0 0">${esc(t).replace(/\n/g,"<br>")}</p>`).join("")}</div>` : ""}
     <div class="blocks">
       <section class="block"><h3>Comida (${totalComida})</h3>
@@ -758,11 +786,13 @@ async function wlTecla(k){
 /* --- Calendario de la residencia --- */
 function eventosEntre(desde, hasta){
   const out = [];
-  S.eventos.forEach(e=>{ if (e.fecha>=desde && e.fecha<=hasta) out.push({fecha:e.fecha, tipo:"evento", texto:e.titulo, detalle:e.detalle, id:e.id}); });
+  S.eventos.forEach(e=>{ if ((e.estado||"aprobado")==="aprobado" && e.fecha>=desde && e.fecha<=hasta) out.push({fecha:e.fecha, tipo:"evento", texto:e.titulo, detalle:e.detalle, id:e.id, autor:e.autor}); });
   for (let f=desde; f<=hasta; f=addDays(f,1)){ const md=f.slice(5); conCumple().forEach(r=>{ if (r.cumple===md) { const e = edadEn(r, Number(f.slice(0,4))), n = nombreVis(r); out.push({fecha:f, tipo:"cumple", texto:"Cumpleaños de "+n+(e!=null?" ("+e+" años)":""), corto:n+(e!=null?" "+e:"")}); } }); }
   return out.sort((a,b)=>a.fecha.localeCompare(b.fecha) || (a.tipo==="cumple"?-1:1));
 }
-function calendarioView(editable){
+function calendarioView(modo){
+  // modo: "admin" (añade, aprueba y borra), "cocina" (añade y borra lo suyo), "residente" (propone)
+  const editable = modo==="admin" || modo==="cocina";
   const mes = S.calMes || today().slice(0,7), [yy,mm] = mes.split("-").map(Number);
   const primero = mes+"-01", ultimo = iso(new Date(yy, mm, 0)), items = eventosEntre(primero, ultimo);
   const celdas = [];
@@ -772,19 +802,29 @@ function calendarioView(editable){
     celdas.push(`<div class="cal-d ${f===today()?"hoy":""}"><div class="cal-n">${Number(f.slice(8))}</div>${its.map(x=>`<span class="cal-i ${x.tipo}" title="${esc(x.texto)}">${esc(x.tipo==="cumple"?x.corto:x.texto)}</span>`).join("")}</div>`);
   }
   const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
-  const form = editable ? `<div class="panel"><h3 style="margin-bottom:10px">Añadir un evento</h3>
+  const pendientes = S.eventos.filter(e=>e.estado==="pendiente");
+  const misProp = modo==="residente" ? S.eventos.filter(e=>e.autor===S.session.uid && (e.estado==="pendiente" || e.estado==="rechazado")) : [];
+  const cola = modo==="admin" && pendientes.length ? `<div class="panel" style="border-color:var(--accent)"><h3 style="margin-bottom:8px">Propuestas de residentes pendientes (${pendientes.length})</h3>
+      ${pendientes.map(e=>`<div class="res"><div><strong>${esc(fmtLong(e.fecha))}</strong>: ${esc(e.titulo)}${e.detalle?`<div class="small muted">${esc(e.detalle).replace(/\n/g,"<br>")}</div>`:""}<div class="small muted">Propuesto por ${esc((resById(e.autor)||{}).nombre||"un residente")}</div></div>
+        <div class="row"><button class="btn" data-a="ev-ok" data-id="${e.id}">Aprobar</button><button class="btn danger" data-a="ev-no" data-id="${e.id}">Rechazar</button></div></div>`).join("")}</div>` : "";
+  const mias = misProp.length ? `<h3 style="margin:6px 0 8px">Tus propuestas</h3>${misProp.map(e=>`<div class="res"><div><strong>${esc(fmtLong(e.fecha))}</strong>: ${esc(e.titulo)}</div><div class="row"><span class="tag ${e.estado==="pendiente"?"plantilla":"cerrado"}">${e.estado==="pendiente"?"Pendiente de aprobar":"No aprobado"}</span><button class="link" data-a="ev-del" data-id="${e.id}">Quitar</button></div></div>`).join("")}` : "";
+  const form = modo==="residente" ? `<div class="panel"><h3 style="margin-bottom:6px">Proponer un evento</h3><p class="muted small" style="margin-top:0">Un administrador lo revisará antes de que aparezca en el calendario.</p>
+      <div class="field"><label for="ev_fecha">Día</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" min="${today()}" value="${esc(draft("ev_fecha", today()))}" style="max-width:220px"></div>
+      <div class="field"><label for="ev_tit">Qué se celebra</label><input class="input" id="ev_tit" data-draft="ev_tit" maxlength="80" placeholder="Por ejemplo: cena de cumpleaños de Luis" value="${esc(draft("ev_tit"))}"></div>
+      <div class="field"><label for="ev_det">Detalles (opcional)</label><textarea class="input" id="ev_det" data-draft="ev_det" placeholder="Hora, número de personas, qué se necesita…">${esc(draft("ev_det"))}</textarea></div>
+      <button class="btn" data-a="ev-add">Enviar propuesta</button></div>` : editable ? `<div class="panel"><h3 style="margin-bottom:10px">Añadir un evento</h3>
       <div class="field"><label for="ev_fecha">Día</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" value="${esc(draft("ev_fecha", today()))}" style="max-width:220px"></div>
       <div class="field"><label for="ev_tit">Qué se celebra</label><input class="input" id="ev_tit" data-draft="ev_tit" maxlength="80" placeholder="Por ejemplo: fiesta de Navidad" value="${esc(draft("ev_tit"))}"></div>
       <div class="field"><label for="ev_det">Detalles para la administración (opcional)</label><textarea class="input" id="ev_det" data-draft="ev_det" placeholder="Hora, número de personas, qué se necesita…">${esc(draft("ev_det"))}</textarea></div>
       <button class="btn" data-a="ev-add">Añadir al calendario</button></div>` : "";
-  return `<div class="weeknav"><button class="arrow" data-a="cal-mes" data-v="${mesAnt}" aria-label="Mes anterior">‹</button><h2>${MESES[mm-1].charAt(0).toUpperCase()+MESES[mm-1].slice(1)} de ${yy}</h2><button class="arrow" data-a="cal-mes" data-v="${mesSig}" aria-label="Mes siguiente">›</button></div>
+  return cola + `<div class="weeknav"><button class="arrow" data-a="cal-mes" data-v="${mesAnt}" aria-label="Mes anterior">‹</button><h2>${MESES[mm-1].charAt(0).toUpperCase()+MESES[mm-1].slice(1)} de ${yy}</h2><button class="arrow" data-a="cal-mes" data-v="${mesSig}" aria-label="Mes siguiente">›</button></div>
     <div class="cal">${["L","M","X","J","V","S","D"].map(d=>`<div class="cal-h">${d}</div>`).join("")}${celdas.join("")}</div>
     <h2 style="margin-bottom:8px">Este mes</h2>
-    ${items.length ? items.map(x=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong> <span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span><div>${esc(x.texto)}</div>${x.detalle?`<div class="small muted">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>${editable && x.tipo==="evento" ? `<button class="link" data-a="ev-del" data-id="${x.id}">Borrar</button>` : "<span></span>"}</div>`).join("") : `<div class="empty">No hay cumpleaños ni eventos este mes.</div>`}
-    ${form}`;
+    ${items.length ? items.map(x=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong> <span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span><div>${esc(x.texto)}</div>${x.detalle?`<div class="small muted">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>${x.tipo==="evento" && (modo==="admin" || (modo==="cocina" && x.autor===S.session.uid)) ? `<button class="link" data-a="ev-del" data-id="${x.id}">Borrar</button>` : "<span></span>"}</div>`).join("") : `<div class="empty">No hay cumpleaños ni eventos este mes.</div>`}
+    ${mias}${form}`;
 }
 function avisoEventos(){
-  const l = S.eventos.filter(e=>e.fecha>=today() && e.fecha<=addDays(today(),3));
+  const l = S.eventos.filter(e=>(e.estado||"aprobado")==="aprobado" && e.fecha>=today() && e.fecha<=addDays(today(),3));
   return l.length ? `<div class="alert no-print"><strong>Próximos eventos:</strong> ${l.map(e=>esc(fmtLong(e.fecha))+": "+esc(e.titulo)).join("; ")}. <button class="link" data-a="tab" data-v="calendario">Ver calendario</button></div>` : "";
 }
 
@@ -819,6 +859,39 @@ function extrasView(){
 function avisosResidente(){
   return Object.entries(S.extras).filter(([f,e])=>e.nota && notaParaDe(e)!=="administracion" && f>=today() && f<=addDays(today(),7))
     .map(([f,e])=>({fecha:f, texto:e.nota, clave:f+"|"+(e.notaTs||0)})).map(x=>({...x, visto:S.vistos.includes(x.clave)})).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+}
+
+/* --- Conversaciones de residentes con los administradores --- */
+const DIAS_CONSULTA = 30;
+const caduca = c => (c.ts||0) + DIAS_CONSULTA*86400000;
+const consultasVivas = () => (S.consultas||[]).filter(c=>caduca(c) > Date.now());
+const consultasSinLeer = rol => consultasVivas().filter(c=> rol==="admin" ? !c.leidoAdmin : !c.leidoResidente).length;
+async function caducarConsultas(){
+  const viejas = (S.consultas||[]).filter(c=>caduca(c) <= Date.now());
+  for (const c of viejas){ try { await S.db.doc("consultas/"+c.id).delete(); } catch(e){} }
+}
+const hora = t => { const d = new Date(t||0); return d.getDate()+" de "+MESES[d.getMonth()]+", "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+function consultasView(rol){
+  const lista = consultasVivas(), abierta = lista.find(c=>c.id===S.cqOpen);
+  if (abierta){
+    const autor = resById(abierta.autor);
+    return `<p><button class="link" data-a="cq-cerrar">‹ Volver a las conversaciones</button></p>
+      <h2 style="margin-bottom:4px">${rol==="admin" ? "Conversación con "+esc((autor||{}).nombre||"un residente") : "Tu conversación con los administradores"}</h2>
+      <p class="muted small" style="margin-top:0">Se borrará automáticamente el ${esc(fmtLong(iso(new Date(caduca(abierta)))).toLowerCase())}.</p>
+      <div class="notes">${(abierta.mensajes||[]).map(m=>`<div class="note ${m.quien===S.session.uid?"mine":""}"><div class="meta">${m.de==="admin" ? esc((resById(m.quien)||{}).nombre||"Administrador") : esc((resById(m.quien)||{}).nombre||"Residente")}, ${hora(m.ts)}</div>${esc(m.texto).replace(/\n/g,"<br>")}
+        ${rol==="admin" && m.de==="residente" ? `<div style="margin-top:6px"><button class="link" data-a="cq-pasar" data-v="${esc(m.texto)}">Pasar a la administración</button></div>` : ""}</div>`).join("")}</div>
+      <div class="field" style="margin-top:16px"><label for="cq_resp">${rol==="admin"?"Responder":"Escribir"}</label><textarea class="input" id="cq_resp" data-draft="cq_resp">${esc(draft("cq_resp"))}</textarea></div>
+      <button class="btn" data-a="cq-responder">Enviar</button>`;
+  }
+  const nueva = rol==="admin" ? "" : `<div class="panel"><h3 style="margin-bottom:6px">Nuevo mensaje a los administradores</h3>
+      <p class="muted small" style="margin-top:0">Por ejemplo, para que comenten algo a la administración. Solo lo leen los administradores. La conversación se borra sola al mes.</p>
+      <div class="field"><label for="cq_nuevo">Mensaje</label><textarea class="input" id="cq_nuevo" data-draft="cq_nuevo">${esc(draft("cq_nuevo"))}</textarea></div>
+      <button class="btn" data-a="cq-nueva">Enviar</button></div>`;
+  return nueva + (lista.length ? lista.map(c=>{
+    const ult = (c.mensajes||[]).slice(-1)[0] || {}, sinLeer = rol==="admin" ? !c.leidoAdmin : !c.leidoResidente;
+    return `<button class="res" data-a="cq-abrir" data-id="${c.id}" style="width:100%;text-align:left;cursor:pointer;${sinLeer?"border-color:var(--accent)":""}"><div><strong>${rol==="admin" ? esc((resById(c.autor)||{}).nombre||"Residente") : "Administradores"}</strong> ${sinLeer?'<span class="badge">Nuevo</span>':""}
+      <div class="small muted">${esc(String(ult.texto||"").slice(0,90))}${String(ult.texto||"").length>90?"…":""}</div></div><span class="muted small">${hora(c.ultimoTs)}</span></button>`; }).join("")
+    : `<div class="empty">${rol==="admin" ? "Ningún residente ha escrito todavía." : "No tienes conversaciones abiertas."}</div>`);
 }
 
 /* --- Notas entre administración y administrador --- */
@@ -909,8 +982,13 @@ function ajustesView(){
       : `<p class="muted">Primero tiene que haber otro administrador activo.</p>`}
     </div>`;
   } else deleg += `<p class="muted small">Solo el titular puede programar o anular una delegación o ceder la titularidad.</p>`;
-  return `<div class="field"><label for="cf_hora">Hora de cierre diaria</label><input class="input" type="time" id="cf_hora" data-draft="cf_hora" value="${esc(draft("cf_hora", horaCierre()))}" style="max-width:180px"></div>
-    <button class="btn" data-a="cfg-save">Guardar hora de cierre</button>` + historialHTML() + deleg;
+  return `<h2 style="margin-bottom:8px">Hora límite para apuntarse</h2>
+    <p class="muted" style="margin-top:0">A esa hora se cierra el parte del día y ya no se puede cambiar.</p>
+    <div class="row" style="align-items:flex-end">
+      <div class="field"><label for="cf_hora">De lunes a viernes</label><input class="input" type="time" id="cf_hora" data-draft="cf_hora" value="${esc(draft("cf_hora", c.horaCierre||"09:30"))}" style="max-width:170px"></div>
+      <div class="field"><label for="cf_hora_f">Sábados y domingos</label><input class="input" type="time" id="cf_hora_f" data-draft="cf_hora_f" value="${esc(draft("cf_hora_f", c.horaCierreFinde||"10:30"))}" style="max-width:170px"></div>
+    </div>
+    <button class="btn" data-a="cfg-save">Guardar horas</button>` + historialHTML() + deleg;
 }
 function viewApp(uReal){
   const u = S.vista ? {id:"vista", nombre:"Administración", rol:"cocina", comensal:false, activo:true} : uReal;
@@ -918,16 +996,18 @@ function viewApp(uReal){
   const G1 = "Mis comidas", G2 = rol==="admin" ? "Gestión" : "Administración";
   if (esComensal(u)) t.push(["semana","Mi semana","",G1],["plantilla","Plantilla fija","",G1]);
   if (esComensal(u) && rol!=="cocina") t.push(["wordle","Palabra del día","",G1]);
+  if (rol==="residente") t.push(["calendario","Calendario","",G1],["consultas","Mensajes", consultasSinLeer("residente")||"",G1]);
   if (rol!=="cocina") t.push(["datos","Mis datos","",G1]);
   if (rol==="cocina") t.push(["parte","Parte del día","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Notas", unread("cocina")||"",G2]);
-  if (rol==="admin") t.push(["parte","Parte del día","",G2],["extras","Comensales extra","",G2],["notas","Notas", unread("admin")||"",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
+  if (rol==="admin") t.push(["parte","Parte del día","",G2],["extras","Comensales extra","",G2],["notas","Notas", unread("admin")||"",G2],["consultas","Mensajes de residentes", consultasSinLeer("admin")||"",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario", S.eventos.filter(e=>e.estado==="pendiente").length||"",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
   if (!t.length) return cabecera(u.nombre||"") + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
   if (!t.find(x=>x[0]===S.tab)) S.tab = esComensal(u) ? "semana" : (t.find(x=>x[0]==="parte")||t[0])[0];
   let main;
   if (S.tab==="semana"||S.tab==="plantilla") main = vistaComensal(u);
   else if (S.tab==="parte") main = avisoCumples() + avisoEventos() + parteView();
   else if (S.tab==="wordle") main = wordleView(u);
-  else if (S.tab==="calendario") main = calendarioView(rol==="admin");
+  else if (S.tab==="calendario") main = calendarioView(rol==="admin" ? "admin" : rol==="cocina" ? "cocina" : "residente");
+  else if (S.tab==="consultas") main = consultasView(rol==="admin" ? "admin" : "residente");
   else if (S.tab==="datos") main = datosView(u);
   else if (S.tab==="cumples") main = cumplesView();
   else if (S.tab==="notas") main = notasView(rol);
@@ -964,8 +1044,8 @@ async function descargarPDF(f){
   y = 17; doc.setFont("helvetica","normal"); doc.setFontSize(10); col(GRIS); doc.text("Libro de comidas - Mizar", M, y);
   y += 10; doc.setFont("helvetica","bold"); doc.setFontSize(21); col(TINTA); doc.text("Parte del "+fmtLong(f).toLowerCase(), M, y);
   y += 7; doc.setFont("helvetica","normal"); doc.setFontSize(10);
-  if (lk){ col(VERDE); doc.text("Definitivo. Cerrado a las "+horaCierre()+".", M, y); }
-  else { col(ROJO); doc.text("Provisional, generado a las "+hh(ahora)+". Puede cambiar hasta las "+horaCierre()+".", M, y); }
+  if (lk){ col(VERDE); doc.text("Definitivo. Cerrado a las "+horaCierre(f)+".", M, y); }
+  else { col(ROJO); doc.text("Provisional, generado a las "+hh(ahora)+". Puede cambiar hasta las "+horaCierre(f)+".", M, y); }
   y += 5; doc.setDrawColor(...LINEA); doc.setLineWidth(0.4); doc.line(M,y,W-M,y); y += 7;
 
   const avisos = D.avisos;
@@ -1120,7 +1200,7 @@ async function act(a, b){
         b.set(fdoc(fs,"nombres/"+pid), {nombre, usuario});
         b.set(fdoc(fs,"privados/"+pid), {regimen:"", authUid:cred.user.uid});
         b.set(fdoc(fs,"logins/"+usuario), {email, perfil:pid});
-        b.set(fdoc(fs,"config/general"), {horaCierre:h, principal:pid});
+        b.set(fdoc(fs,"config/general"), {horaCierre:h, horaCierreFinde:"10:30", principal:pid});
         await b.commit();
         S.enAlta=false; S.drafts={}; await entrarCon(auth.currentUser);
       } catch(e){ console.error(e); S.enAlta=false; S.loginErr = "No se ha podido completar ("+(e.code||e.message)+")."; }
@@ -1147,6 +1227,26 @@ async function act(a, b){
     case "vista-admon": S.vista = true; S.tabReal = S.tab; S.tab = "parte"; S.verPw = false; S.menu = false; window.scrollTo(0,0); break;
     case "vista-salir": S.vista = false; S.tab = S.tabReal || null; S.menu = false; window.scrollTo(0,0); break;
     case "menu": S.menu = !S.menu; break;
+    case "cq-abrir": {
+      S.cqOpen = b.dataset.id; const c = (S.consultas||[]).find(x=>x.id===S.cqOpen), rolA = rolDe(resById(S.session.uid));
+      if (c && rolA==="admin" && !c.leidoAdmin) w(()=>S.db.doc("consultas/"+c.id).update({leidoAdmin:true}));
+      if (c && rolA!=="admin" && !c.leidoResidente) w(()=>S.db.doc("consultas/"+c.id).update({leidoResidente:true}));
+      break;
+    }
+    case "cq-cerrar": S.cqOpen = null; break;
+    case "cq-nueva": {
+      const t = String(draft("cq_nuevo")).trim().slice(0,1500); if (!t){ toast("Escribe el mensaje."); return; }
+      const ts = Date.now(), id = newId("c");
+      await w(()=>S.db.doc("consultas/"+id).set({autor:S.session.uid, ts, ultimoTs:ts, leidoAdmin:false, leidoResidente:true, mensajes:[{de:"residente", quien:S.session.uid, texto:t, ts}]}));
+      delete S.drafts.cq_nuevo; S.cqOpen = id; toast("Mensaje enviado a los administradores."); break;
+    }
+    case "cq-responder": {
+      const t = String(draft("cq_resp")).trim().slice(0,1500); if (!t || !S.cqOpen){ toast("Escribe el mensaje."); return; }
+      const esA = rolDe(resById(S.session.uid))==="admin", ts = Date.now();
+      await w(()=>S.db.doc("consultas/"+S.cqOpen).update({mensajes: arrayUnion({de: esA?"admin":"residente", quien:S.session.uid, texto:t, ts}), ultimoTs:ts, leidoAdmin: esA, leidoResidente: !esA}));
+      delete S.drafts.cq_resp; break;
+    }
+    case "cq-pasar": S.drafts.msg = v; S.tab = "notas"; S.cqOpen = null; marcarLeidos("admin"); toast("Revisa el texto y pulsa «Enviar» para pasárselo a la administración."); window.scrollTo(0,0); break;
     case "hs-auto": await w(()=>S.db.doc("config/general").update({limpiezaAuto: v==="true"})); toast(v==="true" ? "Borrado trimestral activado." : "Borrado trimestral desactivado."); return;
     case "hs-ask": if (!/^\d{4}-\d{2}-\d{2}$/.test(draft("hs_fecha", addDays(today(),-91)))){ toast("Elige una fecha."); return; } S.drafts.hs_confirm = true; break;
     case "hs-cancel": S.drafts.hs_confirm = false; break;
@@ -1248,10 +1348,12 @@ async function act(a, b){
       const f = draft("ev_fecha", today()), t = String(draft("ev_tit")).trim().slice(0,80), d = String(draft("ev_det")).trim().slice(0,500);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(f)){ toast("Elige el día."); return; }
       if (!t){ toast("Escribe qué se celebra."); return; }
-      await w(()=>S.db.doc("eventos/"+newId("e")).set({fecha:f, titulo:t, detalle:d, ts:Date.now()}));
-      delete S.drafts.ev_tit; delete S.drafts.ev_det; S.calMes = f.slice(0,7); toast("Evento añadido."); break;
+      const rolA = rolDe(resById(S.session.uid)), directo = rolA==="admin" || rolA==="cocina";
+      await w(()=>S.db.doc("eventos/"+newId("e")).set({fecha:f, titulo:t, detalle:d, ts:Date.now(), autor:S.session.uid, estado: directo ? "aprobado" : "pendiente"}));
+      delete S.drafts.ev_tit; delete S.drafts.ev_det; S.calMes = f.slice(0,7); toast(directo ? "Evento añadido." : "Propuesta enviada. Un administrador la revisará."); break;
     }
-    case "ev-del": await w(()=>S.db.doc("eventos/"+b.dataset.id).delete()); toast("Evento borrado."); return;
+    case "ev-del": await w(()=>S.db.doc("eventos/"+b.dataset.id).delete()); toast("Evento quitado."); return;
+    case "ev-ok": case "ev-no": await w(()=>S.db.doc("eventos/"+b.dataset.id).update({estado: a==="ev-ok" ? "aprobado" : "rechazado", revisadoPor:S.session.uid})); toast(a==="ev-ok" ? "Evento aprobado: ya aparece en el calendario." : "Propuesta rechazada."); return;
     case "pf-luego": S.perfilAplazado = true; break;
     case "pf-save": {
       const u = resById(S.session.uid), [m0,d0] = (u.cumple||"-").split("-");
@@ -1264,6 +1366,7 @@ async function act(a, b){
       if (!gustos){ toast("Escribe al menos algo que te guste."); return; }
       const cumple = String(mes).padStart(2,"0")+"-"+String(dia).padStart(2,"0");
       await w(()=>S.db.doc("privados/"+u.id).update({cumple, anioNac:anio, gustos, gustosTs:Date.now()}));
+      await w(()=>S.db.doc("nombres/"+u.id).update({cumple}));
       delete S.drafts.pf_dia; delete S.drafts.pf_mes; delete S.drafts.pf_anio; delete S.drafts.pf_gustos; S.perfilAplazado = false;
       toast("Datos guardados."); break;
     }
@@ -1309,7 +1412,7 @@ async function act(a, b){
         } else {
           const b = writeBatch(fs);
           b.update(fdoc(fs,"usuarios/"+id), {...pub, nombre:deleteField(), usuario:deleteField()});
-          b.set(fdoc(fs,"nombres/"+id), {nombre, usuario});
+          b.set(fdoc(fs,"nombres/"+id), {nombre, usuario}, {merge:true});
           b.update(fdoc(fs,"privados/"+id), {regimen});
           if (normU(prev.usuario)!==usuario){
             const ex = await S.db.doc("logins/"+usuario).get();
@@ -1352,7 +1455,8 @@ async function act(a, b){
     case "tr-do": {
       const me=resById(S.session.uid), nuevo=resById(draft("tr_uid",""));
       if (!esTitular(me) || !nuevo || rolDe(nuevo)!=="admin") return;
-      await w(()=>S.db.doc("config/general").set({horaCierre:horaCierre(), principal:nuevo.id}));
+      const c2 = {...S.config, principal:nuevo.id}; delete c2.delegacion;
+      await w(()=>S.db.doc("config/general").set(c2));
       S.drafts.tr_uid=""; S.drafts.tr_confirm=false; toast(nuevo.nombre+" es ahora el administrador principal."); break;
     }
     case "dl-save": {
@@ -1366,11 +1470,14 @@ async function act(a, b){
     }
     case "dl-clear": {
       if (!esTitular(resById(S.session.uid))) return;
-      await w(()=>S.db.doc("config/general").set({horaCierre:horaCierre(), principal:S.config.principal}));
+      const c3 = {...S.config}; delete c3.delegacion;
+      await w(()=>S.db.doc("config/general").set(c3));
       toast("Delegación anulada."); break;
     }
     case "cfg-save": {
-      await w(()=>S.db.doc("config/general").update({horaCierre: draft("cf_hora", horaCierre())}));
+      const hl = draft("cf_hora", (S.config||{}).horaCierre || "09:30"), hf = draft("cf_hora_f", (S.config||{}).horaCierreFinde || "10:30");
+      if (!/^\d{2}:\d{2}$/.test(hl) || !/^\d{2}:\d{2}$/.test(hf)){ toast("Revisa las dos horas."); return; }
+      await w(()=>S.db.doc("config/general").update({horaCierre: hl, horaCierreFinde: hf}));
       toast("Ajustes guardados."); break;
     }
   }
