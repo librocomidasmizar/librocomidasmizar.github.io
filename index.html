@@ -52,10 +52,16 @@ h3{font-size:17px;font-weight:600}
 .small{font-size:14px}
 
 /* Top bar */
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 16px}
-.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.brand h1{font-size:24px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:8px 0 16px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand h1{font-size:26px;line-height:1.05}
+.marca{display:block;font-family:var(--head);font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-top:3px}
 .who{font-size:15px;color:var(--muted)}
+.acciones{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.hbtn{padding:7px 13px;border-radius:999px;border:2px solid var(--line);background:var(--surface);color:var(--primary);font-weight:700;font-size:14px;white-space:nowrap}
+.hbtn:hover{border-color:var(--primary)}
+.hbtn.salir{color:var(--muted)}
+@media (max-width:520px){.top{flex-direction:column;gap:10px}.acciones{justify-content:flex-start;width:100%}.hbtn{flex:1 1 auto;text-align:center;padding:8px 10px}}
 .link{background:none;border:0;padding:6px 0;color:var(--primary);text-decoration:underline;text-underline-offset:3px}
 
 /* Tabs */
@@ -528,8 +534,8 @@ function viewSetup(){
 
 function viewLogin(){
   return `<div class="cover"><div class="cover-inner">
-    <h1>Libro de comidas - Mizar</h1>
-    <p class="lead">Entra con el usuario y la contraseña que te ha dado el administrador. Este dispositivo te recordará hasta que pulses «Salir».</p>
+    <h1 style="font-size:38px;line-height:1.05">Libro de comidas<span class="marca" style="font-size:17px;margin-top:6px">Mizar</span></h1>
+    <p class="lead" style="margin-top:14px">Entra con el usuario y la contraseña que te ha dado el administrador. Este dispositivo te recordará hasta que pulses «Salir».</p>
     <div class="field"><label for="lg_user">Usuario</label><input class="input" id="lg_user" data-draft="lg_user" autocomplete="username" autocapitalize="none" spellcheck="false" value="${esc(draft("lg_user"))}"></div>
     <div class="field"><label for="pin">Contraseña</label><input class="input" id="pin" type="password" autocomplete="current-password" data-draft="pin" value="${esc(draft("pin"))}"></div>
     ${S.loginErr?`<p class="err">${esc(S.loginErr)}</p>`:""}
@@ -538,7 +544,7 @@ function viewLogin(){
 }
 
 function cabecera(nombre, esAdm){
-  return `<div class="top"><div class="brand"><h1>Libro de comidas - Mizar</h1><span class="who">${esc(nombre)}</span></div><div class="row" style="gap:14px">${esAdm?`<button class="link" data-a="vista-admon">Ver como la administración</button>`:""}<button class="link" data-a="pw-ver">Contraseña</button><button class="link" data-a="logout">Salir</button></div></div>`;
+  return `<div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1><span class="who">${esc(nombre)}</span></div><div class="acciones">${esAdm?`<button class="hbtn" data-a="vista-admon">Ver como administración</button>`:""}<button class="hbtn" data-a="pw-ver">Contraseña</button><button class="hbtn salir" data-a="logout">Salir</button></div></div>`;
 }
 function panelPw(){
   if (!S.verPw) return "";
@@ -1140,7 +1146,7 @@ function viewApp(uReal){
   const bannerAdm = avsAdm.map(a=>`<div class="alert no-print" role="status" style="border-left-color:var(--primary)"><strong>Aviso de los administradores</strong> <span class="muted small">${esc(hora(a.ts))}</span><p style="margin:6px 0">${esc(a.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="av|${esc(a.id)}">Entendido</button></div>`).join("");
   const bannerAv = bannerAdm + (avs.length ? avs.map(x=>`<div class="alert no-print" role="status"><strong>Aviso para el ${esc(fmtLong(x.fecha).toLowerCase())}</strong><p style="margin:6px 0">${esc(x.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="${esc(x.clave)}">Entendido</button></div>`).join("") : "");
   const cab = S.vista
-    ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas - Mizar</h1><span class="who">Administración</span></div></div>`
+    ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1><span class="who">Administración</span></div></div>`
     : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin") + panelPw();
   return cab + (t.length>1 ? tabs(t) : "") + (S.vista ? "" : avisoDatos(u)) + banner + bannerAv + main;
 }
