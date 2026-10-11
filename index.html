@@ -149,7 +149,7 @@ th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white
 th{font-family:var(--head);font-weight:600;background:var(--soft)}
 tr:last-child td{border-bottom:0}
 .tabla-qc th,.tabla-qc td{white-space:normal;padding:9px 8px;font-size:15px;vertical-align:top}
-.tabla-qc th:nth-child(n+3),.tabla-qc td:nth-child(n+3){text-align:center;width:16%}
+.tabla-qc th:nth-child(2),.tabla-qc td:nth-child(2),.tabla-qc th:nth-child(4),.tabla-qc td:nth-child(4){text-align:center;width:15%}
 @media (max-width:520px){.tabla-qc th,.tabla-qc td{font-size:14px;padding:8px 6px}}
 .regcell{color:var(--danger);font-size:13px;display:block}
 
@@ -558,18 +558,34 @@ function tabs(list){
 }
 
 /* --- Editor de un día (para día concreto o plantilla) --- */
-function editor(sel, ctx, f, disabled){
-  const manana = f ? DIAS[wd(addDays(f,1))].toLowerCase() : null;
-  const dis = disabled ? "disabled" : "";
-  const seg = (k, opts) => `<div class="seg" role="group">${opts.map(([v,l])=>`<button class="opt" ${dis} data-a="set" data-ctx="${ctx}" data-k="${k}" data-v="${v}" aria-pressed="${String(sel[k])===v}">${l}</button>`).join("")}</div>`;
-  const yn = k => seg(k, [["false","No"],["true","Sí"]]);
+/* Cada ficha muestra lo que la persona hace ESE día. Por dentro, el desayuno y lo que se lleva
+   se guardan en el registro del día anterior, que es el parte en el que la administración lo necesita. */
+const prevCtx = ctx => ctx.startsWith("d:") ? "d:"+addDays(ctx.slice(2),-1) : "t:"+((Number(ctx.slice(2))+6)%7);
+function vistaDia(ctx){ const a = selDe(ctx), b = selDe(prevCtx(ctx)); return {comida:a.comida, horaBolsa:a.horaBolsa, cena:a.cena, desayuno:b.desayuno, llevar:b.llevar}; }
+function resumenDia(v){
+  const p = [];
+  if (v.desayuno) p.push("desayuno");
+  if (v.llevar!=="nada") p.push(v.llevar==="tupper" ? "se lleva tupper" : "se lleva bolsa de comida");
+  if (v.comida!=="no") p.push("comida "+comidaTxt(v).toLowerCase());
+  if (v.cena) p.push("cena");
+  if (!p.length) return "Sin servicios";
+  const t = p.join(", ").replace("se lleva","te llevas"); return t.charAt(0).toUpperCase()+t.slice(1);
+}
+function editor(v, ctx, f, lockA, lockB){
+  const seg = (k, opts, dis) => `<div class="seg" role="group">${opts.map(([val,l])=>`<button class="opt" ${dis?"disabled":""} data-a="set" data-ctx="${ctx}" data-k="${k}" data-v="${val}" aria-pressed="${String(v[k])===val}">${l}</button>`).join("")}</div>`;
+  const yn = (k, dis) => seg(k, [["false","No"],["true","Sí"]], dis);
+  const ant = f ? addDays(f,-1) : null;
+  const notaB = f
+    ? (lockB ? `<p class="small muted" style="margin:10px 0 0">Ya no se puede cambiar: se decidía hasta el ${esc(fmtLong(ant).toLowerCase())} a las ${esc(horaCierre(ant))}.</p>`
+             : `<p class="small muted" style="margin:10px 0 0">Se cierra antes que el resto del día: puedes cambiarlo hasta el <b>${esc(fmtLong(ant).toLowerCase())} a las ${esc(horaCierre(ant))}</b>, porque se prepara la noche anterior.</p>`)
+    : `<p class="small muted" style="margin:10px 0 0">El desayuno y lo que te llevas se avisan la víspera, porque se preparan la noche anterior.</p>`;
   return `
-    <div class="q"><h3>Comida</h3>${seg("comida", COMIDA)}
-      ${sel.comida==="bolsa" ? `<div class="hora"><label for="h_${ctx}">Hora a la que quieres la bolsa</label><input class="input" type="time" id="h_${ctx}" data-hora="${ctx}" value="${esc(sel.horaBolsa)}" ${dis}></div>` : ""}
+    <div class="q"><h3>Desayuno</h3>${yn("desayuno", lockB)}
+      <p class="small" style="margin:14px 0 6px;font-weight:700">¿Te llevas tupper o bolsa de comida ese día?</p>${seg("llevar", LLEVAR, lockB)}${notaB}</div>
+    <div class="q"><h3>Comida</h3>${seg("comida", COMIDA, lockA)}
+      ${v.comida==="bolsa" ? `<div class="hora"><label for="h_${ctx}">Hora a la que quieres la bolsa</label><input class="input" type="time" id="h_${ctx}" data-hora="${ctx}" value="${esc(v.horaBolsa)}" ${lockA?"disabled":""}></div>` : ""}
     </div>
-    <div class="q"><h3>Cena</h3>${yn("cena")}</div>
-    <div class="q"><h3>Desayuno ${manana ? "del "+manana : "del día siguiente"}</h3>${yn("desayuno")}
-      <p class="small muted" style="margin:12px 0 6px">¿Te llevas algo ese día? Se deja preparado la noche anterior.</p>${seg("llevar", LLEVAR)}</div>`;
+    <div class="q"><h3>Cena</h3>${yn("cena", lockA)}</div>`;
 }
 
 function vistaComensal(r){
@@ -586,35 +602,37 @@ function vistaComensal(r){
       </div>
       ${S.weekOffset!==0?`<p class="row"><button class="link" data-a="week" data-v="0">Volver a esta semana</button></p>`:""}
       <div class="days">${days.map(f=>{
-        const {sel, fuente} = efectiva(r.id, f);
-        const lk = locked(f), isToday = f===today(), open = S.openDay===f;
-        const tag = lk ? `<span class="tag cerrado">Cerrado</span>` : (isToday || esEspecial(f)) ? `<span class="tag abierto">Hasta las ${esc(horaCierre(f))}</span>` : fuente==="plantilla" ? `<span class="tag plantilla">Plantilla</span>` : "";
+        const ant = addDays(f,-1), A = efectiva(r.id, f), B = efectiva(r.id, ant), v = vistaDia("d:"+f);
+        const lkA = locked(f), lkB = locked(ant), lk = lkA && lkB, isToday = f===today(), open = S.openDay===f;
+        const manual = A.fuente==="pedido" || B.fuente==="pedido", dePlantilla = !manual && (A.fuente==="plantilla" || B.fuente==="plantilla");
+        const tpl = S.plantillas[r.id] || {}, hayTpl = !!(tpl["d"+wd(f)] || tpl["d"+wd(ant)]);
+        const tag = lk ? `<span class="tag cerrado">Cerrado</span>` : (isToday || esEspecial(f)) ? `<span class="tag abierto">Hasta las ${esc(horaCierre(f))}</span>` : dePlantilla ? `<span class="tag plantilla">Plantilla</span>` : "";
         return `<div class="day ${isToday?"today":""} ${lk?"locked":""}">
           <button class="day-head" data-a="openday" data-f="${f}" aria-expanded="${open}">
             <span class="day-name">${DIAS[wd(f)]}<small>${fmtDay(f)}</small></span>
-            <span class="day-sum">${esc(resumen(sel,f))}</span>
+            <span class="day-sum">${esc(resumenDia(v))}</span>
             <span class="tagcol">${tag}</span>
           </button>
           ${open ? `<div class="editor">
-            ${lk?`<p class="muted small">Este día ya está cerrado y la administración tiene el parte. Para un cambio de última hora, habla directamente con ellos.</p>`:""}
-            ${editor(sel, "d:"+f, f, lk)}
-            ${!lk ? `<div class="editor-foot"><span class="muted small">${fuente==="pedido"?"Cambiado a mano para este día.":fuente==="plantilla"?"Viene de tu plantilla fija. Cualquier cambio afecta solo a este día.":"Sin plantilla para este día."}</span>
-              ${fuente==="pedido" && S.plantillas[r.id] && S.plantillas[r.id]["d"+wd(f)] ? `<button class="btn ghost" data-a="reset" data-f="${f}">Volver a la plantilla</button>`:""}</div>`:""}
+            ${lk?`<p class="muted small">Este día ya está cerrado y la administración tiene el parte. Si necesitas un cambio, llama a alguno de los administradores.</p>`:""}
+            ${editor(v, "d:"+f, f, lkA, lkB)}
+            ${!lk ? `<div class="editor-foot"><span class="muted small">${manual?"Cambiado a mano para este día.":dePlantilla?"Viene de tu plantilla fija. Cualquier cambio afecta solo a este día.":"Sin plantilla para este día."}</span>
+              ${manual && hayTpl ? `<button class="btn ghost" data-a="reset" data-f="${f}">Volver a la plantilla</button>`:""}</div>`:""}
           </div>`:""}
         </div>`;
       }).join("")}</div>`;
   } else {
     main = `<p class="muted">Lo que marques aquí se aplica automáticamente todas las semanas. Si un día concreto cambias de plan, modifícalo en «Mi semana» y solo afectará a ese día.</p>
       <div class="days">${[0,1,2,3,4,5,6].map(i=>{
-        const t = S.plantillas[r.id] && S.plantillas[r.id]["d"+i];
-        const sel = norm(t), open = S.openWd===i;
+        const tp = S.plantillas[r.id] || {}, t = tp["d"+i] || tp["d"+((i+6)%7)];
+        const v = vistaDia("t:"+i), open = S.openWd===i;
         return `<div class="day">
           <button class="day-head" data-a="openwd" data-v="${i}" aria-expanded="${open}">
             <span class="day-name">${DIAS[i]}<small>Todas las semanas</small></span>
-            <span class="day-sum">${t?esc(resumen(sel)):'<span class="muted">Sin plantilla</span>'}</span><span></span>
+            <span class="day-sum">${t?esc(resumenDia(v)):'<span class="muted">Sin plantilla</span>'}</span><span></span>
           </button>
-          ${open?`<div class="editor">${editor(sel, "t:"+i, null, false)}
-            ${t?`<div class="editor-foot"><span></span><button class="btn ghost" data-a="clearwd" data-v="${i}">Quitar plantilla de este día</button></div>`:""}</div>`:""}
+          ${open?`<div class="editor">${editor(v, "t:"+i, null, false, false)}
+            ${t?`<div class="editor-foot"><span></span><button class="btn ghost" data-a="clearwd" data-v="${i}">Vaciar este día</button></div>`:""}</div>`:""}
         </div>`;
       }).join("")}</div>`;
   }
@@ -939,10 +957,11 @@ function quienComeView(){
   const f = S.qcFecha || today(), d = datosParte(f), lk = locked(f), manana = DIAS[wd(addDays(f,1))].toLowerCase();
   const ex = extrasDe(f), exM = extrasDe(addDays(f,1));
   const nCom = d.turnos.reduce((a,t)=>a+t[1].length,0) + d.bolsas.length;
+  const desHoy = id => efectiva(id, addDays(f,-1)).sel.desayuno, nDes = d.filas.filter(o=>desHoy(o.r.id)).length;
   const exCom = (ex.primer||0)+(ex.normal||0)+(ex.segundo||0)+sumaBolsas(ex.bolsas);
   const filas = d.filas.slice().sort((a,b)=>String(a.r.nombre||"").localeCompare(String(b.r.nombre||""),"es"));
   const marca = v => v ? "Sí" : '<span class="muted">No</span>';
-  const extraTxt = [exCom ? exCom+" en la comida" : "", (ex.cena||0) ? ex.cena+" en la cena" : "", (exM.desayuno||0) ? exM.desayuno+" en el desayuno" : ""].filter(Boolean).join(", ");
+  const extraTxt = [exCom ? exCom+" en la comida" : "", (ex.cena||0) ? ex.cena+" en la cena" : "", (ex.desayuno||0) ? ex.desayuno+" en el desayuno" : ""].filter(Boolean).join(", ");
   return `<div class="weeknav">
       <button class="arrow" data-a="qcday" data-v="-1" aria-label="Día anterior">‹</button>
       <h2>${fmtLong(f)}</h2>
@@ -953,14 +972,14 @@ function quienComeView(){
     <div class="blocks" style="grid-template-columns:repeat(3,1fr);gap:8px">
       <section class="block" style="padding:10px 12px;text-align:center"><div class="muted small">Comen</div><b style="font-family:var(--head);font-size:28px">${nCom}</b></section>
       <section class="block" style="padding:10px 12px;text-align:center"><div class="muted small">Cenan</div><b style="font-family:var(--head);font-size:28px">${d.cena[0].length}</b></section>
-      <section class="block" style="padding:10px 12px;text-align:center"><div class="muted small">Desayunan el ${esc(manana)}</div><b style="font-family:var(--head);font-size:28px">${d.desayuno[0].length}</b></section>
+      <section class="block" style="padding:10px 12px;text-align:center"><div class="muted small">Desayunan</div><b style="font-family:var(--head);font-size:28px">${nDes}</b></section>
     </div>
     ${extraTxt ? `<p class="muted small" style="margin-top:-12px">Además hay comensales extra: ${esc(extraTxt)}.</p>` : ""}
     ${filas.length ? `<div class="tablewrap"><table class="tabla-qc">
-      <thead><tr><th>Persona</th><th>Comida</th><th>Cena</th><th>Desay.*</th></tr></thead>
-      <tbody>${filas.map(o=>`<tr${o.r.id===S.session.uid?' style="background:var(--soft)"':""}><td>${esc(o.r.nombre||"")}</td><td>${o.sel.comida==="no" ? '<span class="muted">No</span>' : esc(comidaTxt(o.sel))}</td><td>${marca(o.sel.cena)}</td><td>${marca(o.sel.desayuno)}</td></tr>`).join("")}</tbody></table></div>`
+      <thead><tr><th>Persona</th><th>Desay.</th><th>Comida</th><th>Cena</th></tr></thead>
+      <tbody>${filas.map(o=>`<tr${o.r.id===S.session.uid?' style="background:var(--soft)"':""}><td>${esc(o.r.nombre||"")}</td><td>${marca(desHoy(o.r.id))}</td><td>${o.sel.comida==="no" ? '<span class="muted">No</span>' : esc(comidaTxt(o.sel))}</td><td>${marca(o.sel.cena)}</td></tr>`).join("")}</tbody></table></div>`
       : `<div class="empty">No hay residentes activos.</div>`}
-    <p class="muted small">* Desayuno del ${esc(manana)}.</p>`;
+`;
 }
 
 /* --- Avisos de los administradores a todos los residentes --- */
@@ -1242,8 +1261,10 @@ async function guardarSel(ctx, sel){
   const rid = S.session.uid;
   if (ctx.startsWith("d:")){
     const f = ctx.slice(2);
-    if (locked(f)){ toast("Este día ya está cerrado."); return; }
-    const id = f+"_"+rid, doc = {fecha:f, residente:rid, ...sel, ts:Date.now()};
+    if (locked(f)){ toast("Ya no se puede cambiar: está cerrado."); return; }
+    const id = f+"_"+rid, base = norm((S.plantillas[rid]||{})["d"+wd(f)]), K = ["comida","horaBolsa","cena","desayuno","llevar"];
+    if (K.every(k=>String(sel[k])===String(base[k]))){ delete S.pedidos[id]; render(); await w(()=>S.db.doc("pedidos/"+id).delete()); return; }
+    const doc = {fecha:f, residente:rid, ...sel, ts:Date.now()};
     S.pedidos[id] = doc; render();
     await w(()=>S.db.doc("pedidos/"+id).set(doc));
   } else {
@@ -1396,7 +1417,7 @@ async function act(a, b){
     case "openday": S.openDay = S.openDay===b.dataset.f ? null : b.dataset.f; break;
     case "openwd": S.openWd = S.openWd===Number(v) ? null : Number(v); break;
     case "set": {
-      const ctx = b.dataset.ctx, k = b.dataset.k;
+      const k = b.dataset.k, ctx = (k==="desayuno"||k==="llevar") ? prevCtx(b.dataset.ctx) : b.dataset.ctx;
       const val = (k==="cena"||k==="desayuno") ? v==="true" : v;
       const sel = {...selDe(ctx), [k]:val};
       if (k==="comida" && val==="bolsa" && !sel.horaBolsa) sel.horaBolsa = "14:00";
@@ -1404,13 +1425,16 @@ async function act(a, b){
       await guardarSel(ctx, sel); return;
     }
     case "reset": {
-      const f=b.dataset.f, id=f+"_"+S.session.uid;
-      if (locked(f)) return;
-      delete S.pedidos[id]; render();
-      await w(()=>S.db.doc("pedidos/"+id).delete()); return;
+      const f=b.dataset.f, ant=addDays(f,-1), rid=S.session.uid, tp=S.plantillas[rid]||{};
+      const tA=norm(tp["d"+wd(f)]), tB=norm(tp["d"+wd(ant)]);
+      if (!locked(f)) await guardarSel("d:"+f, {...efectiva(rid,f).sel, comida:tA.comida, horaBolsa:tA.horaBolsa, cena:tA.cena});
+      if (!locked(ant)) await guardarSel("d:"+ant, {...efectiva(rid,ant).sel, desayuno:tB.desayuno, llevar:tB.llevar});
+      return;
     }
     case "clearwd": {
-      const rid=S.session.uid, t={...(S.plantillas[rid]||{})}; delete t["d"+v];
+      const rid=S.session.uid, t={...(S.plantillas[rid]||{})}, i=Number(v), j=(i+6)%7;
+      t["d"+i] = {...norm(t["d"+i]), comida:"no", horaBolsa:"", cena:false};
+      t["d"+j] = {...norm(t["d"+j]), desayuno:false, llevar:"nada"};
       S.plantillas[rid]=t; S.openWd=null; render();
       await w(()=>S.db.doc("plantillas/"+rid).set(t)); return;
     }
