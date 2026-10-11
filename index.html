@@ -52,16 +52,19 @@ h3{font-size:17px;font-weight:600}
 .small{font-size:14px}
 
 /* Top bar */
-.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:8px 0 16px;flex-wrap:wrap}
-.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
-.brand h1{font-size:26px;line-height:1.05}
-.marca{display:block;font-family:var(--head);font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-top:3px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 14px}
+.brand{display:flex;flex-direction:column;min-width:0}
+.brand h1{font-size:23px;line-height:1.05}
+.marca{display:block;font-family:var(--head);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-top:3px}
 .who{font-size:15px;color:var(--muted)}
-.acciones{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.hbtn{padding:7px 13px;border-radius:999px;border:2px solid var(--line);background:var(--surface);color:var(--primary);font-weight:700;font-size:14px;white-space:nowrap}
-.hbtn:hover{border-color:var(--primary)}
-.hbtn.salir{color:var(--muted)}
-@media (max-width:520px){.top{flex-direction:column;gap:10px}.acciones{justify-content:flex-start;width:100%}.hbtn{flex:1 1 auto;text-align:center;padding:8px 10px}}
+.avatar{flex:none;width:46px;height:46px;border-radius:50%;border:2px solid var(--primary);background:var(--primary);color:var(--primary-ink);font-family:var(--head);font-weight:700;font-size:16px;display:grid;place-items:center;padding:0}
+.avatar[aria-expanded="true"]{background:var(--surface);color:var(--primary)}
+.cuenta{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px;margin:-4px 0 16px}
+.cuenta .yo{font-weight:700;padding:2px 4px 10px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.cuenta .yo small{display:block;font-weight:400;color:var(--muted);font-size:14px}
+.cuenta button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:11px 10px;font-weight:700;color:var(--primary)}
+.cuenta button:hover{background:var(--soft)}
+.cuenta button.salir{color:var(--danger)}
 .link{background:none;border:0;padding:6px 0;color:var(--primary);text-decoration:underline;text-underline-offset:3px}
 
 /* Tabs */
@@ -544,7 +547,13 @@ function viewLogin(){
 }
 
 function cabecera(nombre, esAdm){
-  return `<div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1><span class="who">${esc(nombre)}</span></div><div class="acciones">${esAdm?`<button class="hbtn" data-a="vista-admon">Ver como administración</button>`:""}<button class="hbtn" data-a="pw-ver">Contraseña</button><button class="hbtn salir" data-a="logout">Salir</button></div></div>`;
+  const ini = (inicialesDe(nombre)||"?").slice(0,2);
+  return `<div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div>
+    <button class="avatar" data-a="cuenta" aria-expanded="${!!S.cuenta}" aria-label="Mi cuenta">${esc(ini)}</button></div>
+    ${S.cuenta ? `<div class="cuenta no-print"><div class="yo">${esc(nombre)}<small>${esAdm?"Administrador":nombre==="Administración"?"Administración":"Residente"}</small></div>
+      ${esAdm?`<button data-a="vista-admon">Ver como la administración</button>`:""}
+      <button data-a="pw-ver">Cambiar contraseña</button>
+      <button class="salir" data-a="logout">Salir</button></div>` : ""}`;
 }
 function panelPw(){
   if (!S.verPw) return "";
@@ -1146,7 +1155,7 @@ function viewApp(uReal){
   const bannerAdm = avsAdm.map(a=>`<div class="alert no-print" role="status" style="border-left-color:var(--primary)"><strong>Aviso de los administradores</strong> <span class="muted small">${esc(hora(a.ts))}</span><p style="margin:6px 0">${esc(a.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="av|${esc(a.id)}">Entendido</button></div>`).join("");
   const bannerAv = bannerAdm + (avs.length ? avs.map(x=>`<div class="alert no-print" role="status"><strong>Aviso para el ${esc(fmtLong(x.fecha).toLowerCase())}</strong><p style="margin:6px 0">${esc(x.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="${esc(x.clave)}">Entendido</button></div>`).join("") : "");
   const cab = S.vista
-    ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1><span class="who">Administración</span></div></div>`
+    ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div></div>`
     : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin") + panelPw();
   return cab + (t.length>1 ? tabs(t) : "") + (S.vista ? "" : avisoDatos(u)) + banner + bannerAv + main;
 }
@@ -1352,10 +1361,11 @@ async function act(a, b){
       }
       S.entrando=false; break;
     }
-    case "logout": S.drafts={}; S.openDay=null; S.openWd=null; await signOut(auth); return;
-    case "vista-admon": S.vista = true; S.tabReal = S.tab; S.tab = "parte"; S.verPw = false; S.menu = false; window.scrollTo(0,0); break;
+    case "logout": S.cuenta = false; S.drafts={}; S.openDay=null; S.openWd=null; await signOut(auth); return;
+    case "vista-admon": S.cuenta = false; S.vista = true; S.tabReal = S.tab; S.tab = "parte"; S.verPw = false; S.menu = false; window.scrollTo(0,0); break;
     case "vista-salir": S.vista = false; S.tab = S.tabReal || null; S.menu = false; window.scrollTo(0,0); break;
-    case "menu": S.menu = !S.menu; break;
+    case "menu": S.menu = !S.menu; S.cuenta = false; break;
+    case "cuenta": S.cuenta = !S.cuenta; S.menu = false; break;
     case "qcday": S.qcFecha = v==="0" ? today() : addDays(S.qcFecha || today(), Number(v)); break;
     case "rf-regen": { const m = {...(S.drafts.rf_regen||{})}; m[v] = m[v]===false; S.drafts.rf_regen = m; break; }
     case "av-pub": {
@@ -1403,7 +1413,7 @@ async function act(a, b){
       catch(e){ toast("No se ha podido borrar ("+(e.code||e.message)+")."); }
       break;
     }
-    case "pw-ver": S.verPw=!S.verPw; delete S.drafts.pw_act; delete S.drafts.pw_new; delete S.drafts.pw_rep; break;
+    case "pw-ver": S.cuenta = false; S.verPw=!S.verPw; delete S.drafts.pw_act; delete S.drafts.pw_new; delete S.drafts.pw_rep; break;
     case "pw-save": {
       const act=String(draft("pw_act")), nw=String(draft("pw_new")), rp=String(draft("pw_rep"));
       if (nw.length<6){ toast("La nueva contraseña debe tener al menos 6 caracteres."); return; }
