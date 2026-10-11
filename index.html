@@ -63,6 +63,15 @@ button{cursor:pointer}
 .hb[aria-current="true"]{border-color:var(--primary)}
 .hb .badge{position:absolute;top:6px;right:8px}
 .sec-t{font-size:26px;margin:2px 0 14px}
+.modal-velo{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:30}
+.modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:31;width:min(92vw,520px);max-height:82vh;overflow:auto;background:var(--surface);border-radius:18px;padding:18px 18px 16px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.modal-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.modal-h h2{font-size:21px}
+.cerrar{flex:none;width:38px;height:38px;border-radius:50%;border:2px solid var(--line);background:var(--surface);font-size:20px;line-height:1;color:var(--muted)}
+.mes-t{font-family:var(--head);font-weight:600;font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:18px 2px 8px}
+button.cal-d{text-align:left;cursor:pointer;color:inherit;font:inherit}
+button.cal-d:hover{border-color:var(--primary)}
+.editado{font-size:12px;color:var(--accent);font-weight:700}
 h1,h2,h3{font-family:var(--head);line-height:1.15;margin:0}
 h1{font-size:30px;font-weight:750;letter-spacing:-.01em}
 h2{font-size:22px;font-weight:750}
@@ -323,7 +332,7 @@ function saveSession(){}
 
 function efectiva(rid,f){
   const p = S.pedidos[f+"_"+rid];
-  if (p) return {sel:norm(p), fuente:"pedido"};
+  if (p) return {sel:norm(p), fuente:"pedido", editadoPor:p.editadoPor};
   const t = S.plantillas[rid] && S.plantillas[rid]["d"+wd(f)];
   if (t) return {sel:norm(t), fuente:"plantilla"};
   return {sel:norm(), fuente:"vacio"};
@@ -648,7 +657,7 @@ function editor(v, ctx, f, lockA, lockB){
   return `
     <div class="q"><h3>Desayuno</h3>${yn("desayuno", lockB)}
       <p class="small" style="margin:14px 0 6px;font-weight:700">¿Te llevas tupper o bolsa de comida ese día?</p>${seg("llevar", LLEVAR, lockB)}${notaB}</div>
-    <div class="q"><h3>Comida</h3>${seg("comida", COMIDA, lockA)}
+    <div class="q"><h3>Comida</h3>${v.llevar!=="nada" && v.comida==="no" ? `<p class="small muted" style="margin:-4px 0 8px">Te llevas ${v.llevar==="tupper"?"tupper":"bolsa de comida"}, así que ese día no comes aquí.</p>` : ""}${seg("comida", COMIDA, lockA)}
       ${v.comida==="bolsa" ? `<div class="hora"><label for="h_${ctx}">Hora a la que quieres la bolsa</label><input class="input" type="time" id="h_${ctx}" data-hora="${ctx}" value="${esc(v.horaBolsa)}" ${lockA?"disabled":""}></div>` : ""}
     </div>
     <div class="q"><h3>Cena</h3>${yn("cena", lockA)}</div>`;
@@ -682,6 +691,7 @@ function vistaComensal(r){
           ${open ? `<div class="editor">
             ${lk?`<p class="muted small">Este día ya está cerrado y la administración tiene el parte. Si necesitas un cambio, llama a alguno de los administradores.</p>`:""}
             ${editor(v, "d:"+f, f, lkA, lkB)}
+            ${[A,B].some(x=>x.editadoPor) ? `<p class="editado" style="margin:0 0 6px">Modificado por ${esc((resById(([A,B].find(x=>x.editadoPor)||{}).editadoPor)||{}).nombre||"un administrador")}.</p>` : ""}
             ${!lk ? `<div class="editor-foot"><span class="muted small">${manual?"Cambiado a mano para este día.":dePlantilla?"Viene de tu plantilla fija. Cualquier cambio afecta solo a este día.":"Sin plantilla para este día."}</span>
               ${manual && hayTpl ? `<button class="btn ghost" data-a="reset" data-f="${f}">Volver a la plantilla</button>`:""}</div>`:""}
           </div>`:""}
@@ -707,7 +717,7 @@ function vistaComensal(r){
 
 /* --- Parte del día --- */
 function datosParte(f){
-  const filas = activos().map(r=>({r, ...efectiva(r.id,f)}));
+  const filas = activos().map(r=>({r, ...efectiva(r.id,f), editadoPor:(S.pedidos[f+"_"+r.id]||{}).editadoPor}));
   const g = fn => filas.filter(fn);
   const ex = extrasDe(f), exM = extrasDe(addDays(f,1));
   const avisos = S.mensajes.filter(m=>m.de==="admin" && m.fecha===f).map(m=>m.texto);
@@ -770,10 +780,11 @@ function parteHTML(f, anon){
     </div>
     ${anon ? "" : `<h2 style="margin-bottom:10px">Detalle por persona</h2>
     ${d.filas.length ? `<div class="tablewrap"><table>
-      <thead><tr><th>Persona</th><th>Comida</th><th>Cena</th><th>Desayuno ${manana}</th><th>Llevar ${manana}</th></tr></thead>
+      <thead><tr><th>Persona</th><th>Comida</th><th>Cena</th><th>Desayuno ${manana}</th><th>Llevar ${manana}</th><th></th></tr></thead>
       <tbody>${d.filas.map(o=>`<tr><td>${esc(o.r.nombre)}${o.r.regimen?`<span class="regcell">${esc(o.r.regimen)}${esc(regAmbito(o.r))} (${esc(iniciales(o.r))})</span>`:""}</td>
         <td>${o.sel.comida==="no"?"—":esc(comidaTxt(o.sel))}</td><td>${o.sel.cena?"Sí":"—"}</td><td>${o.sel.desayuno?"Sí":"—"}</td>
-        <td>${o.sel.llevar==="nada"?"—":(o.sel.llevar==="tupper"?"Tupper":"Bolsa")}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No hay comensales activos.</div>`}`}`;
+        <td>${o.sel.llevar==="nada"?"—":(o.sel.llevar==="tupper"?"Tupper":"Bolsa")}</td>
+        <td>${o.r.id ? `<button class="link" data-a="ed-abrir" data-id="${o.r.id}" data-f="${f}">Editar</button>${o.editadoPor?`<div class="editado">Corregido</div>`:""}` : ""}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No hay comensales activos.</div>`}`}`;
 }
 function parteView(){
   const f = S.parteFecha, anon = verAnon();
@@ -817,11 +828,14 @@ function datosView(u){
 }
 function cumplesView(){
   const me = resById(S.session.uid);
-  const lista = conCumple().map(r=>({r, d:diasHasta(r.cumple)})).sort((a,b)=>a.d-b.d || String(nombreVis(a.r)).localeCompare(String(nombreVis(b.r)),"es"));
+  const lista = conCumple().map(r=>({r, d:diasHasta(r.cumple)})).sort((a,b)=>String(a.r.cumple||"99").localeCompare(String(b.r.cumple||"99")) || String(nombreVis(a.r)).localeCompare(String(nombreVis(b.r)),"es"));
   const cuando = d => d===0 ? '<span class="tag abierto">Hoy</span>' : d===1 ? '<span class="tag plantilla">Mañana</span>' : d<9999 ? `<span class="muted small">dentro de ${d} días</span>` : "";
+  let mesPrevio = null;
   return (lista.length ? lista.map(({r,d})=>{
-    const pend = pideActualizar(r);
-    return `<div class="res" style="grid-template-columns:1fr">
+    const pend = pideActualizar(r), mesR = r.cumple ? Number(r.cumple.slice(0,2)) : 0;
+    const cab = mesR!==mesPrevio ? `<div class="mes-t">${mesR ? MESES[mesR-1] : "Sin fecha de cumpleaños"}</div>` : "";
+    mesPrevio = mesR;
+    return cab + `<div class="res" style="grid-template-columns:1fr">
       <div class="row" style="justify-content:space-between"><strong>${esc(nombreVis(r))}</strong><span>${r.cumple?`${esc(fmtCumple(r.cumple))}${r.anioNac?` de ${r.anioNac}`:""} ${cuando(d)}`:'<span class="tag cerrado">Sin cumpleaños</span>'}</span></div>
       ${r.cumple && r.anioNac ? `<div class="small"><strong>${d===0?"Hoy cumple":"Cumplirá"} ${edadProx(r)} años</strong>${d===0?"":` el ${esc(fmtCumple(r.cumple))}`}</div>` : (r.cumple ? `<div class="small muted">Falta el año de nacimiento.</div>` : "")}
       <div class="small">${String(r.gustos||"").trim() ? esc(r.gustos).replace(/\n/g,"<br>") : '<span style="color:var(--danger)">Todavía no ha indicado sus gustos.</span>'}</div>
@@ -908,7 +922,8 @@ function calendarioView(modo){
   for (let i=0;i<wd(primero);i++) celdas.push(`<div class="cal-d vacio"></div>`);
   for (let f=primero; f<=ultimo; f=addDays(f,1)){
     const its = items.filter(x=>x.fecha===f);
-    celdas.push(`<div class="cal-d ${f===today()?"hoy":""}"><div class="cal-n">${Number(f.slice(8))}</div>${its.map(x=>`<span class="cal-i ${x.tipo}" title="${esc(x.texto)}">${esc(x.tipo==="cumple"?x.corto:x.texto)}</span>`).join("")}</div>`);
+    const dentro = `<div class="cal-n">${Number(f.slice(8))}</div>${its.map(x=>`<span class="cal-i ${x.tipo}" title="${esc(x.texto)}">${esc(x.tipo==="cumple"?x.corto:x.texto)}</span>`).join("")}`;
+    celdas.push(its.length ? `<button class="cal-d ${f===today()?"hoy":""}" data-a="cal-dia" data-f="${f}" aria-label="Ver lo que hay el ${esc(fmtLong(f))}">${dentro}</button>` : `<div class="cal-d ${f===today()?"hoy":""}">${dentro}</div>`);
   }
   const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
   const pendientes = S.eventos.filter(e=>e.estado==="pendiente");
@@ -1046,6 +1061,31 @@ function quienComeView(){
       <tbody>${filas.map(o=>`<tr${o.r.id===S.session.uid?' style="background:var(--soft)"':""}><td>${esc(o.r.nombre||"")}</td><td>${marca(desHoy(o.r.id))}</td><td>${o.sel.comida==="no" ? '<span class="muted">No</span>' : esc(comidaTxt(o.sel))}</td><td>${marca(o.sel.cena)}</td></tr>`).join("")}</tbody></table></div>`
       : `<div class="empty">No hay residentes activos.</div>`}
 `;
+}
+
+/* --- Ventanillas --- */
+function modalHTML(){
+  const m = S.modal; if (!m) return "";
+  let tit = "", cuerpo = "";
+  if (m.tipo==="cal"){
+    const its = eventosEntre(m.f, m.f);
+    tit = fmtLong(m.f);
+    cuerpo = its.length ? its.map(x=>`<div class="res" style="grid-template-columns:1fr"><div><span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span></div><div style="font-weight:700">${esc(x.texto)}</div>${x.detalle?`<div class="small">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>`).join("") : `<p class="muted">No hay nada este día.</p>`;
+  }
+  if (m.tipo==="edit"){
+    const r = resById(m.rid), f = m.f, manana = DIAS[wd(addDays(f,1))].toLowerCase(), v = S.drafts.ed || norm();
+    const seg = (k, opts) => `<div class="seg" role="group">${opts.map(([val,l])=>`<button class="opt" data-a="ed-set" data-k="${k}" data-v="${val}" aria-pressed="${String(v[k])===val}">${l}</button>`).join("")}</div>`;
+    const yn = k => seg(k, [["false","No"],["true","Sí"]]);
+    tit = "Corregir: " + ((r||{}).nombre||"");
+    cuerpo = `<p class="muted small" style="margin-top:0">Parte del ${esc(fmtLong(f).toLowerCase())}. ${locked(f) ? "<b>Este parte ya está cerrado</b>: el cambio se reflejará al momento en el parte de la administración." : "El parte todavía está abierto."}</p>
+      <div class="q"><h3>Comida</h3>${seg("comida", COMIDA)}${v.comida==="bolsa" ? `<div class="hora"><label for="ed_hora">Hora de la bolsa</label><input class="input" type="time" id="ed_hora" data-draft="ed_hora" value="${esc(draft("ed_hora", v.horaBolsa||"14:00"))}"></div>` : ""}</div>
+      <div class="q"><h3>Cena</h3>${yn("cena")}</div>
+      <div class="q"><h3>Desayuno del ${esc(manana)}</h3>${yn("desayuno")}</div>
+      <div class="q"><h3>Se lleva el ${esc(manana)}</h3>${seg("llevar", LLEVAR)}</div>
+      ${locked(f) ? `<label style="display:flex;gap:10px;align-items:center;margin:14px 0 4px;font-weight:700;cursor:pointer"><input type="checkbox" data-a="ed-aviso" ${S.drafts.ed_aviso!==false?"checked":""} style="width:22px;height:22px;accent-color:var(--primary)"> Avisar a la administración con una nota</label><p class="muted small" style="margin:0 0 10px 32px">Se enviará con las iniciales (${esc(iniciales(r||{}))}), nunca con el nombre.</p>` : ""}
+      <div class="row" style="margin-top:12px"><button class="btn" data-a="ed-guardar">Guardar corrección</button><button class="btn ghost" data-a="modal-cerrar">Cancelar</button></div>`;
+  }
+  return `<div class="modal-velo" data-a="modal-cerrar"></div><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(tit)}"><div class="modal-h"><h2>${esc(tit)}</h2><button class="cerrar" data-a="modal-cerrar" aria-label="Cerrar">×</button></div>${cuerpo}</div>`;
 }
 
 /* --- Avisos de los administradores a todos los residentes --- */
@@ -1209,7 +1249,7 @@ function viewApp(uReal){
     ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div></div>`
     : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin") + panelPw();
   const actual = t.find(x=>x[0]===S.tab);
-  return cab + (actual ? `<h2 class="sec-t">${actual[1]}</h2>` : "") + (S.vista ? "" : avisoDatos(u)) + banner + bannerAv + main + (t.length>1 ? navegacion(t, rol, esComensal(u)) : "");
+  return modalHTML() + cab + (actual ? `<h2 class="sec-t">${actual[1]}</h2>` : "") + (S.vista ? "" : avisoDatos(u)) + banner + bannerAv + main + (t.length>1 ? navegacion(t, rol, esComensal(u)) : "");
 }
 
 /* ---------- PDF del parte ---------- */
@@ -1376,7 +1416,7 @@ document.addEventListener("click", e => {
 
 async function act(a, b){
   const v = b.dataset.v;
-  if (S.vista && !["tab","menu","parteday","cal-mes","pdf","print","vista-salir","logout","reload"].includes(a)){ toast("Vista de la administración: solo lectura."); return; }
+  if (S.vista && !["tab","menu","parteday","cal-mes","cal-dia","modal-cerrar","pdf","print","vista-salir","logout","reload","cuenta"].includes(a)){ toast("Vista de la administración: solo lectura."); return; }
   switch(a){
     case "setup": {
       const nombre=String(draft("su_nombre","Nacho")).trim(), usuario=normU(draft("su_usuario","nacho")), pw=String(draft("su_pin")), h=draft("su_hora","09:30");
@@ -1417,6 +1457,36 @@ async function act(a, b){
     case "vista-admon": S.cuenta = false; S.vista = true; S.tabReal = S.tab; S.tab = "parte"; S.verPw = false; S.menu = false; window.scrollTo(0,0); break;
     case "vista-salir": S.vista = false; S.tab = S.tabReal || null; S.menu = false; window.scrollTo(0,0); break;
     case "menu": S.menu = !S.menu; S.cuenta = false; break;
+    case "cal-dia": S.modal = {tipo:"cal", f:b.dataset.f}; break;
+    case "modal-cerrar": S.modal = null; delete S.drafts.ed; delete S.drafts.ed_hora; delete S.drafts.ed_aviso; break;
+    case "ed-abrir": {
+      if (rolDe(resById(S.session.uid))!=="admin") return;
+      const rid = b.dataset.id, f = b.dataset.f;
+      S.drafts.ed = {...efectiva(rid, f).sel}; S.drafts.ed_hora = S.drafts.ed.horaBolsa || "14:00"; S.drafts.ed_aviso = true;
+      S.modal = {tipo:"edit", rid, f}; break;
+    }
+    case "ed-set": {
+      const k = b.dataset.k, val = (k==="cena"||k==="desayuno") ? v==="true" : v, e = {...S.drafts.ed, [k]:val};
+      if (k==="llevar" && val!=="nada") { /* quien se lleva algo al día siguiente sigue pudiendo comer hoy: no se toca */ }
+      if (k==="comida" && val!=="bolsa") e.horaBolsa = "";
+      S.drafts.ed = e; break;
+    }
+    case "ed-aviso": S.drafts.ed_aviso = b.checked; break;
+    case "ed-guardar": {
+      const m = S.modal; if (!m || m.tipo!=="edit") return;
+      const r = resById(m.rid), antes = efectiva(m.rid, m.f).sel, e = {...S.drafts.ed};
+      if (e.comida==="bolsa") e.horaBolsa = String(draft("ed_hora","14:00")) || "14:00";
+      const doc = {fecha:m.f, residente:m.rid, comida:e.comida, horaBolsa:e.horaBolsa||"", cena:!!e.cena, desayuno:!!e.desayuno, llevar:e.llevar||"nada", ts:Date.now(), editadoPor:S.session.uid};
+      await w(()=>S.db.doc("pedidos/"+m.f+"_"+m.rid).set(doc));
+      if (locked(m.f) && S.drafts.ed_aviso!==false){
+        const manana = DIAS[wd(addDays(m.f,1))].toLowerCase();
+        const t = (x)=>[x.comida==="no"?"no come":"comida "+comidaTxt(x).toLowerCase(), x.cena?"cena":"no cena", x.desayuno?"desayuna el "+manana:"no desayuna el "+manana, x.llevar==="nada"?"":(x.llevar==="tupper"?"tupper":"bolsa de comida")+" para el "+manana].filter(Boolean).join(", ");
+        const texto = "Cambio en el parte de "+iniciales(r||{})+": antes "+t(antes)+". Ahora "+t(doc)+".";
+        await w(()=>S.db.collection("mensajes").doc(newId("m")).set({de:"admin", para:"cocina", texto, ts:Date.now(), leido:false, fecha:m.f}));
+      }
+      S.modal = null; delete S.drafts.ed; delete S.drafts.ed_hora; delete S.drafts.ed_aviso;
+      toast("Corrección guardada."); break;
+    }
     case "cuenta": S.cuenta = !S.cuenta; S.menu = false; break;
     case "qcday": S.qcFecha = v==="0" ? today() : addDays(S.qcFecha || today(), Number(v)); break;
     case "rf-regen": { const m = {...(S.drafts.rf_regen||{})}; m[v] = m[v]===false; S.drafts.rf_regen = m; break; }
@@ -1490,6 +1560,27 @@ async function act(a, b){
       const sel = {...selDe(ctx), [k]:val};
       if (k==="comida" && val==="bolsa" && !sel.horaBolsa) sel.horaBolsa = "14:00";
       if (k==="comida" && val!=="bolsa") sel.horaBolsa = "";
+      const dia = b.dataset.ctx, previo = prevCtx(dia);
+      const cerrado = c => c.startsWith("d:") && locked(c.slice(2));
+      // Llevarse tupper o bolsa de comida = ese día no se come en la residencia
+      if (k==="llevar" && val!=="nada"){
+        if (cerrado(ctx)){ toast("Ya no se puede cambiar: se cerró el día anterior."); return; }
+        await guardarSel(ctx, sel);
+        const d = selDe(dia);
+        if (d.comida!=="no"){
+          if (!cerrado(dia)){ await guardarSel(dia, {...d, comida:"no", horaBolsa:""}); toast("Como te llevas "+(val==="tupper"?"tupper":"bolsa de comida")+", he marcado que ese día no comes aquí."); }
+          else toast("Ojo: tienes marcada la comida de ese día y ya no se puede cambiar. Avisa a un administrador.");
+        }
+        return;
+      }
+      // Elegir un turno de comida = no hace falta tupper ni bolsa ese día
+      if (k==="comida" && val!=="no"){
+        const p = selDe(previo);
+        if (p.llevar!=="nada"){
+          if (!cerrado(previo)){ await guardarSel(previo, {...p, llevar:"nada"}); toast("Como comes aquí, he quitado "+(p.llevar==="tupper"?"el tupper":"la bolsa de comida")+" de ese día."); }
+          else toast("Ojo: ya tienes "+(p.llevar==="tupper"?"tupper":"bolsa de comida")+" preparado para ese día. Si también comes aquí, avisa a un administrador.");
+        }
+      }
       await guardarSel(ctx, sel); return;
     }
     case "reset": {
