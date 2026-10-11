@@ -43,7 +43,26 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.wrap{max-width:760px;margin:0 auto;padding:16px 16px 64px}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 110px}
+/* Barra de navegación inferior */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -3px 14px rgba(0,0,0,.08);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+.bnav-in{display:flex;max-width:760px;margin:0 auto}
+.bn{flex:1 1 0;min-width:0;background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;color:var(--muted);font-size:12px;font-weight:700;position:relative;line-height:1.15;text-align:center}
+.bn .ico{display:grid;place-items:center;width:58px;height:32px;border-radius:999px}
+.bn svg{width:24px;height:24px}
+.bn[aria-current="true"]{color:var(--primary)}
+.bn[aria-current="true"] .ico{background:var(--soft)}
+.bn .badge{position:absolute;top:0;left:calc(50% + 6px);margin:0}
+.velo{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:18}
+.hoja{position:fixed;left:0;right:0;bottom:calc(68px + env(safe-area-inset-bottom,0px));z-index:19;padding:0 10px}
+.hoja-in{max-width:740px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,.2)}
+.hoja-t{font-family:var(--head);font-weight:600;font-size:15px;color:var(--muted);margin:0 4px 10px}
+.hoja-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hb{background:var(--bg);border:2px solid transparent;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-weight:700;font-size:13.5px;color:var(--ink);position:relative;text-align:center;line-height:1.2}
+.hb svg{width:26px;height:26px;color:var(--primary)}
+.hb[aria-current="true"]{border-color:var(--primary)}
+.hb .badge{position:absolute;top:6px;right:8px}
+.sec-t{font-size:26px;margin:2px 0 14px}
 h1,h2,h3{font-family:var(--head);line-height:1.15;margin:0}
 h1{font-size:30px;font-weight:750;letter-spacing:-.01em}
 h2{font-size:22px;font-weight:750}
@@ -211,6 +230,7 @@ textarea.input{min-height:90px;resize:vertical}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{
+  .bnav,.hoja,.velo,.sec-t{display:none!important}
   #app{display:none!important}
   #print-area{display:block!important}
   body{background:#fff;color:#000;font-size:12px}
@@ -562,6 +582,37 @@ function panelPw(){
     <div class="field"><label for="pw_new">Nueva contraseña (mínimo 6 caracteres)</label><input class="input" id="pw_new" type="password" autocomplete="new-password" data-draft="pw_new" value="${esc(draft("pw_new"))}"></div>
     <div class="field"><label for="pw_rep">Repite la nueva contraseña</label><input class="input" id="pw_rep" type="password" autocomplete="new-password" data-draft="pw_rep" value="${esc(draft("pw_rep"))}"></div>
     <div class="row"><button class="btn" data-a="pw-save">Cambiar contraseña</button><button class="btn ghost" data-a="pw-ver">Cancelar</button></div></div>`;
+}
+/* ---------- Navegación: barra inferior con iconos ---------- */
+const ICO = {
+  semana:'<rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M7.5 13.5h3M13.5 13.5h3M7.5 17h3"/>',
+  plantilla:'<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 3.5v5h-5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20.5v-5h5"/>',
+  quien:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-6 6.5-6s5.9 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.6"/><path d="M16.5 14.2c2.6.2 4.4 2.3 5 5.3"/>',
+  wordle:'<rect x="2.5" y="8" width="5.5" height="8" rx="1.2"/><rect x="9.25" y="8" width="5.5" height="8" rx="1.2"/><rect x="16" y="8" width="5.5" height="8" rx="1.2"/>',
+  calendario:'<rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="m9 15 2 2 4-4"/>',
+  consultas:'<path d="M20.5 12a8 8 0 0 1-11.6 7.1L3.5 20.5l1.4-4.9A8 8 0 1 1 20.5 12Z"/><path d="M8.5 11h7M8.5 14h4.5"/>',
+  datos:'<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6.5 8-6.5s7.2 2.5 8 6.5"/>',
+  parte:'<rect x="5" y="3.5" width="14" height="18" rx="2"/><path d="M9 3.5h6v3H9z"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
+  extras:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-6 6.5-6 1.6 0 3 .6 4.2 1.6"/><path d="M18 13v7M14.5 16.5h7"/>',
+  notas:'<path d="M5 3.5h10.5L19 7v13.5H5z"/><path d="M15 3.5V7h4"/><path d="M8.5 11.5h7M8.5 15h7M8.5 18.5h4"/>',
+  avisos:'<path d="M3.5 10v4l11 4.5v-13Z"/><path d="M14.5 8.5a3.5 3.5 0 0 1 0 7"/><path d="M6.5 15.2 8 20.5h3l-1-4"/>',
+  cumples:'<path d="M4 12.5h16v8H4z"/><path d="M4 16c2 1.5 4 1.5 5.3 0 1.4 1.5 4 1.5 5.4 0 1.3 1.5 3.3 1.5 5.3 0"/><path d="M12 12.5V8.5"/><path d="M12 4c1 1.2 1 2.4 0 3-1-.6-1-1.8 0-3Z"/>',
+  usuarios:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-6 6.5-6s5.9 2.4 6.5 6"/><path d="M15 6.5h6M15 10h6M17 13.5h4"/>',
+  ajustes:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+  mas:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'
+};
+const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]||ICO.mas}</svg>`;
+const CORTO = {semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Palabra", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", extras:"Extras", notas:"Notas", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
+function navegacion(list, rol, comensal){
+  const pref = rol==="cocina" ? ["parte","cumples","calendario","notas"]
+    : rol==="admin" ? (comensal ? ["semana","parte","consultas","notas"] : ["parte","extras","consultas","notas"])
+    : ["semana","quien","calendario","consultas"];
+  const visibles = pref.map(k=>list.find(x=>x[0]===k)).filter(Boolean);
+  const resto = list.filter(x=>!visibles.includes(x));
+  const enResto = resto.some(x=>x[0]===S.tab), pendResto = resto.reduce((n,x)=>n+(Number(x[2])||0),0);
+  const bn = ([k,l,b]) => `<button class="bn" data-a="tab" data-v="${k}" aria-current="${S.tab===k}"><span class="ico">${svg(k)}</span>${CORTO[k]||l}${b?`<span class="badge">${b}</span>`:""}</button>`;
+  return `${S.menu && resto.length ? `<div class="velo" data-a="menu"></div><div class="hoja" role="dialog" aria-label="Más secciones"><div class="hoja-in"><p class="hoja-t">Más secciones</p><div class="hoja-g">${resto.map(([k,l,b])=>`<button class="hb" data-a="tab" data-v="${k}" aria-current="${S.tab===k}">${svg(k)}${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</div></div></div>` : ""}
+  <nav class="bnav no-print" aria-label="Secciones"><div class="bnav-in">${visibles.map(bn).join("")}${resto.length ? `<button class="bn" data-a="menu" aria-current="${enResto || !!S.menu}" aria-expanded="${!!S.menu}"><span class="ico">${svg("mas")}</span>Más${pendResto?`<span class="badge">${pendResto}</span>`:""}</button>` : ""}</div></nav>`;
 }
 function tabs(list){
   // Pocas secciones: botones a la vista. Muchas: un menú desplegable agrupado.
@@ -1157,7 +1208,8 @@ function viewApp(uReal){
   const cab = S.vista
     ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div></div>`
     : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin") + panelPw();
-  return cab + (t.length>1 ? tabs(t) : "") + (S.vista ? "" : avisoDatos(u)) + banner + bannerAv + main;
+  const actual = t.find(x=>x[0]===S.tab);
+  return cab + (actual ? `<h2 class="sec-t">${actual[1]}</h2>` : "") + (S.vista ? "" : avisoDatos(u)) + banner + bannerAv + main + (t.length>1 ? navegacion(t, rol, esComensal(u)) : "");
 }
 
 /* ---------- PDF del parte ---------- */
