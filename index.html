@@ -41,7 +41,9 @@
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5}
 button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
+button{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+body{-webkit-tap-highlight-color:transparent}
+.seg,.bnav,.hoja,.cal,.days .day-head{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .wrap{max-width:760px;margin:0 auto;padding:16px 16px 110px}
 /* Barra de navegación inferior */
@@ -72,6 +74,9 @@ button{cursor:pointer}
 button.cal-d{text-align:left;cursor:pointer;color:inherit;font:inherit}
 button.cal-d:hover{border-color:var(--primary)}
 .editado{font-size:12px;color:var(--accent);font-weight:700}
+tr.fila-ed{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+tr.fila-ed:hover td,tr.fila-ed:active td{background:var(--soft)}
+.lapiz{color:var(--primary);font-weight:700}
 h1,h2,h3{font-family:var(--head);line-height:1.15;margin:0}
 h1{font-size:30px;font-weight:750;letter-spacing:-.01em}
 h2{font-size:22px;font-weight:750}
@@ -161,7 +166,11 @@ select.input option{background:var(--surface);color:var(--ink)}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
 .opt{padding:9px 14px;border-radius:999px;border:2px solid var(--line);background:var(--surface);font-weight:700;font-size:15px}
 .opt[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
-.opt:disabled{cursor:not-allowed}
+.opt:disabled,.opt[aria-disabled="true"]{cursor:not-allowed;opacity:.45;background:var(--bg);border-style:dashed}
+.opt[aria-pressed="true"][aria-disabled="true"]{opacity:.6;background:var(--muted);border-color:var(--muted);color:var(--surface);border-style:solid}
+.q.bloq h3::after{content:" · cerrado";font-family:var(--body);font-weight:700;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+input:disabled{opacity:.5}
+.arrow:disabled{opacity:.35}
 .hora{display:flex;align-items:center;gap:10px;margin-top:10px}
 .hora input{max-width:140px}
 .editor-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
@@ -228,7 +237,7 @@ textarea.input{min-height:90px;resize:vertical}
 .cal-i{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:4px;padding:0 3px;margin-top:2px;font-size:11px}
 .cal-i.cumple{background:var(--accent-soft);color:var(--accent)}
 .cal-i.evento{background:var(--soft);color:var(--primary)}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;max-width:90vw;z-index:10}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;max-width:90vw;z-index:10}
 .empty{background:var(--surface);border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--muted)}
 
 @media (max-width:520px){
@@ -535,7 +544,7 @@ function notificar(m){
   try { if ("Notification" in window && Notification.permission==="granted") new Notification("Libro de comidas - Mizar", {body:"Nota de "+quien+": "+String(m.texto).slice(0,120)}); } catch(e){}
 }
 function render(){
-  try { const me = S.session && resById(S.session.uid), rol = me && rolDe(me); const n = rol ? S.mensajes.filter(m=>m.para===rol && !m.leido).length : 0; document.title = (n?"("+n+") ":"")+"Libro de comidas - Mizar"; } catch(e){}
+  try { const me = S.session && resById(S.session.uid), rol = me && rolDe(me); const n = rol ? S.mensajes.filter(m=>m.para===rol && !m.leido).length + (rol==="residente" ? consultasSinLeer("residente") : 0) : 0; document.title = (n?"("+n+") ":"")+"Libro de comidas - Mizar"; } catch(e){}
   const a = document.activeElement, fid = a && a.id, sel = a && a.selectionStart;
   $app.innerHTML = view();
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); try { if (sel!=null) el.setSelectionRange(sel,sel); } catch(e){} } }
@@ -647,7 +656,7 @@ function resumenDia(v){
   const t = p.join(", ").replace("se lleva","te llevas"); return t.charAt(0).toUpperCase()+t.slice(1);
 }
 function editor(v, ctx, f, lockA, lockB){
-  const seg = (k, opts, dis) => `<div class="seg" role="group">${opts.map(([val,l])=>`<button class="opt" ${dis?"disabled":""} data-a="set" data-ctx="${ctx}" data-k="${k}" data-v="${val}" aria-pressed="${String(v[k])===val}">${l}</button>`).join("")}</div>`;
+  const seg = (k, opts, dis) => `<div class="seg" role="group">${opts.map(([val,l])=>`<button class="opt" ${dis?'aria-disabled="true"':""} data-a="set" data-ctx="${ctx}" data-k="${k}" data-v="${val}" aria-pressed="${String(v[k])===val}">${l}</button>`).join("")}</div>`;
   const yn = (k, dis) => seg(k, [["false","No"],["true","Sí"]], dis);
   const ant = f ? addDays(f,-1) : null;
   const notaB = f
@@ -655,12 +664,12 @@ function editor(v, ctx, f, lockA, lockB){
              : `<p class="small muted" style="margin:10px 0 0">Se cierra antes que el resto del día: puedes cambiarlo hasta el <b>${esc(fmtLong(ant).toLowerCase())} a las ${esc(horaCierre(ant))}</b>, porque se prepara la noche anterior.</p>`)
     : `<p class="small muted" style="margin:10px 0 0">El desayuno y lo que te llevas se avisan la víspera, porque se preparan la noche anterior.</p>`;
   return `
-    <div class="q"><h3>Desayuno</h3>${yn("desayuno", lockB)}
+    <div class="q ${lockB?"bloq":""}"><h3>Desayuno</h3>${yn("desayuno", lockB)}
       <p class="small" style="margin:14px 0 6px;font-weight:700">¿Te llevas tupper o bolsa de comida ese día?</p>${seg("llevar", LLEVAR, lockB)}${notaB}</div>
-    <div class="q"><h3>Comida</h3>${v.llevar!=="nada" && v.comida==="no" ? `<p class="small muted" style="margin:-4px 0 8px">Te llevas ${v.llevar==="tupper"?"tupper":"bolsa de comida"}, así que ese día no comes aquí.</p>` : ""}${seg("comida", COMIDA, lockA)}
+    <div class="q ${lockA?"bloq":""}"><h3>Comida</h3>${v.llevar!=="nada" && v.comida==="no" ? `<p class="small muted" style="margin:-4px 0 8px">Te llevas ${v.llevar==="tupper"?"tupper":"bolsa de comida"}, así que ese día no comes aquí.</p>` : ""}${seg("comida", COMIDA, lockA)}
       ${v.comida==="bolsa" ? `<div class="hora"><label for="h_${ctx}">Hora a la que quieres la bolsa</label><input class="input" type="time" id="h_${ctx}" data-hora="${ctx}" value="${esc(v.horaBolsa)}" ${lockA?"disabled":""}></div>` : ""}
     </div>
-    <div class="q"><h3>Cena</h3>${yn("cena", lockA)}</div>`;
+    <div class="q ${lockA?"bloq":""}"><h3>Cena</h3>${yn("cena", lockA)}</div>`;
 }
 
 function vistaComensal(r){
@@ -778,13 +787,12 @@ function parteHTML(f, anon){
       <section class="block"><h3>Desayuno del ${manana}</h3>${line("Desayunan", d.desayuno[0], d.desayuno[1], "desayuno")}</section>
       <section class="block"><h3>Para llevar el ${manana}</h3>${line("Tupper", d.tupper, 0, "llevar")}${line("Bolsa de comida", d.bolsaM, 0, "llevar")}${llevarNombres}</section>
     </div>
-    ${anon ? "" : `<h2 style="margin-bottom:10px">Detalle por persona</h2>
+    ${anon ? "" : `<h2 style="margin-bottom:4px">Detalle por persona</h2><p class="muted small" style="margin:0 0 10px">Toca a una persona para corregir lo que tiene marcado, aunque el parte esté cerrado.</p>
     ${d.filas.length ? `<div class="tablewrap"><table>
-      <thead><tr><th>Persona</th><th>Comida</th><th>Cena</th><th>Desayuno ${manana}</th><th>Llevar ${manana}</th><th></th></tr></thead>
-      <tbody>${d.filas.map(o=>`<tr><td>${esc(o.r.nombre)}${o.r.regimen?`<span class="regcell">${esc(o.r.regimen)}${esc(regAmbito(o.r))} (${esc(iniciales(o.r))})</span>`:""}</td>
+      <thead><tr><th>Persona</th><th>Comida</th><th>Cena</th><th>Desayuno ${manana}</th><th>Llevar ${manana}</th></tr></thead>
+      <tbody>${d.filas.map(o=>`<tr class="fila-ed" data-a="ed-abrir" data-id="${o.r.id}" data-f="${f}"><td><span class="lapiz" aria-hidden="true">✎</span> ${esc(o.r.nombre)}${o.editadoPor?' <span class="editado">Corregido</span>':""}${o.r.regimen?`<span class="regcell">${esc(o.r.regimen)}${esc(regAmbito(o.r))} (${esc(iniciales(o.r))})</span>`:""}</td>
         <td>${o.sel.comida==="no"?"—":esc(comidaTxt(o.sel))}</td><td>${o.sel.cena?"Sí":"—"}</td><td>${o.sel.desayuno?"Sí":"—"}</td>
-        <td>${o.sel.llevar==="nada"?"—":(o.sel.llevar==="tupper"?"Tupper":"Bolsa")}</td>
-        <td>${o.r.id ? `<button class="link" data-a="ed-abrir" data-id="${o.r.id}" data-f="${f}">Editar</button>${o.editadoPor?`<div class="editado">Corregido</div>`:""}` : ""}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No hay comensales activos.</div>`}`}`;
+        <td>${o.sel.llevar==="nada"?"—":(o.sel.llevar==="tupper"?"Tupper":"Bolsa")}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No hay comensales activos.</div>`}`}`;
 }
 function parteView(){
   const f = S.parteFecha, anon = verAnon();
@@ -907,11 +915,34 @@ async function wlTecla(k){
 }
 
 /* --- Calendario de la residencia --- */
+const finEv = e => (e.fin && e.fin>e.fecha) ? e.fin : e.fecha;
+function cuandoEv(e){
+  const fin = finEv(e);
+  if (fin!==e.fecha){
+    const a = parse(e.fecha), b = parse(fin);
+    return a.getMonth()===b.getMonth() ? `Del ${a.getDate()} al ${b.getDate()} de ${MESES[b.getMonth()]}` : `Del ${fmtDay(e.fecha)} al ${fmtDay(fin)}`;
+  }
+  return fmtLong(e.fecha) + (e.hora ? ", a las "+e.hora : "");
+}
 function eventosEntre(desde, hasta){
   const out = [];
-  S.eventos.forEach(e=>{ if ((e.estado||"aprobado")==="aprobado" && e.fecha>=desde && e.fecha<=hasta) out.push({fecha:e.fecha, tipo:"evento", texto:e.titulo, detalle:e.detalle, id:e.id, autor:e.autor}); });
+  S.eventos.forEach(e=>{
+    if ((e.estado||"aprobado")!=="aprobado" || e.fecha>hasta || finEv(e)<desde) return;
+    const ini = e.fecha>desde ? e.fecha : desde, fin = finEv(e)<hasta ? finEv(e) : hasta;
+    for (let f=ini; f<=fin; f=addDays(f,1)) out.push({fecha:f, tipo:"evento", texto:e.titulo, corto:e.titulo, detalle:e.detalle, id:e.id, autor:e.autor, hora:e.hora, cuando:cuandoEv(e), varios:finEv(e)!==e.fecha});
+  });
   for (let f=desde; f<=hasta; f=addDays(f,1)){ const md=f.slice(5); conCumple().forEach(r=>{ if (r.cumple===md) { const e = edadEn(r, Number(f.slice(0,4))), n = nombreVis(r); out.push({fecha:f, tipo:"cumple", texto:"Cumpleaños de "+n+(e!=null?" ("+e+" años)":""), corto:n+(e!=null?" "+e:"")}); } }); }
   return out.sort((a,b)=>a.fecha.localeCompare(b.fecha) || (a.tipo==="cumple"?-1:1));
+}
+function camposFecha(){
+  const tipo = draft("ev_tipo","uno"), ini = draft("ev_fecha", today());
+  return `<div class="field"><label>¿Cuánto dura?</label><div class="seg"><button class="opt" data-a="ev-tipo" data-v="uno" aria-pressed="${tipo==="uno"}">Un día</button><button class="opt" data-a="ev-tipo" data-v="varios" aria-pressed="${tipo==="varios"}">Varios días</button></div></div>
+    ${tipo==="uno"
+      ? `<div class="row" style="align-items:flex-end"><div class="field"><label for="ev_fecha">Día</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" value="${esc(ini)}" style="max-width:200px"></div>
+         <div class="field"><label for="ev_hora">Hora (opcional)</label><input class="input" type="time" id="ev_hora" data-draft="ev_hora" value="${esc(draft("ev_hora",""))}" style="max-width:150px"></div></div>
+         <p class="muted small" style="margin:-8px 0 12px">Deja la hora vacía si es para todo el día.</p>`
+      : `<div class="row" style="align-items:flex-end"><div class="field"><label for="ev_fecha">Desde</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" value="${esc(ini)}" style="max-width:200px"></div>
+         <div class="field"><label for="ev_fin">Hasta (incluido)</label><input class="input" type="date" id="ev_fin" data-draft="ev_fin" min="${esc(ini)}" value="${esc(draft("ev_fin", addDays(ini,2)))}" style="max-width:200px"></div></div>`}`;
 }
 function calendarioView(modo){
   // modo: "admin" (añade, aprueba y borra), "cocina" (añade y borra lo suyo), "residente" (propone)
@@ -922,36 +953,37 @@ function calendarioView(modo){
   for (let i=0;i<wd(primero);i++) celdas.push(`<div class="cal-d vacio"></div>`);
   for (let f=primero; f<=ultimo; f=addDays(f,1)){
     const its = items.filter(x=>x.fecha===f);
-    const dentro = `<div class="cal-n">${Number(f.slice(8))}</div>${its.map(x=>`<span class="cal-i ${x.tipo}" title="${esc(x.texto)}">${esc(x.tipo==="cumple"?x.corto:x.texto)}</span>`).join("")}`;
+    const dentro = `<div class="cal-n">${Number(f.slice(8))}</div>${its.map(x=>`<span class="cal-i ${x.tipo}" title="${esc(x.texto)}">${esc(x.corto||x.texto)}</span>`).join("")}`;
     celdas.push(its.length ? `<button class="cal-d ${f===today()?"hoy":""}" data-a="cal-dia" data-f="${f}" aria-label="Ver lo que hay el ${esc(fmtLong(f))}">${dentro}</button>` : `<div class="cal-d ${f===today()?"hoy":""}">${dentro}</div>`);
   }
   const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
+  const vistos = new Set(), agenda = items.filter(x=>{ if (x.tipo!=="evento") return true; if (vistos.has(x.id)) return false; vistos.add(x.id); return true; });
   const pendientes = S.eventos.filter(e=>e.estado==="pendiente");
   const misProp = modo==="residente" ? S.eventos.filter(e=>e.autor===S.session.uid && (e.estado==="pendiente" || e.estado==="rechazado")) : [];
   const cola = modo==="admin" && pendientes.length ? `<div class="panel" style="border-color:var(--accent)"><h3 style="margin-bottom:4px">Propuestas de residentes pendientes (${pendientes.length})</h3><p class="muted small" style="margin-top:0">Si el texto incluye nombres de residentes, recházala: la administración no debe verlos.</p>
-      ${pendientes.map(e=>`<div class="res"><div><strong>${esc(fmtLong(e.fecha))}</strong>: ${esc(e.titulo)}${e.detalle?`<div class="small muted">${esc(e.detalle).replace(/\n/g,"<br>")}</div>`:""}<div class="small muted">Propuesto por ${esc((resById(e.autor)||{}).nombre||"un residente")}</div></div>
+      ${pendientes.map(e=>`<div class="res"><div><strong>${esc(cuandoEv(e))}</strong>: ${esc(e.titulo)}${e.detalle?`<div class="small muted">${esc(e.detalle).replace(/\n/g,"<br>")}</div>`:""}<div class="small muted">Propuesto por ${esc((resById(e.autor)||{}).nombre||"un residente")}</div></div>
         <div class="row"><button class="btn" data-a="ev-ok" data-id="${e.id}">Aprobar</button><button class="btn danger" data-a="ev-no" data-id="${e.id}">Rechazar</button></div></div>`).join("")}</div>` : "";
-  const mias = misProp.length ? `<h3 style="margin:6px 0 8px">Tus propuestas</h3>${misProp.map(e=>`<div class="res"><div><strong>${esc(fmtLong(e.fecha))}</strong>: ${esc(e.titulo)}</div><div class="row"><span class="tag ${e.estado==="pendiente"?"plantilla":"cerrado"}">${e.estado==="pendiente"?"Pendiente de aprobar":"No aprobado"}</span><button class="link" data-a="ev-del" data-id="${e.id}">Quitar</button></div></div>`).join("")}` : "";
+  const mias = misProp.length ? `<h3 style="margin:6px 0 8px">Tus propuestas</h3>${misProp.map(e=>`<div class="res"><div><strong>${esc(cuandoEv(e))}</strong>: ${esc(e.titulo)}</div><div class="row"><span class="tag ${e.estado==="pendiente"?"plantilla":"cerrado"}">${e.estado==="pendiente"?"Pendiente de aprobar":"No aprobado"}</span><button class="link" data-a="ev-del" data-id="${e.id}">Quitar</button></div></div>`).join("")}` : "";
   const form = modo==="residente" ? `<div class="panel"><h3 style="margin-bottom:6px">Proponer un evento</h3><p class="muted small" style="margin-top:0">Un administrador lo revisará antes de que aparezca en el calendario.</p>
-      <div class="field"><label for="ev_fecha">Día</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" min="${today()}" value="${esc(draft("ev_fecha", today()))}" style="max-width:220px"></div>
+      ${camposFecha()}
       <div class="field"><label for="ev_tit">Qué se celebra</label><input class="input" id="ev_tit" data-draft="ev_tit" maxlength="80" placeholder="Por ejemplo: cena de inicio de curso" value="${esc(draft("ev_tit"))}"></div>
-      <div class="field"><label for="ev_det">Detalles (opcional)</label><textarea class="input" id="ev_det" data-draft="ev_det" placeholder="Hora, número de personas, qué se necesita…">${esc(draft("ev_det"))}</textarea></div>
+      <div class="field"><label for="ev_det">Detalles (opcional)</label><textarea class="input" id="ev_det" data-draft="ev_det" placeholder="Número de personas, qué se necesita…">${esc(draft("ev_det"))}</textarea></div>
       <p style="margin:-6px 0 10px"><span class="muted small">Lo verán todos, también la administración: no escribas nombres.</span></p>
       <button class="btn" data-a="ev-add">Enviar propuesta</button></div>` : editable ? `<div class="panel"><h3 style="margin-bottom:10px">Añadir un evento</h3>
-      <div class="field"><label for="ev_fecha">Día</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" value="${esc(draft("ev_fecha", today()))}" style="max-width:220px"></div>
+      ${camposFecha()}
       <div class="field"><label for="ev_tit">Qué se celebra</label><input class="input" id="ev_tit" data-draft="ev_tit" maxlength="80" placeholder="Por ejemplo: fiesta de Navidad" value="${esc(draft("ev_tit"))}"></div>
-      <div class="field"><label for="ev_det">Detalles para la administración (opcional)</label><textarea class="input" id="ev_det" data-draft="ev_det" placeholder="Hora, número de personas, qué se necesita…">${esc(draft("ev_det"))}</textarea></div>
+      <div class="field"><label for="ev_det">Detalles para la administración (opcional)</label><textarea class="input" id="ev_det" data-draft="ev_det" placeholder="Número de personas, qué se necesita…">${esc(draft("ev_det"))}</textarea></div>
       <p style="margin:-6px 0 10px"><span class="muted small">La administración lo verá tal cual: usa iniciales, no nombres.</span></p>
       <button class="btn" data-a="ev-add">Añadir al calendario</button></div>` : "";
   return cola + `<div class="weeknav"><button class="arrow" data-a="cal-mes" data-v="${mesAnt}" aria-label="Mes anterior">‹</button><h2>${MESES[mm-1].charAt(0).toUpperCase()+MESES[mm-1].slice(1)} de ${yy}</h2><button class="arrow" data-a="cal-mes" data-v="${mesSig}" aria-label="Mes siguiente">›</button></div>
     <div class="cal">${["L","M","X","J","V","S","D"].map(d=>`<div class="cal-h">${d}</div>`).join("")}${celdas.join("")}</div>
     <h2 style="margin-bottom:8px">Este mes</h2>
-    ${items.length ? items.map(x=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong> <span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span><div>${esc(x.texto)}</div>${x.detalle?`<div class="small muted">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>${x.tipo==="evento" && (modo==="admin" || (modo==="cocina" && x.autor===S.session.uid)) ? `<button class="link" data-a="ev-del" data-id="${x.id}">Borrar</button>` : "<span></span>"}</div>`).join("") : `<div class="empty">No hay cumpleaños ni eventos este mes.</div>`}
+    ${agenda.length ? agenda.map(x=>`<div class="res"><div><strong>${esc(x.tipo==="evento" ? x.cuando : fmtLong(x.fecha))}</strong> <span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span><div>${esc(x.texto)}</div>${x.detalle?`<div class="small muted">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>${x.tipo==="evento" && (modo==="admin" || (modo==="cocina" && x.autor===S.session.uid)) ? `<button class="link" data-a="ev-del" data-id="${x.id}">Borrar</button>` : "<span></span>"}</div>`).join("") : `<div class="empty">No hay cumpleaños ni eventos este mes.</div>`}
     ${mias}${form}`;
 }
 function avisoEventos(){
-  const l = S.eventos.filter(e=>(e.estado||"aprobado")==="aprobado" && e.fecha>=today() && e.fecha<=addDays(today(),3));
-  return l.length ? `<div class="alert no-print"><strong>Próximos eventos:</strong> ${l.map(e=>esc(fmtLong(e.fecha))+": "+esc(e.titulo)).join("; ")}. <button class="link" data-a="tab" data-v="calendario">Ver calendario</button></div>` : "";
+  const l = S.eventos.filter(e=>(e.estado||"aprobado")==="aprobado" && e.fecha<=addDays(today(),3) && finEv(e)>=today());
+  return l.length ? `<div class="alert no-print"><strong>Próximos eventos:</strong> ${l.map(e=>esc(cuandoEv(e))+": "+esc(e.titulo)).join("; ")}. <button class="link" data-a="tab" data-v="calendario">Ver calendario</button></div>` : "";
 }
 
 /* --- Comensales extra (solo administradores) --- */
@@ -993,7 +1025,8 @@ const caduca = c => (c.ts||0) + DIAS_CONSULTA*86400000;
 const consultasVivas = () => (S.consultas||[]).filter(c=>caduca(c) > Date.now());
 const ultRes = c => Math.max(0, ...(c.mensajes||[]).filter(m=>m.de==="residente").map(m=>m.ts||0));
 const leidaPorMi = c => ((c.leidoPor||{})[S.session.uid]||0) >= ultRes(c);
-const consultasSinLeer = rol => consultasVivas().filter(c=> rol==="admin" ? !leidaPorMi(c) : !c.leidoResidente).length;
+const avisosSinLeer = () => (S.avisos||[]).filter(a=>!S.vistos.includes("av|"+a.id)).length;
+const consultasSinLeer = rol => consultasVivas().filter(c=> rol==="admin" ? !leidaPorMi(c) : !c.leidoResidente).length + (rol==="admin" ? 0 : avisosSinLeer());
 function lectoresHTML(c){
   const l = Object.entries(c.leidoPor||{}).filter(([id,t])=>t).sort((a,b)=>a[1]-b[1]);
   return l.length ? "Leído por: "+l.map(([id,t])=>esc((resById(id)||{}).nombre||"un administrador")+" ("+esc(hora(t))+")").join(", ") : "Ningún administrador lo ha leído todavía.";
@@ -1020,12 +1053,13 @@ function consultasView(rol){
       <div class="field" style="margin-top:16px"><label for="cq_resp">${rol==="admin"?"Responder":"Escribir"}</label><textarea class="input" id="cq_resp" data-draft="cq_resp">${esc(draft("cq_resp"))}</textarea></div>
       <button class="btn" data-a="cq-responder">Enviar</button>`;
   }
+  const avisosRes = rol==="admin" ? "" : ((S.avisos||[]).length ? `<h3 style="margin:0 0 8px">Avisos de los administradores</h3>${(S.avisos||[]).map(a=>{ const nuevo = !S.vistos.includes("av|"+a.id); return `<div class="res" style="grid-template-columns:1fr;${nuevo?"border-color:var(--accent)":""}"><div class="small muted">${esc(hora(a.ts))}. Visible hasta el ${esc(fmtLong(a.hasta).toLowerCase())} ${nuevo?'<span class="badge">Nuevo</span>':""}</div><div>${esc(a.texto).replace(/\n/g,"<br>")}</div>${nuevo?`<div><button class="link" data-a="av-visto" data-v="av|${esc(a.id)}">Marcar como leído</button></div>`:""}</div>`; }).join("")}<div style="height:10px"></div>` : "");
   const nueva = rol==="admin" ? "" : `<div class="panel"><h3 style="margin-bottom:6px">Nuevo mensaje a los administradores</h3>
       <p class="muted small" style="margin-top:0">Por ejemplo, para que comenten algo a la administración. Solo lo leen los administradores. La conversación se borra sola al mes.</p>
       <div class="field"><label for="cq_nuevo">Mensaje</label><textarea class="input" id="cq_nuevo" data-draft="cq_nuevo">${esc(draft("cq_nuevo"))}</textarea></div>
       <button class="btn" data-a="cq-nueva">Enviar</button></div>`;
   if (rol==="admin") lista.sort((a,b)=>(!!a.resuelto - !!b.resuelto) || ((b.ultimoTs||0)-(a.ultimoTs||0)));
-  return nueva + (lista.length ? lista.map(c=>{
+  return avisosRes + nueva + (lista.length ? lista.map(c=>{
     const ult = (c.mensajes||[]).slice(-1)[0] || {}, sinLeer = rol==="admin" ? !leidaPorMi(c) : !c.leidoResidente;
     const estado = c.resuelto ? '<span class="tag abierto">Resuelto</span>' : '<span class="tag plantilla">Pendiente</span>';
     return `<button class="res" data-a="cq-abrir" data-id="${c.id}" style="width:100%;text-align:left;cursor:pointer;${sinLeer?"border-color:var(--accent)":""}"><div><strong>${rol==="admin" ? esc((resById(c.autor)||{}).nombre||"Residente") : "Administradores"}</strong> ${sinLeer?'<span class="badge">Nuevo</span>':""} ${estado}
@@ -1070,7 +1104,7 @@ function modalHTML(){
   if (m.tipo==="cal"){
     const its = eventosEntre(m.f, m.f);
     tit = fmtLong(m.f);
-    cuerpo = its.length ? its.map(x=>`<div class="res" style="grid-template-columns:1fr"><div><span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span></div><div style="font-weight:700">${esc(x.texto)}</div>${x.detalle?`<div class="small">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>`).join("") : `<p class="muted">No hay nada este día.</p>`;
+    cuerpo = its.length ? its.map(x=>`<div class="res" style="grid-template-columns:1fr"><div><span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span></div><div style="font-weight:700">${esc(x.texto)}</div>${x.tipo==="evento" && (x.hora || x.varios) ? `<div class="small muted">${esc(x.varios ? x.cuando : "A las "+x.hora)}</div>` : ""}${x.detalle?`<div class="small">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>`).join("") : `<p class="muted">No hay nada este día.</p>`;
   }
   if (m.tipo==="edit"){
     const r = resById(m.rid), f = m.f, manana = DIAS[wd(addDays(f,1))].toLowerCase(), v = S.drafts.ed || norm();
@@ -1411,6 +1445,7 @@ document.addEventListener("keydown", e => {
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-a]");
   if (!b || b.disabled) return;
+  if (b.getAttribute("aria-disabled")==="true"){ toast("Esto ya está cerrado: no se puede cambiar. Si lo necesitas, llama a un administrador."); return; }
   act(b.dataset.a, b);
 });
 
@@ -1649,12 +1684,17 @@ async function act(a, b){
     case "cal-mes": S.calMes = v; break;
     case "ev-add": {
       const f = draft("ev_fecha", today()), t = String(draft("ev_tit")).trim().slice(0,80), d = String(draft("ev_det")).trim().slice(0,500);
+      const tipo = draft("ev_tipo","uno"), hora = tipo==="uno" ? String(draft("ev_hora","")) : "", fin = tipo==="varios" ? String(draft("ev_fin", addDays(f,2))) : f;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(f)){ toast("Elige el día."); return; }
+      if (tipo==="varios" && (!/^\d{4}-\d{2}-\d{2}$/.test(fin) || fin<=f)){ toast("El día de fin tiene que ser posterior al de inicio."); return; }
+      if (tipo==="varios" && fin>addDays(f,92)){ toast("Un evento puede durar como mucho tres meses."); return; }
+      if (hora && !/^\d{2}:\d{2}$/.test(hora)){ toast("Revisa la hora."); return; }
       if (!t){ toast("Escribe qué se celebra."); return; }
       const rolA = rolDe(resById(S.session.uid)), directo = rolA==="admin" || rolA==="cocina";
-      await w(()=>S.db.doc("eventos/"+newId("e")).set({fecha:f, titulo:t, detalle:d, ts:Date.now(), autor:S.session.uid, estado: directo ? "aprobado" : "pendiente"}));
-      delete S.drafts.ev_tit; delete S.drafts.ev_det; S.calMes = f.slice(0,7); toast(directo ? "Evento añadido." : "Propuesta enviada. Un administrador la revisará."); break;
+      await w(()=>S.db.doc("eventos/"+newId("e")).set({fecha:f, fin, hora, titulo:t, detalle:d, ts:Date.now(), autor:S.session.uid, estado: directo ? "aprobado" : "pendiente"}));
+      delete S.drafts.ev_tit; delete S.drafts.ev_det; delete S.drafts.ev_hora; delete S.drafts.ev_fin; S.calMes = f.slice(0,7); toast(directo ? "Evento añadido." : "Propuesta enviada. Un administrador la revisará."); break;
     }
+    case "ev-tipo": S.drafts.ev_tipo = v; break;
     case "ev-del": await w(()=>S.db.doc("eventos/"+b.dataset.id).delete()); toast("Evento quitado."); return;
     case "ev-ok": case "ev-no": await w(()=>S.db.doc("eventos/"+b.dataset.id).update({estado: a==="ev-ok" ? "aprobado" : "rechazado", revisadoPor:S.session.uid})); toast(a==="ev-ok" ? "Evento aprobado: ya aparece en el calendario." : "Propuesta rechazada."); return;
     case "pf-luego": S.perfilAplazado = true; break;
