@@ -194,6 +194,11 @@ table{border-collapse:collapse;width:100%;font-size:15px}
 th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
 th{font-family:var(--head);font-weight:600;background:var(--soft)}
 tr:last-child td{border-bottom:0}
+.chips-f{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;-webkit-user-select:none;user-select:none}
+.chipf{padding:7px 12px;border-radius:999px;border:2px solid var(--line);background:var(--surface);font-weight:700;font-size:14px;color:var(--ink)}
+.chipf b{font-family:var(--head);margin-left:2px}
+.chipf[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.th-btn{background:none;border:0;padding:0;font:inherit;font-family:var(--head);font-weight:600;color:inherit;cursor:pointer;white-space:nowrap}
 .tabla-qc th,.tabla-qc td{white-space:normal;padding:9px 8px;font-size:15px;vertical-align:top}
 .tabla-qc th:nth-child(2),.tabla-qc td:nth-child(2),.tabla-qc th:nth-child(4),.tabla-qc td:nth-child(4){text-align:center;width:15%}
 @media (max-width:520px){.tabla-qc th,.tabla-qc td{font-size:14px;padding:8px 6px}}
@@ -357,7 +362,7 @@ function resumen(sel, f){
   const s = p.join(", ");
   return s.charAt(0).toUpperCase()+s.slice(1);
 }
-const ROLES = {residente:"Residente", cocina:"Administración", admin:"Administrador"};
+const ROLES = {residente:"Residente", cocina:"Administración", admin:"Administrador", adscritos:"Jefe de adscritos"};
 const rolDe = r => (r && r.rol) || "residente";
 const esComensal = r => rolDe(r)==="residente" || r.comensal===true;
 const normU = s => String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"");
@@ -372,13 +377,13 @@ const iniciales = r => (r.iniciales && String(r.iniciales).trim()) || inicialesD
 const verAnon = () => S.vista || rolDe(resById(S.session && S.session.uid))==="cocina";
 const nombreVis = r => verAnon() ? iniciales(r) : (r.nombre || iniciales(r));
 /* Personas con cumpleaños: todos menos la administración */
-const conCumple = () => S.residentes.filter(r=>r.activo!==false && rolDe(r)!=="cocina");
+const conCumple = () => S.residentes.filter(r=>r.activo!==false && rolDe(r)!=="cocina" && rolDe(r)!=="adscritos");
 const extrasDe = f => S.extras[f] || {};
 const notaParaDe = e => e.notaPara || (e.notaTodos ? "todos" : "administracion");
-const faltanDatos = u => rolDe(u)!=="cocina" && (!u.cumple || !u.anioNac || !String(u.gustos||"").trim());
+const faltanDatos = u => rolDe(u)!=="cocina" && rolDe(u)!=="adscritos" && (!u.cumple || !u.anioNac || !String(u.gustos||"").trim());
 const edadEn = (r, anio) => r.anioNac ? anio - r.anioNac : null;
 const edadProx = r => { if (!r.cumple || !r.anioNac) return null; const d = diasHasta(r.cumple); return edadEn(r, parse(addDays(today(), d)).getFullYear()); };
-const pideActualizar = u => rolDe(u)!=="cocina" && !!u.pedirGustos && !((u.gustosTs||0) > u.pedirGustos);
+const pideActualizar = u => rolDe(u)!=="cocina" && rolDe(u)!=="adscritos" && !!u.pedirGustos && !((u.gustosTs||0) > u.pedirGustos);
 function diasHasta(mmdd){
   if (!mmdd) return 9999;
   const [m,d] = mmdd.split("-").map(Number), hoy = parse(today());
@@ -405,7 +410,7 @@ S.db = { doc: mkDoc, collection: c => mkCol(c) };
 let subs = [];
 function limpiar(){
   subs.forEach(u=>{ try { u(); } catch(e){} }); subs = [];
-  Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, nom:{}, consultas:[], avisos:[], avIds:undefined, cqTs:undefined, cqOpen:null, evIds:undefined, evA:{}, evM:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, vista:false, menu:false, migrado:false});
+  Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, nom:{}, consultas:[], avisos:[], avIds:undefined, adscritos:{}, cqTs:undefined, cqOpen:null, evIds:undefined, evA:{}, evM:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, vista:false, menu:false, migrado:false});
 }
 function mezclar(){
   const sinNombres = S.miRol==="cocina";
@@ -459,6 +464,7 @@ function suscribir(pid, rol){
       render();
     }, dbErr));
   }
+  add(S.db.collection("adscritos").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.adscritos=o; render(); }, dbErr));
   if (rol!=="cocina") add(S.db.collection("avisos").where("hasta",">=",today()).onSnapshot(q => {
     const prev = S.avIds; S.avisos = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0)); S.avIds = new Set(S.avisos.map(a=>a.id));
     if (prev && rol==="residente" && S.avisos.some(a=>!prev.has(a.id))) toast("Nuevo aviso de los administradores.");
@@ -478,11 +484,12 @@ function suscribir(pid, rol){
 /* ---------- Historial: borrar datos antiguos ---------- */
 async function borrarHistorial(limite){
   const limiteMs = parse(limite).getTime(); let total = 0;
-  const grupos = [["pedidos", fwhere("fecha","<",limite)], ["extras", fwhere("fecha","<",limite)], ["wordle", fwhere("fecha","<",limite)], ["eventos", fwhere("fecha","<",limite)], ["mensajes", fwhere("ts","<",limiteMs)]];
+  const grupos = [["pedidos", fwhere("fecha","<",limite)], ["extras", fwhere("fecha","<",limite)], ["adscritos", fwhere("fecha","<",limite)], ["wordle", fwhere("fecha","<",limite)], ["eventos", fwhere("fecha","<",limite)], ["mensajes", fwhere("ts","<",limiteMs)]];
   for (const [col, cond] of grupos){
     const snap = await getDocs(query(fcol(fs, col), cond));
-    for (let i=0; i<snap.docs.length; i+=400){ const b = writeBatch(fs); snap.docs.slice(i,i+400).forEach(d=>b.delete(d.ref)); await b.commit(); }
-    total += snap.docs.length;
+    const docs = col!=="eventos" ? snap.docs : snap.docs.filter(d=>{ const e = d.data(); return (!e.repite || e.repite==="no") && (!e.fin || e.fin<limite); });
+    for (let i=0; i<docs.length; i+=400){ const b = writeBatch(fs); docs.slice(i,i+400).forEach(d=>b.delete(d.ref)); await b.commit(); }
+    total += docs.length;
   }
   await S.db.doc("config/general").update({ultimaLimpieza: today(), ultimaLimpiezaBorrados: total});
   return total;
@@ -584,11 +591,11 @@ function viewLogin(){
   </div></div>`;
 }
 
-function cabecera(nombre, esAdm){
+function cabecera(nombre, esAdm, rolTxt){
   const ini = (inicialesDe(nombre)||"?").slice(0,2);
   return `<div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div>
     <button class="avatar" data-a="cuenta" aria-expanded="${!!S.cuenta}" aria-label="Mi cuenta">${esc(ini)}</button></div>
-    ${S.cuenta ? `<div class="cuenta no-print"><div class="yo">${esc(nombre)}<small>${esAdm?"Administrador":nombre==="Administración"?"Administración":"Residente"}</small></div>
+    ${S.cuenta ? `<div class="cuenta no-print"><div class="yo">${esc(nombre)}<small>${esc(rolTxt || (esAdm?"Administrador":"Residente"))}</small></div>
       ${esAdm?`<button data-a="vista-admon">Ver como la administración</button>`:""}
       <button data-a="pw-ver">Cambiar contraseña</button>
       <button class="salir" data-a="logout">Salir</button></div>` : ""}`;
@@ -617,12 +624,14 @@ const ICO = {
   cumples:'<path d="M4 12.5h16v8H4z"/><path d="M4 16c2 1.5 4 1.5 5.3 0 1.4 1.5 4 1.5 5.4 0 1.3 1.5 3.3 1.5 5.3 0"/><path d="M12 12.5V8.5"/><path d="M12 4c1 1.2 1 2.4 0 3-1-.6-1-1.8 0-3Z"/>',
   usuarios:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-6 6.5-6s5.9 2.4 6.5 6"/><path d="M15 6.5h6M15 10h6M17 13.5h4"/>',
   ajustes:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+  adscritos:'<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2.5 19c.5-3 2.8-5 5.5-5s5 2 5.5 5"/><path d="M13.5 15.2c.8-.8 1.6-1.2 2.5-1.2 2.7 0 5 2 5.5 5"/>',
   mas:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'
 };
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]||ICO.mas}</svg>`;
-const CORTO = {semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Palabra", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", extras:"Extras", notas:"Notas", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
+const CORTO = {adscritos:"Adscritos", semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Palabra", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", extras:"Extras", notas:"Notas", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
 function navegacion(list, rol, comensal){
-  const pref = rol==="cocina" ? ["parte","cumples","calendario","notas"]
+  const pref = rol==="adscritos" ? (comensal ? ["semana","adscritos","quien","wordle"] : ["adscritos","wordle"])
+    : rol==="cocina" ? ["parte","cumples","calendario","notas"]
     : rol==="admin" ? (comensal ? ["semana","parte","consultas","notas"] : ["parte","extras","consultas","notas"])
     : ["semana","quien","calendario","consultas"];
   const visibles = pref.map(k=>list.find(x=>x[0]===k)).filter(Boolean);
@@ -728,12 +737,12 @@ function vistaComensal(r){
 function datosParte(f){
   const filas = activos().map(r=>({r, ...efectiva(r.id,f), editadoPor:(S.pedidos[f+"_"+r.id]||{}).editadoPor}));
   const g = fn => filas.filter(fn);
-  const ex = extrasDe(f), exM = extrasDe(addDays(f,1));
+  const ex = extrasDe(f), exM = extrasDe(addDays(f,1)), ads = S.adscritos[f] || {};
   const avisos = S.mensajes.filter(m=>m.de==="admin" && m.fecha===f).map(m=>m.texto);
   if (ex.nota && notaParaDe(ex)!=="residentes") avisos.push(ex.nota);
   return {
     filas, avisos,
-    turnos: [["1.er turno", g(o=>o.sel.comida==="primer"), ex.primer||0], ["Turno normal", g(o=>o.sel.comida==="normal"), ex.normal||0], ["2.º turno", g(o=>o.sel.comida==="segundo"), ex.segundo||0]],
+    turnos: [["1.er turno", g(o=>o.sel.comida==="primer"), (ex.primer||0)+(ads.primer||0), ads.primer||0], ["Turno normal", g(o=>o.sel.comida==="normal"), (ex.normal||0)+(ads.normal||0), ads.normal||0], ["2.º turno", g(o=>o.sel.comida==="segundo"), (ex.segundo||0)+(ads.segundo||0), ads.segundo||0]],
     bolsasExtra: Object.fromEntries(Object.entries(ex.bolsas||{}).filter(([h,n])=>n>0)),
     bolsas: g(o=>o.sel.comida==="bolsa").sort((a,b)=>String(a.sel.horaBolsa).localeCompare(String(b.sel.horaBolsa))),
     cena: [g(o=>o.sel.cena), ex.cena||0],
@@ -742,6 +751,12 @@ function datosParte(f){
   };
 }
 const proxParte = () => locked(today()) ? addDays(today(),1) : today();
+function incluyeTxt(extra, ads){
+  const e = (extra||0) - (ads||0), p = [];
+  if (e>0) p.push(e+" comensal"+(e>1?"es":"")+" extra");
+  if (ads>0) p.push(ads+" adscrito"+(ads>1?"s":""));
+  return p.length ? "Incluye "+p.join(" y ") : "";
+}
 /* Textos de régimen: con nombres para administradores, con iniciales para la administración */
 const SERV_REG = [["comida","Comida"],["cena","Cena"],["desayuno","Desayuno"],["llevar","Para llevar"]];
 const regAplica = (r, srv) => !!r.regimen && (!r.regimenEn || r.regimenEn[srv] !== false);
@@ -769,7 +784,7 @@ function bolsasPorHora(bolsas, extraB, anon){
 const sumaBolsas = b => Object.values(b||{}).reduce((a,n)=>a+(n>0?n:0),0);
 function parteHTML(f, anon){
   const d = datosParte(f), lk = locked(f), manana = DIAS[wd(addDays(f,1))].toLowerCase();
-  const line = (label, list, extra, srv) => { const rt = regTxt(list, anon, srv); return `<div class="count"><span>${label}</span><b>${list.length+(extra||0)}</b></div>${extra?`<div class="muted small" style="margin:-2px 0 4px">Incluye ${extra} comensal${extra>1?"es":""} extra</div>`:""}${rt?`<div class="reg">${esc(rt)}</div>`:""}`; };
+  const line = (label, list, extra, srv, ads) => { const rt = regTxt(list, anon, srv), it = incluyeTxt(extra, ads||0); return `<div class="count"><span>${label}</span><b>${list.length+(extra||0)}</b></div>${it?`<div class="muted small" style="margin:-2px 0 4px">${esc(it)}</div>`:""}${rt?`<div class="reg">${esc(rt)}</div>`:""}`; };
   const exB = sumaBolsas(d.bolsasExtra);
   const totalComida = d.turnos.reduce((a,t)=>a+t[1].length+t[2],0) + d.bolsas.length + exB;
   const bt = bolsasPorHora(d.bolsas, d.bolsasExtra, anon);
@@ -779,7 +794,7 @@ function parteHTML(f, anon){
     ${d.avisos.length ? `<div class="alert"><strong>Avisos para este parte</strong>${d.avisos.map(t=>`<p style="margin:6px 0 0">${esc(t).replace(/\n/g,"<br>")}</p>`).join("")}</div>` : ""}
     <div class="blocks">
       <section class="block"><h3>Comida (${totalComida})</h3>
-        ${d.turnos.map(t=>line(t[0], t[1], t[2], "comida")).join("")}
+        ${d.turnos.map(t=>line(t[0], t[1], t[2], "comida", t[3])).join("")}
         ${line("En bolsa", d.bolsas, exB, "comida")}
         ${bt.length?`<ul class="list">${bt.map(x=>`<li><strong>${esc(x.h)}</strong>: ${x.n} ${x.n===1?"bolsa":"bolsas"}${x.det?` <span class="muted">(${esc(x.det)})</span>`:""}</li>`).join("")}</ul>`:""}
       </section>
@@ -880,7 +895,7 @@ function wordleView(u){
   const kb = ["qwertyuiop","asdfghjklñ","+zxcvbnm-"].map(r=>`<div class="wl-kr">${[...r].map(ch=> ch==="+" ? `<button class="wl-k wide" data-a="wl-key" data-v="enter">Enviar</button>` : ch==="-" ? `<button class="wl-k wide" data-a="wl-key" data-v="back" aria-label="Borrar">Borrar</button>` : `<button class="wl-k ${est[ch]||""}" data-a="wl-key" data-v="${ch}">${ch}</button>`).join("")}</div>`).join("");
   const res = fin ? `<div class="status ${j.estado==="ganado"?"def":"prov"}">${j.estado==="ganado" ? `¡Acertaste en ${j.intentos.length} intento${j.intentos.length>1?"s":""}! Sumas ${j.puntos} punto${j.puntos>1?"s":""}.` : `Hoy no ha podido ser. La palabra era «${sol.toUpperCase()}».`} Mañana, palabra nueva.</div>` : "";
   // resultados de hoy
-  const jugadores = activos().filter(r=>rolDe(r)!=="cocina").map(r=>({r, j:S.wordle[f+"_"+r.id]})).filter(x=>x.j && x.j.intentos && x.j.intentos.length);
+  const jugadores = S.residentes.filter(r=>r.activo!==false && rolDe(r)!=="cocina" && (esComensal(r) || rolDe(r)==="adscritos")).map(r=>({r, j:S.wordle[f+"_"+r.id]})).filter(x=>x.j && x.j.intentos && x.j.intentos.length);
   const hoyHTML = jugadores.length ? jugadores.sort((a,b)=>(b.j.puntos||0)-(a.j.puntos||0)).map(({r,j:x})=>`<div class="count"><span>${esc(r.nombre)}</span><span>${fin ? (x.estado==="jugando" ? '<span class="muted small">Jugando</span>' : `${mini(x,f)} <b style="font-size:16px;margin-left:6px">${x.estado==="ganado"?x.intentos.length:"X"}/6</b>`) : `<span class="muted small">${x.estado==="jugando"?"Jugando":"Ha terminado"}</span>`}</span></div>`).join("") + (fin ? "" : `<p class="muted small">Verás cómo ha quedado cada uno cuando termines tu partida.</p>`) : `<p class="muted">Todavía no ha jugado nadie hoy.</p>`;
   // ranking mensual
   const mes = S.wlMes || f.slice(0,7), [yy,mm] = mes.split("-").map(Number);
@@ -924,12 +939,29 @@ function cuandoEv(e){
   }
   return fmtLong(e.fecha) + (e.hora ? ", a las "+e.hora : "");
 }
+const REPITE = {no:"No se repite", anual:"Cada año", mensual:"Cada mes", semanal:"Cada semana"};
+const diasEntre = (a,b) => Math.round((parse(b)-parse(a))/86400000);
+const fechaValida = f => /^\d{4}-\d{2}-\d{2}$/.test(f) && iso(parse(f))===f;
+/* Fechas de inicio de un evento (y de sus repeticiones) que tocan el intervalo pedido */
+function ocurrencias(e, desde, hasta){
+  const dur = diasEntre(e.fecha, finEv(e)), out = [], rep = e.repite||"no";
+  const vale = s => fechaValida(s) && s>=e.fecha && s<=hasta && addDays(s,dur)>=desde;
+  if (rep==="anual"){ for (let y=Number(desde.slice(0,4))-1; y<=Number(hasta.slice(0,4)); y++){ const s = y+e.fecha.slice(4); if (vale(s)) out.push(s); } }
+  else if (rep==="mensual"){ const a = parse(desde); a.setDate(1); a.setMonth(a.getMonth()-1); for (let i=0;i<=Math.max(1, diasEntre(desde,hasta)/28+2);i++){ const m = new Date(a.getFullYear(), a.getMonth()+i, 1); const s = iso(m).slice(0,8)+e.fecha.slice(8); if (vale(s)) out.push(s); } }
+  else if (rep==="semanal"){ let s = e.fecha; const salto = Math.max(0, Math.floor((diasEntre(e.fecha, desde)-dur)/7)); s = addDays(s, salto*7); for (; s<=hasta; s=addDays(s,7)) if (vale(s)) out.push(s); }
+  else if (vale(e.fecha)) out.push(e.fecha);
+  return out;
+}
 function eventosEntre(desde, hasta){
   const out = [];
   S.eventos.forEach(e=>{
-    if ((e.estado||"aprobado")!=="aprobado" || e.fecha>hasta || finEv(e)<desde) return;
-    const ini = e.fecha>desde ? e.fecha : desde, fin = finEv(e)<hasta ? finEv(e) : hasta;
-    for (let f=ini; f<=fin; f=addDays(f,1)) out.push({fecha:f, tipo:"evento", texto:e.titulo, corto:e.titulo, detalle:e.detalle, id:e.id, autor:e.autor, hora:e.hora, cuando:cuandoEv(e), varios:finEv(e)!==e.fecha});
+    if ((e.estado||"aprobado")!=="aprobado") return;
+    const dur = diasEntre(e.fecha, finEv(e));
+    ocurrencias(e, desde, hasta).forEach(s0=>{
+      const occ = {...e, fecha:s0, fin:addDays(s0,dur)};
+      const ini = s0>desde ? s0 : desde, fin = occ.fin<hasta ? occ.fin : hasta;
+      for (let f=ini; f<=fin; f=addDays(f,1)) out.push({fecha:f, tipo:"evento", texto:e.titulo, corto:e.titulo, detalle:e.detalle, id:e.id, clave:e.id+"|"+s0, autor:e.autor, hora:e.hora, cuando:cuandoEv(occ), varios:dur>0, repite:(e.repite&&e.repite!=="no")?REPITE[e.repite]:""});
+    });
   });
   for (let f=desde; f<=hasta; f=addDays(f,1)){ const md=f.slice(5); conCumple().forEach(r=>{ if (r.cumple===md) { const e = edadEn(r, Number(f.slice(0,4))), n = nombreVis(r); out.push({fecha:f, tipo:"cumple", texto:"Cumpleaños de "+n+(e!=null?" ("+e+" años)":""), corto:n+(e!=null?" "+e:"")}); } }); }
   return out.sort((a,b)=>a.fecha.localeCompare(b.fecha) || (a.tipo==="cumple"?-1:1));
@@ -942,7 +974,9 @@ function camposFecha(){
          <div class="field"><label for="ev_hora">Hora (opcional)</label><input class="input" type="time" id="ev_hora" data-draft="ev_hora" value="${esc(draft("ev_hora",""))}" style="max-width:150px"></div></div>
          <p class="muted small" style="margin:-8px 0 12px">Deja la hora vacía si es para todo el día.</p>`
       : `<div class="row" style="align-items:flex-end"><div class="field"><label for="ev_fecha">Desde</label><input class="input" type="date" id="ev_fecha" data-draft="ev_fecha" value="${esc(ini)}" style="max-width:200px"></div>
-         <div class="field"><label for="ev_fin">Hasta (incluido)</label><input class="input" type="date" id="ev_fin" data-draft="ev_fin" min="${esc(ini)}" value="${esc(draft("ev_fin", addDays(ini,2)))}" style="max-width:200px"></div></div>`}`;
+         <div class="field"><label for="ev_fin">Hasta (incluido)</label><input class="input" type="date" id="ev_fin" data-draft="ev_fin" min="${esc(ini)}" value="${esc(draft("ev_fin", addDays(ini,2)))}" style="max-width:200px"></div></div>`}
+    <div class="field"><label>¿Se repite?</label><div class="seg">${Object.entries(REPITE).map(([k,l])=>`<button class="opt" data-a="ev-rep" data-v="${k}" aria-pressed="${draft("ev_rep","no")===k}">${l}</button>`).join("")}</div>
+      <span class="muted small">Por ejemplo, una fiesta que cae siempre el mismo día: «Cada año».</span></div>`;
 }
 function calendarioView(modo){
   // modo: "admin" (añade, aprueba y borra), "cocina" (añade y borra lo suyo), "residente" (propone)
@@ -957,11 +991,11 @@ function calendarioView(modo){
     celdas.push(its.length ? `<button class="cal-d ${f===today()?"hoy":""}" data-a="cal-dia" data-f="${f}" aria-label="Ver lo que hay el ${esc(fmtLong(f))}">${dentro}</button>` : `<div class="cal-d ${f===today()?"hoy":""}">${dentro}</div>`);
   }
   const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
-  const vistos = new Set(), agenda = items.filter(x=>{ if (x.tipo!=="evento") return true; if (vistos.has(x.id)) return false; vistos.add(x.id); return true; });
+  const vistos = new Set(), agenda = items.filter(x=>{ if (x.tipo!=="evento") return true; if (vistos.has(x.clave)) return false; vistos.add(x.clave); return true; });
   const pendientes = S.eventos.filter(e=>e.estado==="pendiente");
   const misProp = modo==="residente" ? S.eventos.filter(e=>e.autor===S.session.uid && (e.estado==="pendiente" || e.estado==="rechazado")) : [];
   const cola = modo==="admin" && pendientes.length ? `<div class="panel" style="border-color:var(--accent)"><h3 style="margin-bottom:4px">Propuestas de residentes pendientes (${pendientes.length})</h3><p class="muted small" style="margin-top:0">Si el texto incluye nombres de residentes, recházala: la administración no debe verlos.</p>
-      ${pendientes.map(e=>`<div class="res"><div><strong>${esc(cuandoEv(e))}</strong>: ${esc(e.titulo)}${e.detalle?`<div class="small muted">${esc(e.detalle).replace(/\n/g,"<br>")}</div>`:""}<div class="small muted">Propuesto por ${esc((resById(e.autor)||{}).nombre||"un residente")}</div></div>
+      ${pendientes.map(e=>`<div class="res"><div><strong>${esc(cuandoEv(e))}</strong>${e.repite&&e.repite!=="no"?" ("+esc(REPITE[e.repite].toLowerCase())+")":""}: ${esc(e.titulo)}${e.detalle?`<div class="small muted">${esc(e.detalle).replace(/\n/g,"<br>")}</div>`:""}<div class="small muted">Propuesto por ${esc((resById(e.autor)||{}).nombre||"un residente")}</div></div>
         <div class="row"><button class="btn" data-a="ev-ok" data-id="${e.id}">Aprobar</button><button class="btn danger" data-a="ev-no" data-id="${e.id}">Rechazar</button></div></div>`).join("")}</div>` : "";
   const mias = misProp.length ? `<h3 style="margin:6px 0 8px">Tus propuestas</h3>${misProp.map(e=>`<div class="res"><div><strong>${esc(cuandoEv(e))}</strong>: ${esc(e.titulo)}</div><div class="row"><span class="tag ${e.estado==="pendiente"?"plantilla":"cerrado"}">${e.estado==="pendiente"?"Pendiente de aprobar":"No aprobado"}</span><button class="link" data-a="ev-del" data-id="${e.id}">Quitar</button></div></div>`).join("")}` : "";
   const form = modo==="residente" ? `<div class="panel"><h3 style="margin-bottom:6px">Proponer un evento</h3><p class="muted small" style="margin-top:0">Un administrador lo revisará antes de que aparezca en el calendario.</p>
@@ -978,12 +1012,12 @@ function calendarioView(modo){
   return cola + `<div class="weeknav"><button class="arrow" data-a="cal-mes" data-v="${mesAnt}" aria-label="Mes anterior">‹</button><h2>${MESES[mm-1].charAt(0).toUpperCase()+MESES[mm-1].slice(1)} de ${yy}</h2><button class="arrow" data-a="cal-mes" data-v="${mesSig}" aria-label="Mes siguiente">›</button></div>
     <div class="cal">${["L","M","X","J","V","S","D"].map(d=>`<div class="cal-h">${d}</div>`).join("")}${celdas.join("")}</div>
     <h2 style="margin-bottom:8px">Este mes</h2>
-    ${agenda.length ? agenda.map(x=>`<div class="res"><div><strong>${esc(x.tipo==="evento" ? x.cuando : fmtLong(x.fecha))}</strong> <span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span><div>${esc(x.texto)}</div>${x.detalle?`<div class="small muted">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>${x.tipo==="evento" && (modo==="admin" || (modo==="cocina" && x.autor===S.session.uid)) ? `<button class="link" data-a="ev-del" data-id="${x.id}">Borrar</button>` : "<span></span>"}</div>`).join("") : `<div class="empty">No hay cumpleaños ni eventos este mes.</div>`}
+    ${agenda.length ? agenda.map(x=>`<div class="res"><div><strong>${esc(x.tipo==="evento" ? x.cuando : fmtLong(x.fecha))}</strong> <span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span><div>${esc(x.texto)}</div>${x.repite?`<div class="small" style="color:var(--accent);font-weight:700">↻ ${esc(x.repite)}</div>`:""}${x.detalle?`<div class="small muted">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>${x.tipo==="evento" && (modo==="admin" || (modo==="cocina" && x.autor===S.session.uid)) ? `<button class="link" data-a="ev-del" data-id="${x.id}">Borrar</button>` : "<span></span>"}</div>`).join("") : `<div class="empty">No hay cumpleaños ni eventos este mes.</div>`}
     ${mias}${form}`;
 }
 function avisoEventos(){
-  const l = S.eventos.filter(e=>(e.estado||"aprobado")==="aprobado" && e.fecha<=addDays(today(),3) && finEv(e)>=today());
-  return l.length ? `<div class="alert no-print"><strong>Próximos eventos:</strong> ${l.map(e=>esc(cuandoEv(e))+": "+esc(e.titulo)).join("; ")}. <button class="link" data-a="tab" data-v="calendario">Ver calendario</button></div>` : "";
+  const vis = new Set(), l = eventosEntre(today(), addDays(today(),3)).filter(x=>{ if (vis.has(x.clave)) return false; vis.add(x.clave); return true; });
+  return l.length ? `<div class="alert no-print"><strong>Próximos eventos:</strong> ${l.map(x=>esc(x.cuando)+": "+esc(x.texto)).join("; ")}. <button class="link" data-a="tab" data-v="calendario">Ver calendario</button></div>` : "";
 }
 
 /* --- Comensales extra (solo administradores) --- */
@@ -991,7 +1025,9 @@ function extrasView(){
   const f = S.exFecha || proxParte(), ex = extrasDe(f);
   const filas = [["desayuno","Desayuno", locked(addDays(f,-1))],["primer","Comida, 1.er turno", locked(f)],["normal","Comida, turno normal", locked(f)],["segundo","Comida, 2.º turno", locked(f)],["cena","Cena", locked(f)]];
   const para = draft("ex_para", notaParaDe(ex));
-  return `<p class="muted">Suma comensales a los apuntados por los residentes: invitados, visitas o cualquier persona más. Cuentan en el parte de la administración.</p>
+  const adsF = S.adscritos[f] || {}, adsTot = (adsF.normal||0)+(adsF.segundo||0);
+  const adsLinea = adsTot ? `<div class="alert" style="border-left-color:var(--primary)">Adscritos apuntados por su jefe para este día: <b>${adsF.normal||0}</b> en turno normal y <b>${adsF.segundo||0}</b> en 2.º turno. Ya se suman al parte.</div>` : "";
+  return adsLinea + `<p class="muted">Suma comensales a los apuntados por los residentes: invitados, visitas o cualquier persona más. Cuentan en el parte de la administración.</p>
     <div class="weeknav">
       <button class="arrow" data-a="exday" data-v="-1" aria-label="Día anterior" ${f<=today()?"disabled":""}>‹</button>
       <h2>${fmtLong(f)}</h2>
@@ -1069,14 +1105,21 @@ function consultasView(rol){
 
 /* --- Quién come: tabla del día para los residentes (sin regímenes) --- */
 function quienComeView(){
-  const f = S.qcFecha || today(), d = datosParte(f), lk = locked(f), manana = DIAS[wd(addDays(f,1))].toLowerCase();
-  const ex = extrasDe(f), exM = extrasDe(addDays(f,1));
-  const nCom = d.turnos.reduce((a,t)=>a+t[1].length,0) + d.bolsas.length;
+  const f = S.qcFecha || today(), d = datosParte(f), lk = locked(f);
+  const ex = extrasDe(f), ads = S.adscritos[f] || {};
   const desHoy = id => efectiva(id, addDays(f,-1)).sel.desayuno, nDes = d.filas.filter(o=>desHoy(o.r.id)).length;
-  const exCom = (ex.primer||0)+(ex.normal||0)+(ex.segundo||0)+sumaBolsas(ex.bolsas);
-  const filas = d.filas.slice().sort((a,b)=>String(a.r.nombre||"").localeCompare(String(b.r.nombre||""),"es"));
+  const cuenta = k => d.filas.filter(o=>o.sel.comida===k).length;
+  const nCom = d.filas.filter(o=>o.sel.comida!=="no").length;
+  const fil = S.qcFiltro, ord = S.qcOrden || {col:"persona", dir:1};
+  const ORDEN_COM = {primer:0, normal:1, segundo:2, bolsa:3, no:4};
+  const clave = o => ord.col==="desay" ? (desHoy(o.r.id)?0:1) : ord.col==="comida" ? ORDEN_COM[o.sel.comida] : ord.col==="cena" ? (o.sel.cena?0:1) : 0;
+  const filas = d.filas.filter(o=>!fil || o.sel.comida===fil)
+    .sort((a,b)=> ((clave(a)-clave(b))*ord.dir) || String(a.r.nombre||"").localeCompare(String(b.r.nombre||""),"es")*(ord.col==="persona"?ord.dir:1));
   const marca = v => v ? "Sí" : '<span class="muted">No</span>';
-  const extraTxt = [exCom ? exCom+" en la comida" : "", (ex.cena||0) ? ex.cena+" en la cena" : "", (ex.desayuno||0) ? ex.desayuno+" en el desayuno" : ""].filter(Boolean).join(", ");
+  const exCom = (ex.primer||0)+(ex.normal||0)+(ex.segundo||0)+sumaBolsas(ex.bolsas), adsCom = (ads.normal||0)+(ads.segundo||0);
+  const extraTxt = [exCom ? exCom+" comensal"+(exCom>1?"es":"")+" extra" : "", adsCom ? adsCom+" adscrito"+(adsCom>1?"s":"")+" ("+[ads.normal?ads.normal+" normal":"", ads.segundo?ads.segundo+" 2.º turno":""].filter(Boolean).join(", ")+")" : "", (ex.cena||0) ? ex.cena+" extra en la cena" : ""].filter(Boolean).join(", ");
+  const chip = (k,l,n) => `<button class="chipf" data-a="qc-filtro" data-v="${k}" aria-pressed="${(fil||"todos")===k}">${l} <b>${n}</b></button>`;
+  const th = (k,l) => `<th><button class="th-btn" data-a="qc-orden" data-v="${k}">${l}${ord.col===k ? (ord.dir>0?" ▲":" ▼") : ""}</button></th>`;
   return `<div class="weeknav">
       <button class="arrow" data-a="qcday" data-v="-1" aria-label="Día anterior">‹</button>
       <h2>${fmtLong(f)}</h2>
@@ -1089,12 +1132,25 @@ function quienComeView(){
       <section class="block" style="padding:10px 12px;text-align:center"><div class="muted small">Cenan</div><b style="font-family:var(--head);font-size:28px">${d.cena[0].length}</b></section>
       <section class="block" style="padding:10px 12px;text-align:center"><div class="muted small">Desayunan</div><b style="font-family:var(--head);font-size:28px">${nDes}</b></section>
     </div>
-    ${extraTxt ? `<p class="muted small" style="margin-top:-12px">Además hay comensales extra: ${esc(extraTxt)}.</p>` : ""}
+    <p class="small" style="margin:-10px 0 6px;font-weight:700">Comida por turnos <span class="muted" style="font-weight:400">(toca para ver solo a esas personas)</span></p>
+    <div class="chips-f">${chip("todos","Todos",d.filas.length)}${chip("primer","1.er turno",cuenta("primer"))}${chip("normal","Normal",cuenta("normal"))}${chip("segundo","2.º turno",cuenta("segundo"))}${chip("bolsa","En bolsa",cuenta("bolsa"))}${chip("no","No comen",cuenta("no"))}</div>
+    ${extraTxt ? `<p class="muted small" style="margin:4px 0 12px">Además: ${esc(extraTxt)}.</p>` : ""}
     ${filas.length ? `<div class="tablewrap"><table class="tabla-qc">
-      <thead><tr><th>Persona</th><th>Desay.</th><th>Comida</th><th>Cena</th></tr></thead>
+      <thead><tr>${th("persona","Persona")}${th("desay","Desay.")}${th("comida","Comida")}${th("cena","Cena")}</tr></thead>
       <tbody>${filas.map(o=>`<tr${o.r.id===S.session.uid?' style="background:var(--soft)"':""}><td>${esc(o.r.nombre||"")}</td><td>${marca(desHoy(o.r.id))}</td><td>${o.sel.comida==="no" ? '<span class="muted">No</span>' : esc(comidaTxt(o.sel))}</td><td>${marca(o.sel.cena)}</td></tr>`).join("")}</tbody></table></div>`
-      : `<div class="empty">No hay residentes activos.</div>`}
+      : `<div class="empty">Nadie en este grupo.</div>`}
 `;
+}
+
+/* --- Jefe de adscritos: comensales de los martes --- */
+function adscritosView(soloLectura){
+  const martes = []; let f = today(); while (wd(f)!==1) f = addDays(f,1);
+  for (let i=0;i<6;i++){ martes.push(f); f = addDays(f,7); }
+  return `<p class="muted" style="margin-top:0">${soloLectura ? "Lo que ha apuntado el jefe de adscritos para los próximos martes. Se suma al parte." : "Indica cuántos adscritos comen cada martes. Se suman al parte de la administración. Puedes cambiarlo hasta la hora límite de ese martes."}</p>
+    ${martes.map(m=>{ const a = S.adscritos[m]||{}, lk = locked(m), tot = (a.normal||0)+(a.segundo||0);
+      const fila = (k,l) => `<div class="count" style="align-items:center"><span>${l}</span><span class="row" style="gap:12px">${soloLectura ? `<b>${a[k]||0}</b>` : `<button class="arrow" data-a="ads-mas" data-f="${m}" data-k="${k}" data-v="-1" aria-label="Quitar uno" ${lk||!(a[k]>0)?"disabled":""}>−</button><b style="min-width:28px;text-align:center">${a[k]||0}</b><button class="arrow" data-a="ads-mas" data-f="${m}" data-k="${k}" data-v="1" aria-label="Añadir uno" ${lk?"disabled":""}>+</button>`}</span></div>`;
+      return `<div class="block" style="margin-bottom:12px"><div class="row" style="justify-content:space-between;margin-bottom:4px"><h3>${esc(fmtLong(m))}</h3>${lk ? '<span class="tag cerrado">Cerrado</span>' : `<span class="tag abierto">Hasta las ${esc(horaCierre(m))}</span>`}</div>
+        ${fila("normal","Turno normal")}${fila("segundo","2.º turno")}<p class="muted small" style="margin:6px 0 0">Total: ${tot} adscrito${tot===1?"":"s"}</p></div>`; }).join("")}`;
 }
 
 /* --- Ventanillas --- */
@@ -1104,7 +1160,7 @@ function modalHTML(){
   if (m.tipo==="cal"){
     const its = eventosEntre(m.f, m.f);
     tit = fmtLong(m.f);
-    cuerpo = its.length ? its.map(x=>`<div class="res" style="grid-template-columns:1fr"><div><span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span></div><div style="font-weight:700">${esc(x.texto)}</div>${x.tipo==="evento" && (x.hora || x.varios) ? `<div class="small muted">${esc(x.varios ? x.cuando : "A las "+x.hora)}</div>` : ""}${x.detalle?`<div class="small">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>`).join("") : `<p class="muted">No hay nada este día.</p>`;
+    cuerpo = its.length ? its.map(x=>`<div class="res" style="grid-template-columns:1fr"><div><span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span></div><div style="font-weight:700">${esc(x.texto)}</div>${x.tipo==="evento" && (x.hora || x.varios) ? `<div class="small muted">${esc(x.varios ? x.cuando : "A las "+x.hora)}</div>` : ""}${x.repite?`<div class="small" style="color:var(--accent);font-weight:700">↻ ${esc(x.repite)}</div>`:""}${x.detalle?`<div class="small">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>`).join("") : `<p class="muted">No hay nada este día.</p>`;
   }
   if (m.tipo==="edit"){
     const r = resById(m.rid), f = m.f, manana = DIAS[wd(addDays(f,1))].toLowerCase(), v = S.drafts.ed || norm();
@@ -1251,9 +1307,10 @@ function viewApp(uReal){
   const G1 = "Mis comidas", G2 = rol==="admin" ? "Gestión" : "Administración";
   if (esComensal(u)) t.push(["semana","Mi semana","",G1],["plantilla","Plantilla fija","",G1]);
   if (esComensal(u) && rol!=="cocina") t.push(["quien","Quién come","",G1]);
-  if (esComensal(u) && rol!=="cocina") t.push(["wordle","Palabra del día","",G1]);
+  if ((esComensal(u) && rol!=="cocina") || rol==="adscritos") t.push(["wordle","Palabra del día","",G1]);
   if (rol==="residente") t.push(["calendario","Calendario","",G1],["consultas","Mensajes", consultasSinLeer("residente")||"",G1]);
-  if (rol!=="cocina") t.push(["datos","Mis datos","",G1]);
+  if (rol!=="cocina" && rol!=="adscritos") t.push(["datos","Mis datos","",G1]);
+  if (rol==="adscritos") t.unshift(["adscritos","Adscritos","",G2]);
   if (rol==="cocina") t.push(["parte","Parte del día","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Notas", unread("cocina")||"",G2]);
   if (rol==="admin") t.push(["parte","Parte del día","",G2],["extras","Comensales extra","",G2],["notas","Notas", unread("admin")||"",G2],["consultas","Mensajes de residentes", consultasSinLeer("admin")||"",G2],["avisos","Avisos a residentes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario", S.eventos.filter(e=>e.estado==="pendiente").length||"",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
   if (!t.length) return cabecera(u.nombre||"") + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
@@ -1265,6 +1322,7 @@ function viewApp(uReal){
   else if (S.tab==="calendario") main = calendarioView(rol==="admin" ? "admin" : rol==="cocina" ? "cocina" : "residente");
   else if (S.tab==="avisos") main = avisosAdminView();
   else if (S.tab==="quien") main = quienComeView();
+  else if (S.tab==="adscritos") main = adscritosView(false);
   else if (S.tab==="consultas") main = consultasView(rol==="admin" ? "admin" : "residente");
   else if (S.tab==="datos") main = datosView(u);
   else if (S.tab==="cumples") main = cumplesView();
@@ -1281,7 +1339,7 @@ function viewApp(uReal){
   const bannerAv = bannerAdm + (avs.length ? avs.map(x=>`<div class="alert no-print" role="status"><strong>Aviso para el ${esc(fmtLong(x.fecha).toLowerCase())}</strong><p style="margin:6px 0">${esc(x.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="${esc(x.clave)}">Entendido</button></div>`).join("") : "");
   const cab = S.vista
     ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div></div>`
-    : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin") + panelPw();
+    : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin", ROLES[rol]) + panelPw();
   const actual = t.find(x=>x[0]===S.tab);
   return modalHTML() + cab + (actual ? `<h2 class="sec-t">${actual[1]}</h2>` : "") + (S.vista ? "" : avisoDatos(u)) + banner + bannerAv + main + (t.length>1 ? navegacion(t, rol, esComensal(u)) : "");
 }
@@ -1324,9 +1382,9 @@ async function descargarPDF(f){
   function card(x, y0, titulo, filasCard, extras){
     let yy = y0 + 8;
     const body = [];
-    filasCard.forEach(([lab, list, extra, srv]) => {
+    filasCard.forEach(([lab, list, extra, srv, ads]) => {
       body.push({t:"row", lab, n:list.length+(extra||0)});
-      if (extra) body.push({t:"ext", l:"Incluye "+extra+" comensal"+(extra>1?"es":"")+" extra"});
+      const it = incluyeTxt(extra, ads||0); if (it) body.push({t:"ext", l:it});
       const rt = regTxt(list, anon, srv);
       if (rt) doc.splitTextToSize(rt, cardW-10).forEach(l=>body.push({t:"reg", l}));
     });
@@ -1344,7 +1402,7 @@ async function descargarPDF(f){
   }
   const exB = sumaBolsas(D.bolsasExtra);
   const totalComida = D.turnos.reduce((a,t)=>a+t[1].length+t[2],0) + D.bolsas.length + exB;
-  let yL = card(M, y, "Comida ("+totalComida+")", [...D.turnos.map(t=>[t[0],t[1],t[2],"comida"]), ["En bolsa", D.bolsas, exB, "comida"]], bolsasPorHora(D.bolsas, D.bolsasExtra, anon).map(x=>"Bolsas a las "+x.h+": "+x.n+(x.det?" ("+x.det+")":"")));
+  let yL = card(M, y, "Comida ("+totalComida+")", [...D.turnos.map(t=>[t[0],t[1],t[2],"comida",t[3]]), ["En bolsa", D.bolsas, exB, "comida"]], bolsasPorHora(D.bolsas, D.bolsasExtra, anon).map(x=>"Bolsas a las "+x.h+": "+x.n+(x.det?" ("+x.det+")":"")));
   yL = card(M, yL, "Cena", [["Cenan hoy", D.cena[0], D.cena[1], "cena"]]);
   let yR = card(M+cardW+6, y, "Desayuno del "+manana, [["Desayunan", D.desayuno[0], D.desayuno[1], "desayuno"]]);
   yR = card(M+cardW+6, yR, "Para llevar el "+manana, [["Tupper", D.tupper, 0, "llevar"],["Bolsa de comida", D.bolsaM, 0, "llevar"]], anon ? [] : [...D.tupper,...D.bolsaM].map(o=>o.r.nombre+": "+(o.sel.llevar==="tupper"?"tupper":"bolsa de comida")));
@@ -1691,11 +1749,21 @@ async function act(a, b){
       if (hora && !/^\d{2}:\d{2}$/.test(hora)){ toast("Revisa la hora."); return; }
       if (!t){ toast("Escribe qué se celebra."); return; }
       const rolA = rolDe(resById(S.session.uid)), directo = rolA==="admin" || rolA==="cocina";
-      await w(()=>S.db.doc("eventos/"+newId("e")).set({fecha:f, fin, hora, titulo:t, detalle:d, ts:Date.now(), autor:S.session.uid, estado: directo ? "aprobado" : "pendiente"}));
-      delete S.drafts.ev_tit; delete S.drafts.ev_det; delete S.drafts.ev_hora; delete S.drafts.ev_fin; S.calMes = f.slice(0,7); toast(directo ? "Evento añadido." : "Propuesta enviada. Un administrador la revisará."); break;
+      const repite = draft("ev_rep","no");
+      await w(()=>S.db.doc("eventos/"+newId("e")).set({fecha:f, fin, hora, repite, titulo:t, detalle:d, ts:Date.now(), autor:S.session.uid, estado: directo ? "aprobado" : "pendiente"}));
+      delete S.drafts.ev_tit; delete S.drafts.ev_det; delete S.drafts.ev_hora; delete S.drafts.ev_fin; delete S.drafts.ev_rep; S.calMes = f.slice(0,7); toast(directo ? "Evento añadido." : "Propuesta enviada. Un administrador la revisará."); break;
     }
     case "ev-tipo": S.drafts.ev_tipo = v; break;
-    case "ev-del": await w(()=>S.db.doc("eventos/"+b.dataset.id).delete()); toast("Evento quitado."); return;
+    case "ev-rep": S.drafts.ev_rep = v; break;
+    case "qc-filtro": S.qcFiltro = v==="todos" ? null : v; break;
+    case "qc-orden": S.qcOrden = (S.qcOrden && S.qcOrden.col===v) ? {col:v, dir:-S.qcOrden.dir} : {col:v, dir:1}; break;
+    case "ads-mas": {
+      const f = b.dataset.f, k = b.dataset.k;
+      if (locked(f)){ toast("Ese martes ya está cerrado."); return; }
+      const a = {...(S.adscritos[f]||{}), fecha:f, autor:S.session.uid, ts:Date.now()}; a[k] = Math.max(0, (a[k]||0) + Number(v));
+      S.adscritos[f] = a; render(); await w(()=>S.db.doc("adscritos/"+f).set(a)); return;
+    }
+    case "ev-del": { const e = S.eventos.find(x=>x.id===b.dataset.id); await w(()=>S.db.doc("eventos/"+b.dataset.id).delete()); toast(e && e.repite && e.repite!=="no" ? "Evento quitado, con todas sus repeticiones." : "Evento quitado."); return; }
     case "ev-ok": case "ev-no": await w(()=>S.db.doc("eventos/"+b.dataset.id).update({estado: a==="ev-ok" ? "aprobado" : "rechazado", revisadoPor:S.session.uid})); toast(a==="ev-ok" ? "Evento aprobado: ya aparece en el calendario." : "Propuesta rechazada."); return;
     case "pf-luego": S.perfilAplazado = true; break;
     case "pf-save": {
