@@ -286,6 +286,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
+const VERSION = "2026.10.13-2";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -549,6 +550,26 @@ async function entrarCon(user){
 S.db.doc("config/general").onSnapshot(s => { S.config = s.exists ? s.data() : null; S.cfgLoaded = true; render(); }, e => { console.error(e); S.loadErr = e.code||e.message; S.cfgLoaded = true; render(); });
 onAuthStateChanged(auth, user => { if (S.enAlta) return; entrarCon(user); });
 
+/* ---------- ¿Hay una versión nueva publicada? ---------- */
+let ultimaComprobacion = 0;
+async function comprobarVersion(){
+  if (Date.now() - ultimaComprobacion < 60000) return;
+  ultimaComprobacion = Date.now();
+  try {
+    const r = await fetch(location.pathname + "?comprobar=" + Date.now(), {cache:"no-store"});
+    if (!r.ok) return;
+    const m = (await r.text()).match(/const VERSION = "([^"]+)"/);
+    if (m && m[1] !== VERSION && !S.hayNueva){ S.hayNueva = m[1]; render(); }
+  } catch(e){}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState==="visible") comprobarVersion(); });
+window.addEventListener("focus", comprobarVersion);
+setTimeout(comprobarVersion, 3000);
+setInterval(comprobarVersion, 15*60000);
+function franjaVersion(){
+  return S.hayNueva ? `<div class="status def no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Hay una versión nueva de la aplicación.</span><button class="btn" data-a="actualizar">Actualizar ahora</button></div>` : "";
+}
+
 /* ---------- Render ---------- */
 function notificar(m){
   const quien = m.de==="admin" ? "los administradores" : "la administración";
@@ -561,7 +582,8 @@ function render(){
   $app.innerHTML = view();
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); try { if (sel!=null) el.setSelectionRange(sel,sel); } catch(e){} } }
 }
-function view(){
+function view(){ return franjaVersion() + vista0(); }
+function vista0(){
   if (!S.cfgLoaded || !S.authListo) return `<p class="muted">Abriendo el libro…</p>`;
   if (S.loadErr && S.session && !S.resLoaded) return `<div class="cover"><div class="cover-inner"><h1>No se pueden cargar los datos</h1><p class="lead">Comprueba la conexión a internet y vuelve a intentarlo.</p><p class="muted small">Código del problema: ${esc(S.loadErr)}</p><div class="row"><button class="btn" data-a="reload">Volver a intentarlo</button><button class="btn ghost" data-a="logout">Salir</button></div></div></div>`;
   if (!S.config) return viewSetup();
@@ -603,7 +625,8 @@ function cabecera(nombre, esAdm, rolTxt){
     ${S.cuenta ? `<div class="cuenta no-print"><div class="yo">${esc(nombre)}<small>${esc(rolTxt || (esAdm?"Administrador":"Residente"))}</small></div>
       ${esAdm?`<button data-a="vista-admon">Ver como la administración</button>`:""}
       <button data-a="pw-ver">Cambiar contraseña</button>
-      <button class="salir" data-a="logout">Salir</button></div>` : ""}`;
+      <button class="salir" data-a="logout">Salir</button>
+      <p class="muted small" style="margin:8px 10px 0">Versión ${VERSION}</p></div>` : ""}`;
 }
 function panelPw(){
   if (!S.verPw) return "";
@@ -1719,6 +1742,7 @@ async function act(a, b){
     }
     case "parteday": S.parteFecha = v==="0" ? today() : addDays(S.parteFecha, Number(v)); break;
     case "reload": location.reload(); return;
+    case "actualizar": location.replace(location.pathname + "?v=" + Date.now()); return;
     case "pdf": await descargarPDF(b.dataset.f); return;
     case "print": {
       const f = b.dataset.f || S.parteFecha;
