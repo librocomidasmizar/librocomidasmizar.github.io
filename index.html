@@ -74,6 +74,11 @@ body{-webkit-tap-highlight-color:transparent}
 button.cal-d{text-align:left;cursor:pointer;color:inherit;font:inherit}
 button.cal-d:hover{border-color:var(--primary)}
 .editado{font-size:12px;color:var(--accent);font-weight:700}
+.guia-s{border-top:1px solid var(--line)}
+.guia-h{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;padding:14px 2px;font-family:var(--head);font-weight:600;font-size:18px;color:var(--ink);text-align:left}
+.guia-h span:last-child{color:var(--primary);font-size:22px;margin-left:10px}
+.guia-l{margin:0 0 14px;padding-left:22px;line-height:1.5}
+.guia-l li{margin-bottom:8px}
 tr.fila-ed{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 tr.fila-ed:hover td,tr.fila-ed:active td{background:var(--soft)}
 .lapiz{color:var(--primary);font-weight:700}
@@ -286,7 +291,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.10.13-2";
+const VERSION = "2026.10.14-1";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -624,6 +629,7 @@ function cabecera(nombre, esAdm, rolTxt){
     <button class="avatar" data-a="cuenta" aria-expanded="${!!S.cuenta}" aria-label="Mi cuenta">${esc(ini)}</button></div>
     ${S.cuenta ? `<div class="cuenta no-print"><div class="yo">${esc(nombre)}<small>${esc(rolTxt || (esAdm?"Administrador":"Residente"))}</small></div>
       ${esAdm?`<button data-a="vista-admon">Ver como la administración</button>`:""}
+      <button data-a="guia">Cómo se usa</button>
       <button data-a="pw-ver">Cambiar contraseña</button>
       <button class="salir" data-a="logout">Salir</button>
       <p class="muted small" style="margin:8px 10px 0">Versión ${VERSION}</p></div>` : ""}`;
@@ -927,11 +933,12 @@ function wordleView(u){
   const hoyHTML = jugadores.length ? jugadores.sort((a,b)=>(b.j.puntos||0)-(a.j.puntos||0)).map(({r,j:x})=>`<div class="count"><span>${esc(r.nombre)}</span><span>${fin ? (x.estado==="jugando" ? '<span class="muted small">Jugando</span>' : `${mini(x,f)} <b style="font-size:16px;margin-left:6px">${x.estado==="ganado"?x.intentos.length:"X"}/6</b>`) : `<span class="muted small">${x.estado==="jugando"?"Jugando":"Ha terminado"}</span>`}</span></div>`).join("") + (fin ? "" : `<p class="muted small">Verás cómo ha quedado cada uno cuando termines tu partida.</p>`) : `<p class="muted">Todavía no ha jugado nadie hoy.</p>`;
   // ranking mensual
   const mes = S.wlMes || f.slice(0,7), [yy,mm] = mes.split("-").map(Number);
+  const esAdm = rolDe(resById(S.session.uid))==="admin";
   const tot = {};
   Object.values(S.wordle).forEach(x=>{ if (String(x.fecha).slice(0,7)===mes && x.estado && x.estado!=="jugando"){ const t = tot[x.uid] = tot[x.uid] || {p:0, n:0, a:0}; t.p += x.puntos||0; t.n++; if (x.estado==="ganado") t.a++; } });
   const rk = Object.entries(tot).map(([uid,t])=>({r:resById(uid), t})).filter(x=>x.r).sort((a,b)=>b.t.p-a.t.p || b.t.a-a.t.a);
   const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
-  const rkHTML = rk.length ? `<div class="tablewrap"><table><thead><tr><th></th><th>Persona</th><th>Puntos</th><th>Aciertos</th><th>Partidas</th></tr></thead><tbody>${rk.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.r.nombre)}</td><td><b>${x.t.p}</b></td><td>${x.t.a}</td><td>${x.t.n}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Nadie ha terminado ninguna partida este mes.</div>`;
+  const rkHTML = rk.length ? `<div class="tablewrap"><table><thead><tr><th></th><th>Persona</th><th>Puntos</th><th>Aciertos</th><th>Partidas</th></tr></thead><tbody>${rk.map((x,i)=>`<tr${esAdm?` class="fila-ed" data-a="wl-ver" data-id="${x.r.id}"`:""}><td>${i+1}</td><td>${esAdm?'<span class="lapiz">✎</span> ':""}${esc(x.r.nombre)}</td><td><b>${x.t.p}</b></td><td>${x.t.a}</td><td>${x.t.n}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Nadie ha terminado ninguna partida este mes.</div>`;
   return `<p class="muted" style="margin-top:0">Adivina la palabra de 5 letras en 6 intentos. Verde: letra en su sitio. Amarillo: está en la palabra, en otro sitio. Gris: no está.</p>
     <div class="wl-board">${filas.join("")}</div>
     ${res}${fin ? "" : `<div class="wl-kb">${kb}</div>`}
@@ -1193,10 +1200,70 @@ function adscritosView(){
         ${fila("normal","Turno normal")}${fila("segundo","2.º turno")}<p class="muted small" style="margin:6px 0 0">Total propuesto: ${tot}${a.estado==="rechazado" ? `. Sigue valiendo lo aprobado antes: ${aprobTot}.` : a.estado==="pendiente" && aprobTot ? `. Aprobado hasta ahora: ${aprobTot}.` : ""}</p>${quienes}</div>`; }).join("")}`;
 }
 
+/* ---------- Guía de uso por perfil (menú del círculo) ---------- */
+function guiaDe(rol){
+  const b = s => "<b>"+s+"</b>";
+  const RES = [
+    ["Apuntarte cada día", [ "En "+b("Semana")+", toca un día y marca lo que harás "+b("ese día")+": desayuno, comida y cena.", "En la comida eliges "+b("1.er turno, normal, 2.º turno")+" o "+b("en bolsa")+" (con la hora a la que la quieres).", "Se guarda solo, al momento. No hay botón de guardar." ]],
+    ["La hora límite", [ "Puedes cambiar el día hasta las "+b("9:30")+" (10:30 los sábados y domingos). Algún día, como un festivo, puede ser más tarde: la ficha te lo indica.", "El "+b("desayuno y el tupper o bolsa")+" de un día se cierran "+b("la víspera")+", porque se preparan la noche anterior.", "Lo que ya no se puede cambiar sale "+b("en gris")+".", "¿Se te ha pasado la hora? "+b("Llama a alguno de los administradores")+"." ]],
+    ["Tupper o bolsa de comida", [ "Si te llevas tupper o bolsa de comida, ese día "+b("no comes aquí")+": la comida se marca sola como «No como».", "Si luego eliges un turno de comida, el tupper se quita solo." ]],
+    ["Plantilla fija", [ "Está en "+b("Más → Plantilla fija")+". Rellénala una vez y se aplica sola cada semana.", "Si un día cambias de plan, cámbialo en Semana: solo afecta a ese día. Con «Volver a la plantilla» lo dejas como siempre." ]],
+    ["Quién come", [ "Ves cada día cuántos comen, cenan y desayunan, y quién.", "Toca un turno (por ejemplo, «Normal») para ver solo a esas personas, y toca los encabezados de la tabla para ordenarla." ]],
+    ["Calendario", [ "Eventos de la residencia y cumpleaños. "+b("Toca un día")+" para ver lo que hay.", "Puedes "+b("proponer un evento")+": aparecerá cuando lo apruebe un administrador. No escribas nombres." ]],
+    ["Mensajes y avisos", [ "Arriba verás los "+b("avisos de los administradores")+"; el número de la barra te avisa de los nuevos.", "Puedes escribir a los administradores: verás si lo han leído y cuándo está resuelto. Las conversaciones se borran al mes." ]],
+    ["Palabra del día", [ "En "+b("Más")+". Adivina la palabra de 5 letras en 6 intentos: verde, en su sitio; amarillo, está en otro sitio; gris, no está.", "Puntos: 6 si aciertas a la primera, 5 a la segunda… 1 a la sexta. Ranking cada mes." ]],
+    ["Mis datos", [ "En "+b("Más → Mis datos")+": tu fecha de nacimiento y lo que te gusta, para tu cumpleaños." ]]
+  ];
+  const CIRC = ["Tu círculo", [ "En el círculo con tus iniciales puedes "+b("cambiar la contraseña")+" y "+b("salir")+".", "Cuando haya una versión nueva saldrá arriba «Hay una versión nueva»: pulsa "+b("Actualizar ahora")+"." ]];
+  const ADM = [
+    ["Parte del día", [ "Recuentos por turno, cena, desayuno y para llevar, y el "+b("detalle por persona")+" con nombres.", b("Toca a una persona")+" para corregir lo que tiene marcado, aunque el parte esté cerrado. Si lo está, se avisa a la administración con una nota automática (con iniciales).", b("Descargar PDF")+" e "+b("Imprimir")+" salen siempre sin nombres, como los ve la administración." ]],
+    ["Comensales extra y adscritos", [ "En "+b("Extras")+" sumas invitados con + y − en cada comida, bolsas con su hora y una nota (para la administración, los residentes o todos).", "Arriba aparecen las "+b("propuestas del jefe de adscritos")+": no cuentan en el parte hasta que pulsas "+b("Aprobar")+"." ]],
+    ["Notas con la administración", [ "Cada nota aparece en el parte del día que elijas. Escribe siempre con "+b("iniciales")+": la administración no debe ver nombres.", "Cuando ellas os escriben, os sale un número en Notas." ]],
+    ["Mensajes de residentes", [ "Respóndeles ahí mismo. Con "+b("«Pasar a la administración»")+" el texto se copia a una nota.", "Se ve quién lo ha leído. Marca "+b("«Resuelto»")+" cuando esté solucionado." ]],
+    ["Avisos a residentes", [ "Un mensaje para todos los residentes, visible hasta la fecha que elijas. La administración no lo ve." ]],
+    ["Calendario", [ "Añade, "+b("edita")+" y borra eventos: de un día (con hora si quieres), de varios días, o que "+b("se repiten")+" cada año, mes o semana.", "Arriba aparecen las propuestas de los residentes para aprobar o rechazar." ]],
+    ["Cumpleaños", [ "Ordenados por meses, con la edad que cumple cada uno y sus gustos. Puedes pedir a alguien que actualice sus gustos." ]],
+    ["Usuarios", [ b("Añadir usuario")+": nombre, perfil, iniciales, régimen (y en qué comidas se aplica), usuario y contraseña inicial de al menos 6 caracteres.", "Si alguien olvida su contraseña: "+b("Editar → Restablecer contraseña")+".", b("Eliminar")+" borra al usuario y todos sus datos. No se puede deshacer." ]],
+    ["Ajustes", [ b("Hora límite")+" para cada día de la semana y "+b("días especiales")+" (festivos).", b("Historial")+": borrado cada trimestre o a mano. "+b("Privacidad de nombres")+": debe salir en verde.", "El titular puede "+b("delegar")+" unos días o "+b("ceder")+" la titularidad." ]],
+    ["Palabra del día", [ "En el ranking, toca a una persona para ver sus partidas del mes y "+b("borrar")+" una (por ejemplo, una de prueba)." ]],
+    ["Ver como la administración", [ "En el círculo con tus iniciales: ves exactamente su pantalla, en solo lectura." ]]
+  ];
+  const ADMON = [
+    ["El parte del día", [ "A partir de la "+b("hora límite")+" (9:30 entre semana, 10:30 el fin de semana) el parte es "+b("definitivo")+".", "Comida por turnos, bolsas agrupadas por hora, cena, desayuno del día siguiente y tuppers o bolsas para preparar esa noche.", "Los "+b("regímenes")+" aparecen con iniciales. Los comensales extra y los adscritos ya están sumados.", "Arriba, los avisos de los administradores para ese día." ]],
+    ["PDF e impresión", [ "Con "+b("Descargar PDF")+" o "+b("Imprimir")+" tenéis el parte en papel. En el móvil se abre el menú Compartir." ]],
+    ["Cumpleaños", [ "Ordenados por meses, con iniciales, edad que cumple y gustos. Podéis pedir que alguien actualice sus gustos." ]],
+    ["Calendario", [ "Eventos y cumpleaños de cada mes. Toca un día para verlo. Podéis "+b("añadir eventos")+" y editar o borrar los vuestros." ]],
+    ["Notas", [ "Para hablar con los administradores. Cuando os escriban, saldrá un número en Notas." ]]
+  ];
+  const ADS = [
+    ["Los martes", [ "En "+b("Adscritos")+" ves los próximos martes. Indica con "+b("+ y −")+" cuántos adscritos comen en "+b("turno normal")+" y en "+b("2.º turno")+".", "Puedes cambiarlo hasta la hora límite de ese martes." ]],
+    ["La aprobación", [ "Lo que marcas queda "+b("pendiente de aprobar")+". Cuando un administrador lo aprueba, se suma al parte.", "Si sale «No aprobado», sigue valiendo lo aprobado antes." ]],
+    ["Quién come en 2.º turno", [ "Los martes con adscritos, verás qué residentes comen en 2.º turno ese día." ]]
+  ];
+  if (rol==="admin") return {intro:"Guía del administrador.", secciones: ADM.concat([["Si también comes aquí", ["Tienes además las secciones de residente: Semana, Plantilla fija, Quién come, Palabra del día y Mis datos. Funcionan igual que para cualquier residente."]], CIRC])};
+  if (rol==="cocina") return {intro:"Guía de la administración.", secciones: ADMON.concat([["Tu círculo", ["En el círculo de arriba podéis cambiar la contraseña y salir."]]])};
+  if (rol==="adscritos") return {intro:"Guía del jefe de adscritos.", secciones: ADS.concat([CIRC])};
+  return {intro:"Guía del residente.", secciones: RES.concat([CIRC])};
+}
+
 /* --- Ventanillas --- */
 function modalHTML(){
   const m = S.modal; if (!m) return "";
   let tit = "", cuerpo = "";
+  if (m.tipo==="wl"){
+    const r = resById(m.uid), partidas = Object.entries(S.wordle).filter(([id,x])=>x.uid===m.uid && String(x.fecha).slice(0,7)===m.mes).sort((a,b)=>String(b[1].fecha).localeCompare(String(a[1].fecha)));
+    tit = "Partidas de " + ((r||{}).nombre||"");
+    cuerpo = `<p class="muted small" style="margin-top:0">Puedes borrar una partida, por ejemplo una de prueba. Sus puntos dejan de contar en el ranking. No se puede deshacer.</p>` +
+      (partidas.length ? partidas.map(([id,x])=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong><div class="small muted">${x.estado==="ganado" ? "Acertó en "+(x.intentos||[]).length+" intento"+((x.intentos||[]).length===1?"":"s") : x.estado==="perdido" ? "No acertó" : "Sin terminar"}. ${x.puntos||0} punto${(x.puntos||0)===1?"":"s"}.</div></div>
+        ${S.drafts.wlDel===id ? `<div class="row"><button class="btn danger" data-a="wl-del" data-id="${id}">Sí, borrar</button><button class="btn ghost" data-a="wl-del-no">No</button></div>` : `<button class="link" style="color:var(--danger)" data-a="wl-del-ask" data-id="${id}">Borrar</button>`}</div>`).join("") : `<p class="muted">No tiene partidas este mes.</p>`);
+  }
+  if (m.tipo==="guia"){
+    const g = guiaDe(m.rol), ab = S.guiaAb;
+    tit = "Cómo se usa";
+    cuerpo = `<p class="muted" style="margin-top:0">${esc(g.intro)} Toca un apartado para abrirlo.</p>` +
+      g.secciones.map(([h, pasos], i)=>`<div class="guia-s"><button class="guia-h" data-a="guia-ab" data-v="${i}" aria-expanded="${ab===i}"><span>${esc(h)}</span><span aria-hidden="true">${ab===i?"−":"+"}</span></button>${ab===i ? `<ul class="guia-l">${pasos.map(x=>`<li>${x}</li>`).join("")}</ul>` : ""}</div>`).join("") +
+      `<p class="muted small" style="margin:14px 0 0">Si algo no te sale o ves un error, escribe a los administradores.</p>`;
+  }
   if (m.tipo==="evento"){
     tit = "Editar evento";
     cuerpo = `${camposFecha()}
@@ -1600,6 +1667,12 @@ async function act(a, b){
     case "vista-admon": S.cuenta = false; S.vista = true; S.tabReal = S.tab; S.tab = "parte"; S.verPw = false; S.menu = false; window.scrollTo(0,0); break;
     case "vista-salir": S.vista = false; S.tab = S.tabReal || null; S.menu = false; window.scrollTo(0,0); break;
     case "menu": S.menu = !S.menu; S.cuenta = false; break;
+    case "guia": { const me = resById(S.session.uid); S.cuenta = false; S.guiaAb = 0; S.modal = {tipo:"guia", rol: S.vista ? "cocina" : rolDe(me)}; break; }
+    case "guia-ab": S.guiaAb = S.guiaAb===Number(v) ? -1 : Number(v); break;
+    case "wl-ver": if (rolDe(resById(S.session.uid))!=="admin") return; delete S.drafts.wlDel; S.modal = {tipo:"wl", uid:b.dataset.id, mes: S.wlMes || today().slice(0,7)}; break;
+    case "wl-del-ask": S.drafts.wlDel = b.dataset.id; break;
+    case "wl-del-no": delete S.drafts.wlDel; break;
+    case "wl-del": { const id = b.dataset.id; delete S.drafts.wlDel; await w(()=>S.db.doc("wordle/"+id).delete()); delete S.wordle[id]; toast("Partida borrada: ya no cuenta en el ranking."); break; }
     case "cal-dia": S.modal = {tipo:"cal", f:b.dataset.f}; break;
     case "modal-cerrar": if (S.evEditId){ ["ev_tit","ev_det","ev_hora","ev_fin","ev_rep","ev_tipo","ev_fecha"].forEach(k=>delete S.drafts[k]); S.evEditId = null; } S.modal = null; delete S.drafts.ed; delete S.drafts.ed_hora; delete S.drafts.ed_aviso; break;
     case "ed-abrir": {
