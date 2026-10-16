@@ -74,6 +74,31 @@ body{-webkit-tap-highlight-color:transparent}
 button.cal-d{text-align:left;cursor:pointer;color:inherit;font:inherit}
 button.cal-d:hover{border-color:var(--primary)}
 .editado{font-size:12px;color:var(--accent);font-weight:700}
+.cd-board{display:grid;gap:6px;justify-content:center;margin:8px 0 14px}
+.cd-row{display:flex;gap:8px;align-items:center}
+.cd-b{width:44px;height:44px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-weight:700;color:#fff;font-size:15px;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.cd-p{min-width:70px;font-size:18px;letter-spacing:2px;color:var(--ink);margin-left:6px}
+.nm-vis{text-align:center;margin:6px 0 12px}.nm-num{font-family:var(--head);font-weight:800;font-size:64px;line-height:1.1}
+.lt-word{display:flex;gap:5px;justify-content:center;margin:10px 0 12px}
+.lt-c{width:34px;height:48px;border-bottom:4px solid var(--ink);display:grid;place-items:center;font-family:var(--head);font-weight:800;font-size:28px;text-transform:uppercase}
+.lt-vidas{display:flex;gap:6px;align-items:center;justify-content:center;margin-bottom:12px}
+.lt-vidas i{width:14px;height:14px;border-radius:50%;background:var(--primary)}.lt-vidas i.fuera{background:var(--line)}
+.lt-vidas span{margin-left:8px}
+.pj-g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:360px;margin:8px auto 10px}
+.pj-c{aspect-ratio:1;border-radius:14px;border:0;background:var(--primary);font-size:34px;display:grid;place-items:center;transition:transform .15s}
+.pj-c.up{background:var(--surface);border:2px solid var(--line)}
+.pj-c.ok{background:color-mix(in srgb, var(--primary) 18%, var(--surface));border-color:var(--primary)}
+.pj-c.mal{border-color:var(--danger);background:var(--danger-soft)}
+.pj-c:disabled{opacity:1;cursor:default}
+.sd-g{display:grid;grid-template-columns:repeat(6,1fr);max-width:340px;margin:8px auto 12px;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
+.sd-c{aspect-ratio:1;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface);font-family:var(--head);font-weight:700;font-size:24px;color:var(--ink)}
+.sd-c.fija{color:var(--ink);background:color-mix(in srgb, var(--ink) 6%, var(--surface))}
+.sd-c.puesta{color:var(--primary)}
+.sd-c.sel{background:color-mix(in srgb, var(--accent) 28%, var(--surface))}
+.sd-c.mal{background:var(--danger-soft)}
+.sd-c.bd-r{border-right:3px solid var(--ink)}
+.sd-c.bd-b{border-bottom:3px solid var(--ink)}
+.sd-c:disabled{opacity:1;cursor:default}
 .guia-s{border-top:1px solid var(--line)}
 .guia-h{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;padding:14px 2px;font-family:var(--head);font-weight:600;font-size:18px;color:var(--ink);text-align:left}
 .guia-h span:last-child{color:var(--primary);font-size:22px;margin-left:10px}
@@ -291,7 +316,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.10.14-1";
+const VERSION = "2026.10.15-2";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -662,7 +687,7 @@ const ICO = {
   mas:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'
 };
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]||ICO.mas}</svg>`;
-const CORTO = {adscritos:"Adscritos", semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Palabra", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", extras:"Extras", notas:"Notas", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
+const CORTO = {adscritos:"Adscritos", semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Juego", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", extras:"Extras", notas:"Notas", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
 function navegacion(list, rol, comensal){
   const pref = rol==="adscritos" ? ["adscritos"]
     : rol==="cocina" ? ["parte","cumples","calendario","notas"]
@@ -907,61 +932,173 @@ function avisoCumples(){
   return `<div class="alert no-print">${hoy.length?`<strong>Hoy cumple años: ${esc(hoy.join(", "))}.</strong> `:""}${man.length?`Mañana: ${esc(man.join(", "))}.`:""} <button class="link" data-a="tab" data-v="cumples">Ver gustos</button></div>`;
 }
 
-/* --- Palabra del día --- */
+/* --- Juego del día: cuatro juegos que rotan cada lunes --- */
+const JUEGOS = {
+  palabra: {nombre:"Palabra del día", corto:"Palabra", max:6, desc:"Adivina la palabra de 5 letras en 6 intentos. Verde: letra en su sitio. Amarillo: está en la palabra, en otro sitio. Gris: no está."},
+  codigo:  {nombre:"Código secreto", corto:"Código", max:8, desc:"Adivina la combinación de 4 colores en 8 intentos (se pueden repetir). Tras cada intento: ● en su sitio, ○ está pero en otro sitio."},
+  parejas: {nombre:"Parejas", corto:"Parejas", max:24, desc:"Encuentra las 8 parejas dando la vuelta a dos cartas cada vez. Cuantos menos movimientos, más puntos (máximo 24)."},
+  sudoku:  {nombre:"Mini sudoku", corto:"Sudoku", max:3, desc:"Rellena la cuadrícula: cada fila, columna y bloque de 2×3 lleva los números del 1 al 6 sin repetir. Toca una casilla y luego el número. Puedes equivocarte 3 veces."}
+};
+const ORDEN_J = ["palabra","codigo","parejas","sudoku"];
+const COLORES = ["#D9534F","#E8A33D","#E2C84B","#4CA36B","#3E7CC6","#8E5BB5"];
+const lunesDe = f => addDays(f, -wd(f));
+function juegoAuto(lunes){ const n = Math.floor(diasEntre("2026-01-05", lunes)/7); return ORDEN_J[((n % 4) + 4) % 4]; }
+const juegoSemana = lunes => { const x = ((S.config||{}).juegos||{})[lunes]; return JUEGOS[x] ? x : juegoAuto(lunes); };
+const juegoHoy = () => juegoSemana(lunesDe(today()));
+function semilla(f, k){ let h = 2166136261; for (const c of f+"|"+k) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 function palabraDe(f){ const d = Math.round((parse(f) - new Date(2026,0,1))/86400000), n = WL_SOL.length; return WL_SOL[((d*7919) % n + n) % n]; }
+const codigoDe = f => { let h = semilla(f,"codigo"), c = ""; for (let i=0;i<4;i++){ h = Math.imul(h ^ (h>>>15), 2246822507) >>> 0; c += String(1 + h % 6); } return c; };
+function rng(seed){ let h = seed>>>0; return () => { h = Math.imul(h ^ (h>>>15), 2246822507)>>>0; h = Math.imul(h ^ (h>>>13), 3266489909)>>>0; h ^= h>>>16; return (h>>>0)/4294967296; }; }
+function barajar(a, r){ for (let i=a.length-1;i>0;i--){ const j = Math.floor(r()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
+/* Parejas: 16 cartas (8 parejas), mismo orden para todos ese día */
+const SIMBOLOS = ["🍎","🍐","🍋","🍇","🍓","🥕","🧀","🍪","🥐","🍅","🫒","🍒"];
+const PJ_CACHE = {};
+function parejasDe(f){ if (PJ_CACHE[f]) return PJ_CACHE[f]; const r = rng(semilla(f,"parejas")); const sim = barajar(SIMBOLOS.slice(), r).slice(0,8); return PJ_CACHE[f] = barajar([...sim, ...sim], r); }
+function estadoParejas(j, f){ const c = parejasDe(f), hechas = new Set(); (j.intentos||[]).forEach(m=>{ const [a,b] = String(m).split("-").map(Number); if (c[a]===c[b]) { hechas.add(a); hechas.add(b); } }); return hechas; }
+/* Mini sudoku 6×6 (bloques de 2×3) con solución única */
+const SD_CACHE = {};
+function sdValido(g, r, c, v){ for (let i=0;i<6;i++){ if (g[r*6+i]===v || g[i*6+c]===v) return false; } const br = Math.floor(r/2)*2, bc = Math.floor(c/3)*3; for (let i=br;i<br+2;i++) for (let k=bc;k<bc+3;k++) if (g[i*6+k]===v) return false; return true; }
+function sdContar(g, lim){ const k = g.indexOf(0); if (k<0) return 1; let n = 0; const r = Math.floor(k/6), c = k%6; for (let v=1; v<=6 && n<lim; v++){ if (sdValido(g, r, c, v)){ g[k] = v; n += sdContar(g, lim-n); g[k] = 0; } } return n; }
+function sudokuDe(f){
+  if (SD_CACHE[f]) return SD_CACHE[f];
+  const r = rng(semilla(f,"sudoku")), digs = barajar([1,2,3,4,5,6], r);
+  const rows = []; barajar([0,1,2], r).forEach(b=>barajar([0,1], r).forEach(x=>rows.push(b*2+x)));
+  const cols = []; barajar([0,1], r).forEach(t=>barajar([0,1,2], r).forEach(x=>cols.push(t*3+x)));
+  const sol = []; for (let i=0;i<6;i++) for (let k=0;k<6;k++){ const rr = rows[i], cc = cols[k]; sol.push(digs[(3*(rr%2) + Math.floor(rr/2) + cc) % 6]); }
+  const puzzle = sol.slice();
+  for (const k of barajar([...Array(36).keys()], r)){ const v = puzzle[k]; puzzle[k] = 0; if (sdContar(puzzle.slice(), 2)!==1) puzzle[k] = v; if (puzzle.filter(x=>!x).length>=22) break; }
+  return SD_CACHE[f] = {sol, puzzle};
+}
+function estadoSudoku(j, f){ const {sol, puzzle} = sudokuDe(f), g = puzzle.slice(); let err = 0; (j.intentos||[]).forEach(m=>{ const [k,v] = String(m).split(":").map(Number); if (sol[k]===v) g[k] = v; else err++; }); return {g, err, sol, puzzle}; }
 function evaluar(g, sol){
   const r = Array(5).fill("a"), cnt = {};
   for (let i=0;i<5;i++){ if (g[i]===sol[i]) r[i]="c"; else cnt[sol[i]]=(cnt[sol[i]]||0)+1; }
   for (let i=0;i<5;i++){ if (r[i]!=="c" && cnt[g[i]]>0){ r[i]="p"; cnt[g[i]]--; } }
   return r;
 }
-const juegoDe = (uid, f) => S.wordle[f+"_"+uid] || {intentos:[], estado:"jugando"};
-const mini = (j, f) => `<span class="mini">${j.intentos.map(g=>evaluar(g, palabraDe(f)).map(c=>`<i class="${c}"></i>`).join("")).join("")}</span>`;
-function wordleView(u){
-  const f = today(), sol = palabraDe(f), j = juegoDe(u.id, f), fin = j.estado!=="jugando";
-  const filas = [];
-  for (let i=0;i<6;i++){
-    const g = j.intentos[i], ev = g ? evaluar(g, sol) : null, t = (!g && i===j.intentos.length && !fin) ? S.wlTyped : "";
-    filas.push(`<div class="wl-row">${[0,1,2,3,4].map(k=>`<div class="wl-c ${ev?ev[k]:""}">${esc(g ? g[k] : (t[k]||""))}</div>`).join("")}</div>`);
-  }
-  const est = {};
-  j.intentos.forEach(g=>evaluar(g,sol).forEach((c,k)=>{ const l=g[k], o=est[l]; if (c==="c" || (c==="p" && o!=="c") || (!o)) est[l]=c; }));
-  const kb = ["qwertyuiop","asdfghjklñ","+zxcvbnm-"].map(r=>`<div class="wl-kr">${[...r].map(ch=> ch==="+" ? `<button class="wl-k wide" data-a="wl-key" data-v="enter">Enviar</button>` : ch==="-" ? `<button class="wl-k wide" data-a="wl-key" data-v="back" aria-label="Borrar">Borrar</button>` : `<button class="wl-k ${est[ch]||""}" data-a="wl-key" data-v="${ch}">${ch}</button>`).join("")}</div>`).join("");
-  const res = fin ? `<div class="status ${j.estado==="ganado"?"def":"prov"}">${j.estado==="ganado" ? `¡Acertaste en ${j.intentos.length} intento${j.intentos.length>1?"s":""}! Sumas ${j.puntos} punto${j.puntos>1?"s":""}.` : `Hoy no ha podido ser. La palabra era «${sol.toUpperCase()}».`} Mañana, palabra nueva.</div>` : "";
-  // resultados de hoy
-  const jugadores = S.residentes.filter(r=>r.activo!==false && rolDe(r)!=="cocina" && rolDe(r)!=="adscritos" && esComensal(r)).map(r=>({r, j:S.wordle[f+"_"+r.id]})).filter(x=>x.j && x.j.intentos && x.j.intentos.length);
-  const hoyHTML = jugadores.length ? jugadores.sort((a,b)=>(b.j.puntos||0)-(a.j.puntos||0)).map(({r,j:x})=>`<div class="count"><span>${esc(r.nombre)}</span><span>${fin ? (x.estado==="jugando" ? '<span class="muted small">Jugando</span>' : `${mini(x,f)} <b style="font-size:16px;margin-left:6px">${x.estado==="ganado"?x.intentos.length:"X"}/6</b>`) : `<span class="muted small">${x.estado==="jugando"?"Jugando":"Ha terminado"}</span>`}</span></div>`).join("") + (fin ? "" : `<p class="muted small">Verás cómo ha quedado cada uno cuando termines tu partida.</p>`) : `<p class="muted">Todavía no ha jugado nadie hoy.</p>`;
-  // ranking mensual
-  const mes = S.wlMes || f.slice(0,7), [yy,mm] = mes.split("-").map(Number);
-  const esAdm = rolDe(resById(S.session.uid))==="admin";
-  const tot = {};
-  Object.values(S.wordle).forEach(x=>{ if (String(x.fecha).slice(0,7)===mes && x.estado && x.estado!=="jugando"){ const t = tot[x.uid] = tot[x.uid] || {p:0, n:0, a:0}; t.p += x.puntos||0; t.n++; if (x.estado==="ganado") t.a++; } });
-  const rk = Object.entries(tot).map(([uid,t])=>({r:resById(uid), t})).filter(x=>x.r).sort((a,b)=>b.t.p-a.t.p || b.t.a-a.t.a);
-  const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
-  const rkHTML = rk.length ? `<div class="tablewrap"><table><thead><tr><th></th><th>Persona</th><th>Puntos</th><th>Aciertos</th><th>Partidas</th></tr></thead><tbody>${rk.map((x,i)=>`<tr${esAdm?` class="fila-ed" data-a="wl-ver" data-id="${x.r.id}"`:""}><td>${i+1}</td><td>${esAdm?'<span class="lapiz">✎</span> ':""}${esc(x.r.nombre)}</td><td><b>${x.t.p}</b></td><td>${x.t.a}</td><td>${x.t.n}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Nadie ha terminado ninguna partida este mes.</div>`;
-  return `<p class="muted" style="margin-top:0">Adivina la palabra de 5 letras en 6 intentos. Verde: letra en su sitio. Amarillo: está en la palabra, en otro sitio. Gris: no está.</p>
-    <div class="wl-board">${filas.join("")}</div>
-    ${res}${fin ? "" : `<div class="wl-kb">${kb}</div>`}
-    <h2 style="margin:18px 0 8px">Hoy</h2>${hoyHTML}
-    <div class="weeknav" style="margin-top:24px"><button class="arrow" data-a="wl-mes" data-v="${mesAnt}" aria-label="Mes anterior">‹</button><h2>Ranking de ${MESES[mm-1]}</h2><button class="arrow" data-a="wl-mes" data-v="${mesSig}" aria-label="Mes siguiente" ${mesSig>f.slice(0,7)?"disabled":""}>›</button></div>
-    ${rkHTML}
-    <p class="muted small">Puntos: 6 si aciertas al primer intento, 5 al segundo, y así hasta 1 al sexto. Si no aciertas, 0.</p>`;
+function pistaCodigo(g, sol){ let negras = 0; const a = {}, b = {}; for (let i=0;i<4;i++){ if (g[i]===sol[i]) negras++; else { a[g[i]]=(a[g[i]]||0)+1; b[sol[i]]=(b[sol[i]]||0)+1; } } let blancas = 0; for (const k in a) blancas += Math.min(a[k], b[k]||0); return {negras, blancas}; }
+function puntosDe(juego, n){
+  if (juego==="palabra") return 7-n;
+  if (juego==="codigo") return n<=3 ? 6 : Math.max(1, 9-n);
+  if (juego==="parejas") return n<=10 ? 6 : n<=12 ? 5 : n<=14 ? 4 : n<=16 ? 3 : n<=20 ? 2 : 1;
+  return [6,4,2][n] || 1;
 }
-async function wlTecla(k){
-  const u = resById(S.session.uid), f = today(), j = juegoDe(u.id, f);
-  if (j.estado!=="jugando" || j.intentos.length>=6) return;
-  if (k==="back"){ S.wlTyped = S.wlTyped.slice(0,-1); render(); return; }
-  if (k==="enter"){
-    const g = S.wlTyped;
-    if (g.length<5){ toast("Faltan letras."); return; }
-    if (!WL_VAL.has(g) && !WL_SOL.includes(g)){ toast("Esa palabra no está en el diccionario."); return; }
-    const intentos = [...j.intentos, g], sol = palabraDe(f);
-    const estado = g===sol ? "ganado" : intentos.length>=6 ? "perdido" : "jugando";
-    const doc = {fecha:f, uid:u.id, intentos, estado, puntos: estado==="ganado" ? 7-intentos.length : 0, ts:Date.now()};
-    S.wordle[f+"_"+u.id] = doc; S.wlTyped = ""; render();
-    await w(()=>S.db.doc("wordle/"+f+"_"+u.id).set(doc)); return;
+const juegoDe = (uid, f) => S.wordle[f+"_"+uid] || {intentos:[], estado:"jugando", juego: juegoHoy()};
+const tipoDe = x => x.juego || "palabra";
+function resumenJ(x, f){
+  const k = tipoDe(x), n = (x.intentos||[]).length;
+  if (x.estado==="jugando") return '<span class="muted small">Jugando</span>';
+  if (k==="palabra") return `<span class="mini">${x.intentos.map(g=>evaluar(g, palabraDe(f)).map(c=>`<i class="${c}"></i>`).join("")).join("")}</span> <b style="font-size:16px;margin-left:6px">${x.estado==="ganado"?n:"X"}/6</b>`;
+  if (k==="parejas") return `<b style="font-size:16px">${x.estado==="ganado" ? n+" movimientos" : "No terminó"}</b>`;
+  if (k==="sudoku") { const e = estadoSudoku(x, f).err; return `<b style="font-size:16px">${x.estado==="ganado" ? e+" error"+(e===1?"":"es") : "No terminó"}</b>`; }
+  if (!JUEGOS[k]) return `<b style="font-size:16px">${x.puntos||0} pts</b>`;
+  return `<b style="font-size:16px">${x.estado==="ganado"?n:"X"}/${JUEGOS[k].max}</b>`;
+}
+function tableroJuego(k, j, f){
+  const fin = j.estado!=="jugando", tx = S.wlTyped || "";
+  if (k==="palabra"){
+    const sol = palabraDe(f), filas = [];
+    for (let i=0;i<6;i++){ const g = j.intentos[i], ev = g ? evaluar(g, sol) : null, t = (!g && i===j.intentos.length && !fin) ? tx : "";
+      filas.push(`<div class="wl-row">${[0,1,2,3,4].map(c=>`<div class="wl-c ${ev?ev[c]:""}">${esc(g ? g[c] : (t[c]||""))}</div>`).join("")}</div>`); }
+    const est = {}; j.intentos.forEach(g=>evaluar(g,sol).forEach((c,i)=>{ const l=g[i], o=est[l]; if (c==="c" || (c==="p" && o!=="c") || !o) est[l]=c; }));
+    const kb = ["qwertyuiop","asdfghjklñ","+zxcvbnm-"].map(r=>`<div class="wl-kr">${[...r].map(ch=> ch==="+" ? `<button class="wl-k wide" data-a="wl-key" data-v="enter">Enviar</button>` : ch==="-" ? `<button class="wl-k wide" data-a="wl-key" data-v="back">Borrar</button>` : `<button class="wl-k ${est[ch]||""}" data-a="wl-key" data-v="${ch}">${ch}</button>`).join("")}</div>`).join("");
+    return {tablero:`<div class="wl-board">${filas.join("")}</div>`, teclado:kb, sol:sol.toUpperCase()};
   }
-  if (/^[a-zñ]$/.test(k) && S.wlTyped.length<5){ S.wlTyped += k; render(); }
+  if (k==="codigo"){
+    const sol = codigoDe(f), bola = (d, on) => `<span class="cd-b" style="${d ? "background:"+COLORES[Number(d)-1] : ""}">${d||""}</span>`;
+    const filas = []; for (let i=0;i<8;i++){ const g = j.intentos[i], t = (!g && i===j.intentos.length && !fin) ? tx : ""; const pz = g ? pistaCodigo(g, sol) : null;
+      filas.push(`<div class="cd-row">${[0,1,2,3].map(c=>bola(g ? g[c] : t[c])).join("")}<span class="cd-p">${pz ? "●".repeat(pz.negras)+"○".repeat(pz.blancas) || "—" : ""}</span></div>`); }
+    const kb = `<div class="wl-kr">${[1,2,3,4,5,6].map(d=>`<button class="wl-k" style="background:${COLORES[d-1]};color:#fff" data-a="wl-key" data-v="${d}">${d}</button>`).join("")}</div><div class="wl-kr"><button class="wl-k wide" data-a="wl-key" data-v="back">Borrar</button><button class="wl-k wide" data-a="wl-key" data-v="enter">Enviar</button></div>`;
+    return {tablero:`<div class="cd-board">${filas.join("")}</div>`, teclado:kb, sol:`<span style="display:inline-flex;gap:6px;vertical-align:middle">${[...sol].map(d=>bola(d)).join("")}</span>`};
+  }
+  if (k==="parejas"){
+    const c = parejasDe(f), hechas = estadoParejas(j, f), sel = S.pjSel, mal = S.pjMal || [];
+    const cartas = c.map((sym,i)=>{ const vista = hechas.has(i) || i===sel || mal.includes(i) || fin; return `<button class="pj-c ${vista?"up":""} ${hechas.has(i)?"ok":""} ${mal.includes(i)?"mal":""}" data-a="pj" data-v="${i}" ${hechas.has(i)||fin?"disabled":""} aria-label="Carta ${i+1}">${vista ? sym : ""}</button>`; }).join("");
+    return {tablero:`<div class="pj-g">${cartas}</div><p class="muted small" style="text-align:center;margin:0 0 12px">Movimientos: ${j.intentos.length} de 24 · Parejas: ${hechas.size/2} de 8</p>`, teclado:"", sol:""};
+  }
+  if (k==="sudoku"){
+    const e = estadoSudoku(j, f), sel = S.sdSel;
+    const celdas = e.g.map((v,i)=>{ const r = Math.floor(i/6), cc = i%6, fija = !!e.puzzle[i];
+      const cls = ["sd-c", fija?"fija":"", v&&!fija?"puesta":"", i===sel?"sel":"", S.sdMal===i?"mal":"", cc===2?"bd-r":"", r%2===1&&r<5?"bd-b":""].filter(Boolean).join(" ");
+      return `<button class="${cls}" data-a="sd-cell" data-v="${i}" ${fija||v||fin?"disabled":""}>${v||(fin?e.sol[i]:"")}</button>`; }).join("");
+    const kb = `<div class="wl-kr">${[1,2,3,4,5,6].map(d=>`<button class="wl-k" data-a="wl-key" data-v="${d}">${d}</button>`).join("")}</div>`;
+    return {tablero:`<div class="sd-g">${celdas}</div><div class="lt-vidas">${[0,1,2].map(i=>`<i class="${i<e.err?"fuera":""}"></i>`).join("")}<span class="muted small">Errores: ${e.err} de 3</span></div>`, teclado:kb, sol:"la cuadrícula completa"};
+  }
+  return {tablero:`<div class="empty">Hoy ya has jugado.</div>`, teclado:"", sol:""};
+}
+function wordleView(u){
+  const f = today(), j = juegoDe(u.id, f), k = tipoDe(j), J = JUEGOS[k] || {nombre:"Juego del día", desc:""}, fin = j.estado!=="jugando";
+  const me = resById(S.session.uid), principal = rolDe(me)==="admin" && (esTitular(me) || principalHoy()===me.id);
+  const tb = tableroJuego(k, j, f), n = j.intentos.length;
+  const res = fin ? `<div class="status ${j.estado==="ganado"?"def":"prov"}">${j.estado==="ganado" ? `¡Conseguido! Sumas ${j.puntos} punto${j.puntos===1?"":"s"}.` : `Hoy no ha podido ser. Era: <b>${tb.sol}</b>.`} Mañana, otro reto.</div>` : "";
+  const jugadores = S.residentes.filter(r=>r.activo!==false && rolDe(r)!=="cocina" && rolDe(r)!=="adscritos" && esComensal(r)).map(r=>({r, j:S.wordle[f+"_"+r.id]})).filter(x=>x.j && x.j.intentos && x.j.intentos.length);
+  const hoyHTML = jugadores.length ? jugadores.sort((a,b)=>(b.j.puntos||0)-(a.j.puntos||0)).map(({r,j:x})=>`<div class="count"><span>${esc(r.nombre)}</span><span>${fin ? resumenJ(x, f) : `<span class="muted small">${x.estado==="jugando"?"Jugando":"Ha terminado"}</span>`}</span></div>`).join("") + (fin ? "" : `<p class="muted small">Verás cómo ha quedado cada uno cuando termines tu partida.</p>`) : `<p class="muted">Todavía no ha jugado nadie hoy.</p>`;
+  // ranking semanal
+  const sem = S.wlSem || lunesDe(f), finSem = addDays(sem, 6), esAdm = rolDe(me)==="admin";
+  const tot = {}; Object.values(S.wordle).forEach(x=>{ if (x.fecha>=sem && x.fecha<=finSem && x.estado && x.estado!=="jugando"){ const t = tot[x.uid] = tot[x.uid] || {p:0, n:0, a:0}; t.p += x.puntos||0; t.n++; if (x.estado==="ganado") t.a++; } });
+  const rk = Object.entries(tot).map(([uid,t])=>({r:resById(uid), t})).filter(x=>x.r).sort((a,b)=>b.t.p-a.t.p || b.t.a-a.t.a);
+  const rkHTML = rk.length ? `<div class="tablewrap"><table><thead><tr><th></th><th>Persona</th><th>Puntos</th><th>Aciertos</th><th>Partidas</th></tr></thead><tbody>${rk.map((x,i)=>`<tr${esAdm?` class="fila-ed" data-a="wl-ver" data-id="${x.r.id}"`:""}><td>${i+1}</td><td>${esAdm?'<span class="lapiz">✎</span> ':""}${esc(x.r.nombre)}</td><td><b>${x.t.p}</b></td><td>${x.t.a}</td><td>${x.t.n}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Nadie ha terminado ninguna partida esta semana.</div>`;
+  const semTxt = sem===lunesDe(f) ? "Ranking de esta semana" : "Semana del "+fmtDay(sem);
+  const selector = principal ? (()=>{ const l1 = lunesDe(f), l2 = addDays(l1,7), jj = (S.config||{}).juegos||{};
+    const fila = (l, tit) => `<div class="field" style="margin-bottom:10px"><label>${tit}</label><div class="seg">${ORDEN_J.map(x=>`<button class="opt" data-a="juego-sel" data-f="${l}" data-v="${x}" aria-pressed="${juegoSemana(l)===x && !!jj[l]}">${JUEGOS[x].corto}</button>`).join("")}<button class="opt" data-a="juego-sel" data-f="${l}" data-v="auto" aria-pressed="${!jj[l]}">Automático (${JUEGOS[juegoAuto(l)].corto})</button></div></div>`;
+    return `<div class="panel" style="margin-bottom:16px"><h3 style="margin-bottom:6px">Elegir el juego</h3><p class="muted small" style="margin-top:0">Solo tú, como administrador principal. Si no eliges, cambia solo cada lunes.</p>${fila(l1,"Esta semana")}${fila(l2,"La semana que viene")}</div>`; })() : "";
+  return `${selector}<p class="kick" style="margin:0 0 4px;font-size:15px">Juego de la semana</p><h2 style="margin:0 0 6px">${J.nombre}</h2>
+    <p class="muted" style="margin-top:0">${J.desc}</p>
+    ${tb.tablero}${res}${fin ? "" : `<div class="wl-kb">${tb.teclado}</div>`}
+    <h2 style="margin:18px 0 8px">Hoy</h2>${hoyHTML}
+    <div class="weeknav" style="margin-top:24px"><button class="arrow" data-a="wl-sem" data-v="-7" aria-label="Semana anterior">‹</button><h2>${semTxt}</h2><button class="arrow" data-a="wl-sem" data-v="7" aria-label="Semana siguiente" ${addDays(sem,7)>f?"disabled":""}>›</button></div>
+    ${rkHTML}
+    <p class="muted small">Cada día se juega una vez. Puntos de 6 a 1 según los intentos, y 0 si no lo consigues. Cada lunes empieza el ranking de nuevo.</p>`;
+}
+async function wlTecla(key){
+  const u = resById(S.session.uid), f = today(), j = juegoDe(u.id, f), k = tipoDe(j), J = JUEGOS[k];
+  if (j.estado!=="jugando") return;
+  const guarda = async (intentos, gana, pierde) => {
+    const estado = gana ? "ganado" : pierde ? "perdido" : "jugando";
+    const n = k==="sudoku" ? estadoSudoku({intentos}, f).err : intentos.length;
+    const doc = {fecha:f, uid:u.id, juego:k, intentos, estado, puntos: gana ? puntosDe(k, n) : 0, ts:Date.now()};
+    S.wordle[f+"_"+u.id] = doc; S.wlTyped = ""; render();
+    await w(()=>S.db.doc("wordle/"+f+"_"+u.id).set(doc));
+  };
+  if (!JUEGOS[k]) return;
+  if (k==="parejas"){
+    const i = Number(key), c = parejasDe(f), hechas = estadoParejas(j, f);
+    if (S.pjMal){ clearTimeout(S.pjT); S.pjMal = null; }
+    if (isNaN(i) || hechas.has(i) || i===S.pjSel) return;
+    if (S.pjSel==null){ S.pjSel = i; render(); return; }
+    const a = S.pjSel; S.pjSel = null;
+    const intentos = [...j.intentos, a+"-"+i], ok = c[a]===c[i];
+    if (!ok){ S.pjMal = [a, i]; S.pjT = setTimeout(()=>{ S.pjMal = null; render(); }, 900); }
+    const gana = ok && hechas.size + 2 === 16;
+    return guarda(intentos, gana, !gana && intentos.length >= 24);
+  }
+  if (k==="sudoku"){
+    if (!/^[1-6]$/.test(key)) return;
+    const k2 = S.sdSel, e = estadoSudoku(j, f);
+    if (k2==null || e.g[k2]){ toast("Toca primero una casilla vacía."); return; }
+    const v = Number(key), intentos = [...j.intentos, k2+":"+v];
+    if (e.sol[k2]!==v){ S.sdMal = k2; clearTimeout(S.sdT); S.sdT = setTimeout(()=>{ S.sdMal = null; render(); }, 700); }
+    else S.sdSel = null;
+    const e2 = estadoSudoku({intentos}, f), gana = !e2.g.includes(0);
+    return guarda(intentos, gana, !gana && e2.err >= 3);
+  }
+  const largo = k==="palabra" ? 5 : 4;
+  if (key==="back"){ S.wlTyped = (S.wlTyped||"").slice(0,-1); render(); return; }
+  if (key==="enter"){
+    const g = S.wlTyped || "";
+    if (k==="palabra"){
+      if (g.length<5){ toast("Faltan letras."); return; }
+      if (!WL_VAL.has(g) && !WL_SOL.includes(g)){ toast("Esa palabra no está en el diccionario."); return; }
+      const intentos = [...j.intentos, g]; return guarda(intentos, g===palabraDe(f), intentos.length>=6);
+    }
+    if (k==="codigo"){
+      if (g.length<4){ toast("Elige 4 colores."); return; }
+      const intentos = [...j.intentos, g]; return guarda(intentos, g===codigoDe(f), intentos.length>=8);
+    }
+    return;
+  }
+  const vale = k==="palabra" ? /^[a-zñ]$/.test(key) : /^[1-6]$/.test(key);
+  if (vale && (S.wlTyped||"").length<largo){ S.wlTyped = (S.wlTyped||"") + key; render(); }
 }
 
 /* --- Calendario de la residencia --- */
@@ -1211,7 +1348,7 @@ function guiaDe(rol){
     ["Quién come", [ "Ves cada día cuántos comen, cenan y desayunan, y quién.", "Toca un turno (por ejemplo, «Normal») para ver solo a esas personas, y toca los encabezados de la tabla para ordenarla." ]],
     ["Calendario", [ "Eventos de la residencia y cumpleaños. "+b("Toca un día")+" para ver lo que hay.", "Puedes "+b("proponer un evento")+": aparecerá cuando lo apruebe un administrador. No escribas nombres." ]],
     ["Mensajes y avisos", [ "Arriba verás los "+b("avisos de los administradores")+"; el número de la barra te avisa de los nuevos.", "Puedes escribir a los administradores: verás si lo han leído y cuándo está resuelto. Las conversaciones se borran al mes." ]],
-    ["Palabra del día", [ "En "+b("Más")+". Adivina la palabra de 5 letras en 6 intentos: verde, en su sitio; amarillo, está en otro sitio; gris, no está.", "Puntos: 6 si aciertas a la primera, 5 a la segunda… 1 a la sexta. Ranking cada mes." ]],
+    ["Juego del día", [ "En "+b("Más → Juego del día")+". Un reto corto al día, el mismo para todos. Cada lunes cambia de juego: "+b("Palabra del día, Código secreto, Parejas o Mini sudoku")+".", "Arriba se explica cómo se juega el de esa semana.", "Puntos de 6 a 1 según los intentos, y 0 si no lo consigues. El "+b("ranking es semanal")+": empieza de nuevo cada lunes." ]],
     ["Mis datos", [ "En "+b("Más → Mis datos")+": tu fecha de nacimiento y lo que te gusta, para tu cumpleaños." ]]
   ];
   const CIRC = ["Tu círculo", [ "En el círculo con tus iniciales puedes "+b("cambiar la contraseña")+" y "+b("salir")+".", "Cuando haya una versión nueva saldrá arriba «Hay una versión nueva»: pulsa "+b("Actualizar ahora")+"." ]];
@@ -1225,7 +1362,7 @@ function guiaDe(rol){
     ["Cumpleaños", [ "Ordenados por meses, con la edad que cumple cada uno y sus gustos. Puedes pedir a alguien que actualice sus gustos." ]],
     ["Usuarios", [ b("Añadir usuario")+": nombre, perfil, iniciales, régimen (y en qué comidas se aplica), usuario y contraseña inicial de al menos 6 caracteres.", "Si alguien olvida su contraseña: "+b("Editar → Restablecer contraseña")+".", b("Eliminar")+" borra al usuario y todos sus datos. No se puede deshacer." ]],
     ["Ajustes", [ b("Hora límite")+" para cada día de la semana y "+b("días especiales")+" (festivos).", b("Historial")+": borrado cada trimestre o a mano. "+b("Privacidad de nombres")+": debe salir en verde.", "El titular puede "+b("delegar")+" unos días o "+b("ceder")+" la titularidad." ]],
-    ["Palabra del día", [ "En el ranking, toca a una persona para ver sus partidas del mes y "+b("borrar")+" una (por ejemplo, una de prueba)." ]],
+    ["Juego del día", [ "Cada lunes cambia solo de juego. El "+b("administrador principal")+" puede elegir el de esta semana o el de la siguiente con los botones de arriba, o dejarlo en automático.", "En el ranking semanal, toca a una persona para ver sus partidas y "+b("borrar")+" una (por ejemplo, una de prueba)." ]],
     ["Ver como la administración", [ "En el círculo con tus iniciales: ves exactamente su pantalla, en solo lectura." ]]
   ];
   const ADMON = [
@@ -1240,7 +1377,7 @@ function guiaDe(rol){
     ["La aprobación", [ "Lo que marcas queda "+b("pendiente de aprobar")+". Cuando un administrador lo aprueba, se suma al parte.", "Si sale «No aprobado», sigue valiendo lo aprobado antes." ]],
     ["Quién come en 2.º turno", [ "Los martes con adscritos, verás qué residentes comen en 2.º turno ese día." ]]
   ];
-  if (rol==="admin") return {intro:"Guía del administrador.", secciones: ADM.concat([["Si también comes aquí", ["Tienes además las secciones de residente: Semana, Plantilla fija, Quién come, Palabra del día y Mis datos. Funcionan igual que para cualquier residente."]], CIRC])};
+  if (rol==="admin") return {intro:"Guía del administrador.", secciones: ADM.concat([["Si también comes aquí", ["Tienes además las secciones de residente: Semana, Plantilla fija, Quién come, Juego del día y Mis datos. Funcionan igual que para cualquier residente."]], CIRC])};
   if (rol==="cocina") return {intro:"Guía de la administración.", secciones: ADMON.concat([["Tu círculo", ["En el círculo de arriba podéis cambiar la contraseña y salir."]]])};
   if (rol==="adscritos") return {intro:"Guía del jefe de adscritos.", secciones: ADS.concat([CIRC])};
   return {intro:"Guía del residente.", secciones: RES.concat([CIRC])};
@@ -1251,11 +1388,11 @@ function modalHTML(){
   const m = S.modal; if (!m) return "";
   let tit = "", cuerpo = "";
   if (m.tipo==="wl"){
-    const r = resById(m.uid), partidas = Object.entries(S.wordle).filter(([id,x])=>x.uid===m.uid && String(x.fecha).slice(0,7)===m.mes).sort((a,b)=>String(b[1].fecha).localeCompare(String(a[1].fecha)));
+    const r = resById(m.uid), partidas = Object.entries(S.wordle).filter(([id,x])=>x.uid===m.uid && x.fecha>=m.sem && x.fecha<=addDays(m.sem,6)).sort((a,b)=>String(b[1].fecha).localeCompare(String(a[1].fecha)));
     tit = "Partidas de " + ((r||{}).nombre||"");
     cuerpo = `<p class="muted small" style="margin-top:0">Puedes borrar una partida, por ejemplo una de prueba. Sus puntos dejan de contar en el ranking. No se puede deshacer.</p>` +
-      (partidas.length ? partidas.map(([id,x])=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong><div class="small muted">${x.estado==="ganado" ? "Acertó en "+(x.intentos||[]).length+" intento"+((x.intentos||[]).length===1?"":"s") : x.estado==="perdido" ? "No acertó" : "Sin terminar"}. ${x.puntos||0} punto${(x.puntos||0)===1?"":"s"}.</div></div>
-        ${S.drafts.wlDel===id ? `<div class="row"><button class="btn danger" data-a="wl-del" data-id="${id}">Sí, borrar</button><button class="btn ghost" data-a="wl-del-no">No</button></div>` : `<button class="link" style="color:var(--danger)" data-a="wl-del-ask" data-id="${id}">Borrar</button>`}</div>`).join("") : `<p class="muted">No tiene partidas este mes.</p>`);
+      (partidas.length ? partidas.map(([id,x])=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong><div class="small muted">${esc(JUEGOS[tipoDe(x)].nombre)}: ${x.estado==="ganado" ? "lo consiguió" : x.estado==="perdido" ? "no lo consiguió" : "sin terminar"}. ${x.puntos||0} punto${(x.puntos||0)===1?"":"s"}.</div></div>
+        ${S.drafts.wlDel===id ? `<div class="row"><button class="btn danger" data-a="wl-del" data-id="${id}">Sí, borrar</button><button class="btn ghost" data-a="wl-del-no">No</button></div>` : `<button class="link" style="color:var(--danger)" data-a="wl-del-ask" data-id="${id}">Borrar</button>`}</div>`).join("") : `<p class="muted">No tiene partidas esta semana.</p>`);
   }
   if (m.tipo==="guia"){
     const g = guiaDe(m.rol), ab = S.guiaAb;
@@ -1424,7 +1561,7 @@ function viewApp(uReal){
   const G1 = "Mis comidas", G2 = rol==="admin" ? "Gestión" : "Administración";
   if (esComensal(u)) t.push(["semana","Mi semana","",G1],["plantilla","Plantilla fija","",G1]);
   if (esComensal(u) && rol!=="cocina") t.push(["quien","Quién come","",G1]);
-  if ((esComensal(u) && rol!=="cocina") || rol==="adscritos") t.push(["wordle","Palabra del día","",G1]);
+  if ((esComensal(u) && rol!=="cocina") || rol==="adscritos") t.push(["wordle","Juego del día","",G1]);
   if (rol==="residente") t.push(["calendario","Calendario","",G1],["consultas","Mensajes", consultasSinLeer("residente")||"",G1]);
   if (rol!=="cocina" && rol!=="adscritos") t.push(["datos","Mis datos","",G1]);
   if (rol==="adscritos"){ t.length = 0; t.push(["adscritos","Adscritos","",G2]); }
@@ -1613,7 +1750,7 @@ document.addEventListener("change", e => {
 document.addEventListener("keydown", e => {
   if (S.tab==="wordle" && S.session && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) && !e.ctrlKey && !e.metaKey && !e.altKey){
     const k = e.key==="Enter" ? "enter" : e.key==="Backspace" ? "back" : e.key.toLowerCase();
-    if (k==="enter" || k==="back" || /^[a-zñ]$/.test(k)){ e.preventDefault(); wlTecla(k); return; }
+    if (k==="enter" || k==="back" || /^[a-zñ0-9]$/.test(k)){ e.preventDefault(); wlTecla(k); return; }
   }
   if (e.key==="Enter" && e.target.id==="pin"){ e.preventDefault(); act("login", e.target); }
 });
@@ -1669,7 +1806,7 @@ async function act(a, b){
     case "menu": S.menu = !S.menu; S.cuenta = false; break;
     case "guia": { const me = resById(S.session.uid); S.cuenta = false; S.guiaAb = 0; S.modal = {tipo:"guia", rol: S.vista ? "cocina" : rolDe(me)}; break; }
     case "guia-ab": S.guiaAb = S.guiaAb===Number(v) ? -1 : Number(v); break;
-    case "wl-ver": if (rolDe(resById(S.session.uid))!=="admin") return; delete S.drafts.wlDel; S.modal = {tipo:"wl", uid:b.dataset.id, mes: S.wlMes || today().slice(0,7)}; break;
+    case "wl-ver": if (rolDe(resById(S.session.uid))!=="admin") return; delete S.drafts.wlDel; S.modal = {tipo:"wl", uid:b.dataset.id, sem: S.wlSem || lunesDe(today())}; break;
     case "wl-del-ask": S.drafts.wlDel = b.dataset.id; break;
     case "wl-del-no": delete S.drafts.wlDel; break;
     case "wl-del": { const id = b.dataset.id; delete S.drafts.wlDel; await w(()=>S.db.doc("wordle/"+id).delete()); delete S.wordle[id]; toast("Partida borrada: ya no cuenta en el ranking."); break; }
@@ -1862,7 +1999,17 @@ async function act(a, b){
     }
     case "av-visto": S.vistos = [...S.vistos, v].slice(-100); try { localStorage.setItem("comedor.avisos", JSON.stringify(S.vistos)); } catch(e){} break;
     case "wl-key": await wlTecla(v); return;
-    case "wl-mes": S.wlMes = v; break;
+    case "pj": await wlTecla(v); return;
+    case "sd-cell": S.sdSel = Number(v); break;
+    case "wl-sem": { const base = S.wlSem || lunesDe(today()), nx = addDays(base, Number(v)); S.wlSem = nx>lunesDe(today()) ? lunesDe(today()) : nx; break; }
+    case "juego-sel": {
+      const me = resById(S.session.uid); if (!(rolDe(me)==="admin" && (esTitular(me) || principalHoy()===me.id))) return;
+      const jj = {...((S.config||{}).juegos||{})}; const hoy = lunesDe(today());
+      Object.keys(jj).forEach(x=>{ if (x < addDays(hoy,-56)) delete jj[x]; });
+      if (v==="auto") delete jj[b.dataset.f]; else jj[b.dataset.f] = v;
+      await w(()=>S.db.doc("config/general").update({juegos: jj}));
+      toast(v==="auto" ? "Juego automático para esa semana." : JUEGOS[v].nombre+" para esa semana."); break;
+    }
     case "cal-mes": S.calMes = v; break;
     case "ev-edit": {
       const e = S.eventos.find(x=>x.id===b.dataset.id); if (!e) return;
