@@ -19,7 +19,7 @@
 :root{
   --bg:#EEF2EE; --surface:#FFFFFF; --ink:#1C2621; --muted:#58685F; --line:#D2DCD5;
   --primary:#2E5E4E; --primary-ink:#FFFFFF; --soft:#DFEBE3;
-  --accent:#B9791A; --accent-soft:#F5E8CF; --danger:#A23B2C; --danger-soft:#F6DED9;
+  --accent:#B9791A; --accent-soft:#F5E8CF; --danger:#A23B2C; --danger-soft:#F6DED9; --cena:#4767A8;
   --body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
   --head:"Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
   box-sizing:border-box;
@@ -29,13 +29,13 @@
   :root:not([data-theme="light"]){
     --bg:#111714; --surface:#19211D; --ink:#E4ECE7; --muted:#9BAAA1; --line:#2B3731;
     --primary:#80C2A7; --primary-ink:#0E1A15; --soft:#21302A;
-    --accent:#E2B357; --accent-soft:#3A301E; --danger:#E7897A; --danger-soft:#3B221E;
+    --accent:#E2B357; --accent-soft:#3A301E; --danger:#E7897A; --danger-soft:#3B221E; --cena:#93B2EC;
   }
 }
 :root[data-theme="dark"]{
   --bg:#111714; --surface:#19211D; --ink:#E4ECE7; --muted:#9BAAA1; --line:#2B3731;
   --primary:#80C2A7; --primary-ink:#0E1A15; --soft:#21302A;
-  --accent:#E2B357; --accent-soft:#3A301E; --danger:#E7897A; --danger-soft:#3B221E;
+  --accent:#E2B357; --accent-soft:#3A301E; --danger:#E7897A; --danger-soft:#3B221E; --cena:#93B2EC;
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -99,6 +99,47 @@ button.cal-d:hover{border-color:var(--primary)}
 .sd-c.bd-r{border-right:3px solid var(--ink)}
 .sd-c.bd-b{border-bottom:3px solid var(--ink)}
 .sd-c:disabled{opacity:1;cursor:default}
+/* Sudoku 9×9 */
+.s9-g{display:grid;grid-template-columns:repeat(9,1fr);width:min(100%,396px);margin:8px auto 10px;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
+.s9-c{aspect-ratio:1;min-width:0;padding:0;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface);font-family:var(--head);font-weight:700;font-size:clamp(17px,5vw,23px);color:var(--ink);position:relative}
+.s9-c.fija{background:color-mix(in srgb, var(--ink) 7%, var(--surface))}
+.s9-c.puesta{color:var(--primary)}
+.s9-c.zona{background:color-mix(in srgb, var(--primary) 9%, var(--surface))}
+.s9-c.fija.zona{background:color-mix(in srgb, var(--primary) 14%, var(--surface))}
+.s9-c.igual{background:color-mix(in srgb, var(--accent) 22%, var(--surface))}
+.s9-c.sel{background:color-mix(in srgb, var(--accent) 38%, var(--surface))}
+.s9-c.mal{background:var(--danger-soft);color:var(--danger)}
+.s9-c.br{border-right:3px solid var(--ink)}
+.s9-c.bb{border-bottom:3px solid var(--ink)}
+.s9-c:nth-child(9n){border-right:0}
+.s9-c:disabled{opacity:1;cursor:default}
+.s9-n{position:absolute;inset:2px;display:grid;grid-template-columns:repeat(3,1fr);font-family:var(--body);font-weight:700;font-size:clamp(8px,2.2vw,10px);line-height:1;color:var(--muted)}
+.s9-n span{display:grid;place-items:center}
+.herr{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 10px}
+.herr .opt{font-size:14px;padding:7px 14px}
+/* Nonograma */
+.nn-wrap{overflow-x:auto;margin:8px auto 10px;max-width:100%}
+.nn-t{border-collapse:collapse;margin:0 auto;width:auto}
+.nn-t td,.nn-t th{padding:0;border:0;white-space:nowrap;background:none}
+.nn-t th{font-family:var(--body);font-weight:700;font-size:12px;color:var(--muted);text-align:center;vertical-align:bottom;line-height:1.15}
+.nn-t th.fila{text-align:right;vertical-align:middle;padding-right:6px;letter-spacing:.05em}
+.nn-t th.hecha{color:var(--primary);opacity:.55}
+.nn-c{width:clamp(28px,8.4vw,36px);height:clamp(28px,8.4vw,36px);border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;padding:0;font-size:16px;color:var(--muted);border-radius:0}
+.nn-c.on{background:var(--ink);border-color:var(--ink)}
+.nn-c.x::after{content:"✕";font-weight:700}
+.nn-c.mal{background:var(--danger-soft);color:var(--danger)}
+.nn-c.br{border-right:2px solid var(--ink)}
+.nn-c.bb{border-bottom:2px solid var(--ink)}
+.nn-c:disabled{opacity:1;cursor:default}
+/* Reinas */
+.rn-g{display:grid;grid-template-columns:repeat(8,1fr);width:min(100%,384px);margin:8px auto 10px;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
+.rn-c{aspect-ratio:1;min-width:0;padding:0;border:0;font-size:clamp(20px,6vw,28px);color:#1C2621;display:grid;place-items:center;font-weight:700;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.18)}
+.rn-c.br{box-shadow:inset -3px 0 0 #1C2621, inset 0 0 0 .5px rgba(0,0,0,.18)}
+.rn-c.bb{box-shadow:inset 0 -3px 0 #1C2621, inset 0 0 0 .5px rgba(0,0,0,.18)}
+.rn-c.br.bb{box-shadow:inset -3px 0 0 #1C2621, inset 0 -3px 0 #1C2621, inset 0 0 0 .5px rgba(0,0,0,.18)}
+.rn-c.x::after{content:"✕";font-size:.6em;opacity:.55}
+.rn-c.mal{outline:3px solid #A23B2C;outline-offset:-3px}
+.rn-c:disabled{opacity:1;cursor:default}
 .guia-s{border-top:1px solid var(--line)}
 .guia-h{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;padding:14px 2px;font-family:var(--head);font-weight:600;font-size:18px;color:var(--ink);text-align:left}
 .guia-h span:last-child{color:var(--primary);font-size:22px;margin-left:10px}
@@ -241,6 +282,20 @@ tr:last-child td{border-bottom:0}
 .note .meta{font-size:13px;color:var(--muted);margin-bottom:4px}
 .note.unread{border-color:var(--accent)}
 textarea.input{min-height:90px;resize:vertical}
+.chat{display:grid;gap:8px;margin:6px 0 16px}
+.chat .note{max-width:86%}
+.chat .note.mine{justify-self:end}
+.chat-dia{justify-self:center;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--bg);padding:2px 10px;border-radius:999px;margin-top:6px}
+.chat-tag{display:inline-block;font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:1px 8px;margin-top:6px}
+.chat-acc{margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;font-size:14px}
+.chat-acc .link{padding:0;font-size:14px}
+.chat-box{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px;position:sticky;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:5;box-shadow:0 4px 18px rgba(0,0,0,.08)}
+.chat-box textarea.input{min-height:64px}
+.chk{display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer}
+.chk input{width:22px;height:22px;accent-color:var(--primary)}
+details.plegable{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:10px 14px;margin:18px 0}
+details.plegable summary{font-family:var(--head);font-weight:600;cursor:pointer}
+details.plegable[open] summary{margin-bottom:10px}
 .alert{background:var(--accent-soft);color:var(--ink);border-left:5px solid var(--accent);border-radius:10px;padding:12px 14px;margin-bottom:16px}
 
 /* Residents admin */
@@ -273,6 +328,37 @@ textarea.input{min-height:90px;resize:vertical}
 .cal-i.cumple{background:var(--accent-soft);color:var(--accent)}
 .cal-i.evento{background:var(--soft);color:var(--primary)}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;max-width:90vw;z-index:10}
+/* Resumen del mes y panel */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 18px}
+.kpi{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0}
+.kpi .k-l{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.kpi .k-n{font-family:var(--head);font-weight:750;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums;margin:2px 0}
+.kpi .k-s{font-size:13px;color:var(--muted);line-height:1.35}
+.kpi .k-d{font-weight:700;color:var(--ink)}
+.kpi.des{border-top:5px solid var(--accent)} .kpi.com{border-top:5px solid var(--primary)} .kpi.cen{border-top:5px solid var(--cena)}
+.tarjeta{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 16px;min-width:0}
+.tarjeta h3{margin:0 0 4px}
+.tarjeta .sub{font-size:13px;color:var(--muted);margin:0 0 10px}
+.dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 16px}
+.leyenda{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);font-weight:700;margin:0 0 6px}
+.leyenda i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.graf{width:100%;height:auto;display:block;overflow:visible}
+.graf text{font-family:var(--body);font-size:12px;fill:var(--muted)}
+.graf .rej{stroke:var(--line);stroke-width:1}
+.hb-l{display:grid;grid-template-columns:minmax(90px,auto) 1fr auto;gap:6px 10px;align-items:center;font-size:15px}
+.hb-b{height:14px;border-radius:999px;background:var(--bg);overflow:hidden}
+.hb-b i{display:block;height:100%;border-radius:999px;background:var(--primary)}
+.hb-l b{font-variant-numeric:tabular-nums}
+.tabla-mes td,.tabla-mes th{text-align:right;padding:7px 10px;font-variant-numeric:tabular-nums}
+.tabla-mes td:first-child,.tabla-mes th:first-child{text-align:left}
+.tabla-mes tr.finde td{background:color-mix(in srgb, var(--soft) 55%, transparent)}
+.tabla-mes tr.tot td{font-weight:700;border-top:2px solid var(--ink);background:var(--soft)}
+.tabla-mes td.prov{color:var(--muted);font-style:italic}
+.estado-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.estado-g button,.estado-g div{background:var(--bg);border:0;border-radius:12px;padding:10px 12px;text-align:left;font:inherit;color:inherit}
+.estado-g b{display:block;font-family:var(--head);font-size:24px;font-variant-numeric:tabular-nums}
+.estado-g span{font-size:13px;color:var(--muted);font-weight:700}
+.estado-g .aviso b{color:var(--accent)}
 .empty{background:var(--surface);border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--muted)}
 
 @media (max-width:520px){
@@ -316,7 +402,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.10.15-2";
+const VERSION = "2026.11.07-1";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -371,6 +457,7 @@ const S = {
   drafts:{}, editRes:null
 };
 S.pub = {}; S.priv = {}; S.authListo = false; S.nom = {};
+S.listo = {}; S.partes = {}; S.det = {}; S.hist = {}; S.histDet = {}; S.histMes = {}; S.forzar = new Set();
 S.extras = {}; S.wordle = {}; S.eventos = []; S.wlTyped = "";
 try { S.vistos = JSON.parse(localStorage.getItem("comedor.avisos")||"[]"); } catch(e){ S.vistos = []; }
 function saveSession(){}
@@ -441,7 +528,7 @@ S.db = { doc: mkDoc, collection: c => mkCol(c) };
 let subs = [];
 function limpiar(){
   subs.forEach(u=>{ try { u(); } catch(e){} }); subs = [];
-  Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, nom:{}, consultas:[], avisos:[], avIds:undefined, adscritos:{}, adsPend:undefined, parteFecha:today(), qcFecha:null, exFecha:null, calMes:null, qcFiltro:null, modal:null, evEditId:null, cqTs:undefined, cqOpen:null, evIds:undefined, evA:{}, evM:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, vista:false, menu:false, migrado:false});
+  Object.assign(S, {session:null, resLoaded:false, pub:{}, priv:{}, nom:{}, consultas:[], avisos:[], avIds:undefined, adscritos:{}, adsPend:undefined, parteFecha:today(), qcFecha:null, exFecha:null, calMes:null, qcFiltro:null, modal:null, evEditId:null, cqTs:undefined, cqOpen:null, evIds:undefined, evA:{}, evM:{}, residentes:[], plantillas:{}, pedidos:{}, extras:{}, wordle:{}, eventos:[], mensajes:[], msgIds:undefined, extrasCargados:false, listo:{}, partes:{}, det:{}, hist:{}, histDet:{}, histMes:{}, forzar:new Set(), mesSel:null, partesErr:false, prevPedir:undefined, loadErr:null, tab:null, editRes:null, perfilAplazado:false, wlTyped:"", verPw:false, vista:false, menu:false, migrado:false});
 }
 function mezclar(){
   const sinNombres = S.miRol==="cocina";
@@ -464,10 +551,10 @@ function suscribir(pid, rol){
   if (rol!=="cocina") add(S.db.collection("nombres").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.nom=o; mezclar(); render(); }, dbErr));
   if (gest) add(S.db.collection("privados").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.priv=o; mezclar(); revisarPeticion(); render(); }, dbErr));
   else add(S.db.doc("privados/"+pid).onSnapshot(s => { S.priv = s.exists ? {[pid]: s.data()} : {}; mezclar(); revisarPeticion(); render(); }, dbErr));
-  add(S.db.collection("plantillas").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.plantillas=o; render(); }, dbErr));
-  add(S.db.collection("pedidos").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.pedidos=o; render(); }, dbErr));
+  add(S.db.collection("plantillas").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.plantillas=o; S.listo.plantillas=true; render(); }, dbErr));
+  add(S.db.collection("pedidos").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.pedidos=o; S.listo.pedidos=true; render(); }, dbErr));
   add(S.db.collection("extras").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => {
-    const prev = S.extrasCargados; const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.extras=o; S.extrasCargados = true;
+    const prev = S.extrasCargados; const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.extras=o; S.extrasCargados = true; S.listo.extras = true;
     const me = S.session && resById(S.session.uid);
     if (prev && me && rolDe(me)==="residente") avisosResidente().filter(x=>!x.visto).slice(0,1).forEach(x=>toast("Nuevo aviso para el "+fmtLong(x.fecha).toLowerCase()+"."));
     render();
@@ -499,8 +586,12 @@ function suscribir(pid, rol){
     const prev = S.adsPend; const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.adscritos=o;
     const ahora = new Set(adsPendientes().map(a=>a.fecha+"|"+a.ts));
     if (prev && rol==="admin" && [...ahora].some(k=>!prev.has(k))) toast("El jefe de adscritos ha propuesto comensales para un martes.");
-    S.adsPend = ahora; render();
+    S.adsPend = ahora; S.listo.adscritos = true; render();
   }, dbErr));
+  /* Resumen diario guardado: para el control mensual (administradores y administración) */
+  const errResumen = e => { console.warn("Resumen mensual:", e); S.partesErr = true; render(); };
+  if (gest) add(S.db.collection("partes").where("fecha",">=",addDays(today(),-40)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.partes=o; S.listo.partes=true; render(); }, errResumen));
+  if (rol==="admin") add(S.db.collection("partesDet").where("fecha",">=",addDays(today(),-40)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.det=o; S.listo.det=true; render(); }, errResumen));
   if (rol!=="cocina") add(S.db.collection("avisos").where("hasta",">=",today()).onSnapshot(q => {
     const prev = S.avIds; S.avisos = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0)); S.avIds = new Set(S.avisos.map(a=>a.id));
     if (prev && rol==="residente" && S.avisos.some(a=>!prev.has(a.id))) toast("Nuevo aviso de los administradores.");
@@ -512,7 +603,8 @@ function suscribir(pid, rol){
       const prev = S.msgIds;
       S.mensajes = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(a.ts||0)-(b.ts||0));
       S.msgIds = new Set(S.mensajes.map(m=>m.id));
-      if (prev) S.mensajes.filter(m=>!prev.has(m.id) && m.para===rol && !m.leido).forEach(notificar);
+      if (prev) S.mensajes.filter(m=>!prev.has(m.id) && m.para===rol && !m.leido).forEach(m=>{ if (S.tab==="notas" && document.visibilityState==="visible") S.irAbajo = true; else notificar(m); });
+      if (S.tab==="notas" && !S.vista && document.visibilityState==="visible" && S.mensajes.some(m=>m.para===rol && !m.leido)) marcarLeidos(rol);
       render();
     }, dbErr));
   }
@@ -610,7 +702,9 @@ function render(){
   try { const me = S.session && resById(S.session.uid), rol = me && rolDe(me); const n = rol ? S.mensajes.filter(m=>m.para===rol && !m.leido).length + (rol==="residente" ? consultasSinLeer("residente") : 0) : 0; document.title = (n?"("+n+") ":"")+"Libro de comidas - Mizar"; } catch(e){}
   const a = document.activeElement, fid = a && a.id, sel = a && a.selectionStart;
   $app.innerHTML = view();
-  if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); try { if (sel!=null) el.setSelectionRange(sel,sel); } catch(e){} } }
+  if (fid){ const el = document.getElementById(fid); if (el){ el.focus({preventScroll:true}); try { if (sel!=null) el.setSelectionRange(sel,sel); } catch(e){} } }
+  if (S.irAbajo){ S.irAbajo = false; const fin = document.getElementById("notas-fin"); if (fin) setTimeout(()=>fin.scrollIntoView({block:"end"}), 30); }
+  if (S.miRol==="admin" || S.miRol==="cocina") programarSync();
 }
 function view(){ return franjaVersion() + vista0(); }
 function vista0(){
@@ -684,13 +778,15 @@ const ICO = {
   usuarios:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-6 6.5-6s5.9 2.4 6.5 6"/><path d="M15 6.5h6M15 10h6M17 13.5h4"/>',
   ajustes:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   adscritos:'<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2.5 19c.5-3 2.8-5 5.5-5s5 2 5.5 5"/><path d="M13.5 15.2c.8-.8 1.6-1.2 2.5-1.2 2.7 0 5 2 5.5 5"/>',
+  resumen:'<path d="M4 20.5h16"/><rect x="5.5" y="11" width="3" height="7" rx="1"/><rect x="10.5" y="6" width="3" height="12" rx="1"/><rect x="15.5" y="13.5" width="3" height="4.5" rx="1"/>',
+  panel:'<rect x="3.5" y="3.5" width="7.5" height="9" rx="1.8"/><rect x="13" y="3.5" width="7.5" height="5.5" rx="1.8"/><rect x="13" y="11" width="7.5" height="9.5" rx="1.8"/><rect x="3.5" y="14.5" width="7.5" height="6" rx="1.8"/>',
   mas:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'
 };
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]||ICO.mas}</svg>`;
-const CORTO = {adscritos:"Adscritos", semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Juego", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", extras:"Extras", notas:"Notas", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
+const CORTO = {adscritos:"Adscritos", semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Juego", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", resumen:"Resumen", panel:"Panel", extras:"Extras", notas:"Notas", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
 function navegacion(list, rol, comensal){
   const pref = rol==="adscritos" ? ["adscritos"]
-    : rol==="cocina" ? ["parte","cumples","calendario","notas"]
+    : rol==="cocina" ? ["parte","resumen","notas","calendario","cumples"]
     : rol==="admin" ? (comensal ? ["semana","parte","consultas","notas"] : ["parte","extras","consultas","notas"])
     : ["semana","quien","calendario","consultas"];
   const visibles = pref.map(k=>list.find(x=>x[0]===k)).filter(Boolean);
@@ -883,6 +979,297 @@ function parteView(){
     ${parteHTML(f, anon)}`;
 }
 
+/* ---------- Resumen mensual: cada parte cerrado se guarda como recuento ---------- */
+/* Un registro por parte (día f): comida y cena de ese día; desayuno y para llevar del día siguiente. */
+function resumenDeParte(f){
+  const d = datosParte(f), ads = S.adscritos[f] || {}, n = (l, e) => l.length + (e||0), exB = sumaBolsas(d.bolsasExtra);
+  return {fecha:f, c1:n(d.turnos[0][1], d.turnos[0][2]), cn:n(d.turnos[1][1], d.turnos[1][2]), c2:n(d.turnos[2][1], d.turnos[2][2]),
+    cb:d.bolsas.length + exB, ce:n(d.cena[0], d.cena[1]), dm:n(d.desayuno[0], d.desayuno[1]), tm:d.tupper.length, bm:d.bolsaM.length,
+    ex:d.turnos.reduce((a,t)=>a+t[2]-t[3],0) + exB + (d.cena[1]||0), exd:d.desayuno[1]||0, ad:(ads.primer||0)+(ads.normal||0)+(ads.segundo||0)};
+}
+function detalleDeParte(f){
+  const p = {};
+  activos().forEach(r=>{ const x = efectiva(r.id,f).sel, o = {}; if (x.comida!=="no") o.c = x.comida; if (x.cena) o.ce = 1; if (x.desayuno) o.d = 1; if (x.llevar!=="nada") o.l = x.llevar; if (Object.keys(o).length) p[r.id] = o; });
+  return {fecha:f, p};
+}
+const CAMPOS_RES = ["c1","cn","c2","cb","ce","dm","tm","bm","ex","exd","ad"];
+const igualRes = (a, b) => CAMPOS_RES.every(k=>(a[k]||0)===(b[k]||0));
+const igualDet = (a, b) => JSON.stringify(Object.entries(a.p||{}).sort()) === JSON.stringify(Object.entries(b.p||{}).sort());
+const inicioDatos = () => Object.values(S.pedidos).map(p=>p.fecha).filter(Boolean).sort()[0] || null;
+const datosListos = () => S.resLoaded && S.listo.pedidos && S.listo.plantillas && S.listo.extras && S.listo.adscritos;
+let syncT = null, syncando = false;
+function programarSync(){ clearTimeout(syncT); syncT = setTimeout(sincronizarPartes, 3500); }
+async function sincronizarPartes(){
+  const rol = S.miRol; if ((rol!=="admin" && rol!=="cocina") || S.partesErr || syncando) return;
+  if (!datosListos() || !S.listo.partes || (rol==="admin" && !S.listo.det)) return;
+  const ini = inicioDatos(); if (!ini) return;
+  syncando = true;
+  try {
+    let desde = ini; const lim = addDays(today(), -27); if (desde < lim) desde = lim;
+    const bt = writeBatch(fs), hechos = []; let n = 0;
+    for (let f = desde; f <= today(); f = addDays(f,1)){
+      if (!locked(f)) continue;
+      const forz = S.forzar.has(f), viejo = S.partes[f];
+      if (!viejo || forz){ const nuevo = resumenDeParte(f); if (!viejo || !igualRes(viejo, nuevo)){ nuevo.ts = Date.now(); nuevo.rec = viejo ? !!viejo.rec : f < addDays(today(),-1); bt.set(fdoc(fs,"partes/"+f), nuevo); n++; } }
+      if (rol==="admin"){ const vd = S.det[f]; if (!vd || forz){ const nd = detalleDeParte(f); if (!vd || !igualDet(vd, nd)){ nd.ts = Date.now(); bt.set(fdoc(fs,"partesDet/"+f), nd); n++; } } }
+      if (forz) hechos.push(f);
+    }
+    if (n) await bt.commit();
+    hechos.forEach(f=>S.forzar.delete(f));
+  } catch(e){ console.warn("Resumen mensual:", e); if (e && e.code==="permission-denied") { S.partesErr = true; render(); } }
+  finally { syncando = false; }
+}
+const ymDe = f => f.slice(0,7);
+const ymMas = (ym, n) => { const [y,m] = ym.split("-").map(Number), d = new Date(y, m-1+n, 1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); };
+const finMes = ym => { const [y,m] = ym.split("-").map(Number); return iso(new Date(y, m, 0)); };
+const nombreMes = ym => { const [y,m] = ym.split("-").map(Number); return MESES[m-1]+" de "+y; };
+const mesCorto = ym => { const m = Number(ym.slice(5,7)); return MESES[m-1].slice(0,3)+"."; };
+/* ¿Lo tiene ya la suscripción de los últimos 40 días? (incluye la víspera del día 1) */
+const mesCubierto = (ym, det) => addDays(ym+"-01",-1) >= addDays(today(),-40) && (det ? S.listo.det : S.listo.partes);
+function cargarMes(ym, det){
+  const key = (det?"d":"p")+ym; if (S.histMes[key] || ym > ymDe(today()) || mesCubierto(ym, det) || S.partesErr) return;
+  S.histMes[key] = "cargando";
+  getDocs(query(fcol(fs, det ? "partesDet" : "partes"), fwhere("fecha",">=",ym+"-01"), fwhere("fecha","<=",finMes(ym))))
+    .then(q=>{ q.docs.forEach(d=>{ (det ? S.histDet : S.hist)[d.id] = d.data(); }); S.histMes[key] = "ok"; render(); })
+    .catch(e=>{ console.warn("Resumen mensual:", e); S.histMes[key] = "error"; if (e && e.code==="permission-denied") S.partesErr = true; render(); });
+}
+const mesListo = (ym, det) => S.partesErr || ym > ymDe(today()) || mesCubierto(ym, det) || S.histMes[(det?"d":"p")+ym]==="ok" || S.histMes[(det?"d":"p")+ym]==="error";
+function parteDe(f){
+  const g = S.partes[f] || S.hist[f]; if (g) return g;
+  const ini = inicioDatos();
+  if (!ini || f < ini || f > today() || f < addDays(today(),-27) || !datosListos()) return null;
+  return {...resumenDeParte(f), prov: !locked(f), vivo: true};
+}
+function detDe(f){
+  const g = S.det[f] || S.histDet[f]; if (g) return g;
+  const ini = inicioDatos();
+  if (!ini || f < ini || f > today() || f < addDays(today(),-27) || !datosListos()) return null;
+  return {...detalleDeParte(f), prov: !locked(f)};
+}
+/* Cada fila es el día en que se sirve: el desayuno y lo que se lleva salen del parte de la víspera */
+function datosMes(ym){
+  const dias = [], fin = finMes(ym);
+  for (let f = ym+"-01"; f <= fin && f <= today(); f = addDays(f,1)){
+    const a = parteDe(f), b = parteDe(addDays(f,-1));
+    dias.push({f, a, b, des: b ? b.dm : null, tup: b ? b.tm : null, bol: b ? b.bm : null,
+      com: a ? a.c1+a.cn+a.c2 : null, cb: a ? a.cb : null, ce: a ? a.ce : null,
+      comT: a ? a.c1+a.cn+a.c2+a.cb : null, prov: !!((a && a.prov) || (b && b.prov)), rec: !!((a && a.rec) || (b && b.rec))});
+  }
+  const sum = k => dias.reduce((t,d)=>t+(d[k]||0),0), sumA = k => dias.reduce((t,d)=>t+(d.a ? (d.a[k]||0) : 0),0);
+  const T = {des:sum("des"), com:sum("com"), cb:sum("cb"), ce:sum("ce"), tup:sum("tup"), bol:sum("bol"), comT:sum("comT"),
+    t1:sumA("c1"), tn:sumA("cn"), t2:sumA("c2"), ex:sumA("ex"), ad:sumA("ad")};
+  T.llevar = T.tup + T.bol; T.serv = T.des + T.comT + T.ce;
+  const nd = dias.filter(d=>d.a).length, ndB = dias.filter(d=>d.b).length;
+  return {ym, dias, T, nd, ndB};
+}
+const media = (t, n) => n ? t/n : 0;
+const fmtN = (x, dec=1) => (Math.round(x*Math.pow(10,dec))/Math.pow(10,dec)).toLocaleString("es-ES");
+function deltaTxt(a, b){ if (!b) return ""; const p = Math.round((a-b)/b*100); return p===0 ? "igual que el mes anterior" : (p>0?"▲ ":"▼ ")+Math.abs(p)+" % frente al mes anterior"; }
+
+/* --- Gráficos sencillos en SVG (siguen el modo claro u oscuro) --- */
+const SERIES = [{k:"des", n:"Desayunos", c:"var(--accent)"}, {k:"comT", n:"Comidas", c:"var(--primary)"}, {k:"ce", n:"Cenas", c:"var(--cena)"}];
+const leyendaHTML = series => `<div class="leyenda">${series.map(x=>`<span><i style="background:${x.c}"></i>${x.n}</span>`).join("")}</div>`;
+function techo(max){ const p = [5,10,15,20,25,30,40,50,60,80,100,150,200,300,400,500,800,1000,1500,2000,3000,5000]; return p.find(x=>x>=max) || Math.ceil(max/1000)*1000; }
+function graficoLineas(puntos, series, etiqueta){
+  const W = 700, H = 230, L = 34, R = 10, T = 10, B = 26, n = puntos.length;
+  const tope = techo(Math.max(4, ...series.flatMap(x=>puntos.map(p=>p[x.k]||0))));
+  const X = i => n<=1 ? L+(W-L-R)/2 : L + i*(W-L-R)/(n-1), Y = v => T + (H-T-B)*(1 - v/tope);
+  let o = `<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico por días">`;
+  for (let g=0; g<=4; g++){ const v = tope*g/4, y = Y(v); o += `<line class="rej" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+4}" text-anchor="end">${fmtN(v,0)}</text>`; }
+  puntos.forEach((p,i)=>{ const e = etiqueta(p,i); if (e) o += `<text x="${X(i)}" y="${H-6}" text-anchor="middle">${esc(e)}</text>`; });
+  series.forEach(x=>{ let d = "", pen = false; puntos.forEach((p,i)=>{ const v = p[x.k]; if (v==null){ pen = false; return; } d += (pen?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)+" "; pen = true; });
+    o += `<path d="${d}" fill="none" stroke="${x.c}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+    if (n<=40) puntos.forEach((p,i)=>{ const v = p[x.k]; if (v!=null) o += `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.8" fill="${x.c}"><title>${esc(x.n)}: ${v}</title></circle>`; }); });
+  return o + `</svg>`;
+}
+function graficoBarras(cats, series){
+  const W = 700, H = 220, L = 34, R = 10, T = 10, B = 26, n = cats.length, m = series.length;
+  const tope = techo(Math.max(4, ...cats.flatMap(c=>series.map(x=>c[x.k]||0))));
+  const ancho = (W-L-R)/n, bw = Math.min(26, (ancho-10)/m), Y = v => T + (H-T-B)*(1 - v/tope);
+  let o = `<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de barras">`;
+  for (let g=0; g<=4; g++){ const v = tope*g/4, y = Y(v); o += `<line class="rej" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+4}" text-anchor="end">${fmtN(v,0)}</text>`; }
+  cats.forEach((c,i)=>{ const x0 = L + i*ancho + (ancho - bw*m)/2;
+    series.forEach((x,j)=>{ const v = c[x.k]||0, y = Y(v); o += `<rect x="${(x0+j*bw).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${Math.max(0, H-B-y).toFixed(1)}" rx="3" fill="${x.c}"><title>${esc(c.l)} · ${esc(x.n)}: ${fmtN(v)}</title></rect>`; });
+    o += `<text x="${(L+i*ancho+ancho/2).toFixed(1)}" y="${H-6}" text-anchor="middle">${esc(c.l)}</text>`; });
+  return o + `</svg>`;
+}
+function barrasH(lista){ const max = Math.max(1, ...lista.map(x=>x.v)); return `<div class="hb-l">${lista.map(x=>`<span>${esc(x.l)}</span><div class="hb-b"><i style="width:${(x.v/max*100).toFixed(1)}%;background:${x.c||"var(--primary)"}"></i></div><b>${x.v}</b>`).join("")}</div>`; }
+
+/* --- Piezas comunes del resumen --- */
+function mesNav(ym){
+  const hoy = ymDe(today());
+  return `<div class="weeknav no-print"><button class="arrow" data-a="mes" data-v="-1" aria-label="Mes anterior">‹</button><h2 style="text-transform:capitalize">${esc(nombreMes(ym))}</h2><button class="arrow" data-a="mes" data-v="1" aria-label="Mes siguiente" ${ym>=hoy?"disabled":""}>›</button></div>
+    ${ym!==hoy ? `<p class="no-print" style="margin:-4px 0 12px;text-align:center"><button class="link" data-a="mes" data-v="0">Ir al mes actual</button></p>` : ""}`;
+}
+function kpisHTML(D, P){
+  const k = (cls, l, total, avg, avgP, extra) => `<div class="kpi ${cls}"><div class="k-l">${l}</div><div class="k-n">${total}</div><div class="k-s">${avg!=null ? "Media diaria: <span class=\"k-d\">"+fmtN(avg)+"</span>" : ""}${extra?"<br>"+extra:""}${avgP!=null && P && deltaTxt(avg, avgP) ? "<br>"+deltaTxt(avg, avgP) : ""}</div></div>`;
+  const T = D.T, TP = P && P.T;
+  return `<div class="kpis">
+    ${k("des","Desayunos", T.des, media(T.des, D.ndB), TP ? media(TP.des, P.ndB) : null)}
+    ${k("com","Comidas", T.comT, media(T.comT, D.nd), TP ? media(TP.comT, P.nd) : null, T.cb ? "De ellas, en bolsa: <span class=\"k-d\">"+T.cb+"</span>" : "")}
+    ${k("cen","Cenas", T.ce, media(T.ce, D.nd), TP ? media(TP.ce, P.nd) : null)}
+    ${k("","Tupper y bolsa", T.llevar, null, null, "Tupper: <span class=\"k-d\">"+T.tup+"</span> · Bolsa de comida: <span class=\"k-d\">"+T.bol+"</span>")}
+  </div>`;
+}
+function diarioHTML(D){
+  if (!D.dias.length) return "";
+  return `<div class="tarjeta"><h3>Día a día</h3><p class="sub">Comensales de cada servicio.</p>${leyendaHTML(SERIES)}${graficoLineas(D.dias, SERIES, (p,i)=>{ const d = Number(p.f.slice(8)); return (d===1 || d%5===0) ? String(d) : ""; })}</div>`;
+}
+function semanaHTML(D){
+  const cats = DIAS.map((l,i)=>{ const ds = D.dias.filter(d=>wd(d.f)===i); const m = k => { const v = ds.filter(d=>d[k]!=null); return v.length ? v.reduce((t,d)=>t+d[k],0)/v.length : 0; }; return {l:l.slice(0,3), des:m("des"), comT:m("comT"), ce:m("ce")}; });
+  return `<div class="tarjeta"><h3>Media por día de la semana</h3><p class="sub">Cuántos hay de media cada lunes, martes…</p>${leyendaHTML(SERIES)}${graficoBarras(cats, SERIES)}</div>`;
+}
+function tablaMesHTML(D){
+  if (!D.dias.length) return `<div class="empty">Este mes todavía no tiene días.</div>`;
+  const c = (d, k) => d[k]==null ? `<td class="prov">—</td>` : `<td class="${d.prov?"prov":""}">${d[k]}</td>`;
+  const T = D.T;
+  return `<div class="tablewrap"><table class="tabla-mes"><thead><tr><th>Día</th><th>Desayunos</th><th>Comidas</th><th>En bolsa</th><th>Cenas</th><th>Tupper</th><th>Bolsa</th></tr></thead><tbody>
+    ${D.dias.map(d=>`<tr class="${esFinde(d.f)?"finde":""}"><td>${DIAS[wd(d.f)].slice(0,3)} ${Number(d.f.slice(8))}${d.rec?" *":""}${esEspecial(d.f)?" ·":""}</td>${c(d,"des")}${c(d,"com")}${c(d,"cb")}${c(d,"ce")}${c(d,"tup")}${c(d,"bol")}</tr>`).join("")}
+    <tr class="tot"><td>Total</td><td>${T.des}</td><td>${T.com}</td><td>${T.cb}</td><td>${T.ce}</td><td>${T.tup}</td><td>${T.bol}</td></tr></tbody></table></div>
+    <p class="muted small">Cada fila es el día en que se sirve: el desayuno, el tupper y la bolsa de comida se piden la víspera. «Comidas» son las de comedor (todos los turnos); «En bolsa», las comidas preparadas en bolsa para ese día. Incluye comensales extra y adscritos. ${D.dias.some(d=>d.prov) ? "En gris, lo que aún puede cambiar. " : ""}${D.dias.some(d=>d.rec) ? "* Día reconstruido con los datos que había guardados." : ""}</p>`;
+}
+function descargasHTML(ym, admin){
+  return `<div class="tarjeta no-print"><h3>Descargar o enviar</h3><p class="sub">${admin ? "El PDF y el Excel van sin nombres, como los ve la administración." : "Para el resumen mensual."}</p>
+    <div class="row"><button class="btn" data-a="mes-pdf" data-v="${ym}">PDF</button><button class="btn ghost" data-a="mes-csv" data-v="${ym}">Excel</button><button class="btn ghost" data-a="mes-mail" data-v="${ym}">Enviar por correo</button>${admin ? `<button class="btn ghost" data-a="mes-csv-p" data-v="${ym}">Excel por persona</button>` : ""}</div>
+    <p class="muted small" style="margin-bottom:0">«Enviar por correo» abre el menú de compartir con el PDF ya adjunto; si el dispositivo no lo permite, se descarga el PDF y se abre un correo con el resumen para que lo adjuntes.</p></div>`;
+}
+function mesesNecesarios(ym, cuantos){ const l = []; for (let i=0; i<=cuantos; i++) l.push(ymMas(ym, -i)); return l; }
+function avisoResumen(admin){
+  if (!S.partesErr) return "";
+  return `<div class="status prov">${admin ? "Falta publicar las reglas nuevas de Firestore: sin ellas no se guarda el resumen de cada día. Los datos de este mes se calculan con lo que hay, pero no se conservan." : "El resumen mensual todavía no está activado del todo. Avisa a un administrador."}</div>`;
+}
+
+/* --- La administración: resumen del mes --- */
+function resumenView(){
+  const ym = S.mesSel || ymDe(today());
+  mesesNecesarios(ym, 2).forEach(m=>cargarMes(m, false));
+  if (!mesesNecesarios(ym, 2).every(m=>mesListo(m, false)) || !datosListos()) return mesNav(ym) + `<p class="muted">Cargando los datos del mes…</p>`;
+  const D = datosMes(ym), P = datosMes(ymMas(ym,-1));
+  const vacio = !D.dias.some(d=>d.a || d.b);
+  return avisoResumen(false) + mesNav(ym) + (vacio ? `<div class="empty">No hay datos guardados de este mes.</div>` :
+    kpisHTML(D, P.nd ? P : null) + diarioHTML(D) + semanaHTML(D) + `<h2 style="margin:22px 0 8px">Tabla del mes</h2>` + tablaMesHTML(D)) + descargasHTML(ym, false);
+}
+
+/* --- Administradores: panel completo --- */
+function personasMes(ym){
+  const out = {}, fin = finMes(ym); let dias = 0;
+  const de = id => out[id] = out[id] || {c:0, cb:0, ce:0, d:0, t:0, bl:0};
+  for (let f = ym+"-01"; f <= fin && f <= today(); f = addDays(f,1)){
+    const a = detDe(f), b = detDe(addDays(f,-1)); if (a) dias++;
+    if (a) Object.entries(a.p||{}).forEach(([id,o])=>{ const x = de(id); if (o.c==="bolsa") x.cb++; else if (o.c) x.c++; if (o.ce) x.ce++; });
+    if (b) Object.entries(b.p||{}).forEach(([id,o])=>{ const x = de(id); if (o.d) x.d++; if (o.l==="tupper") x.t++; else if (o.l==="bolsa") x.bl++; });
+  }
+  return {out, dias};
+}
+function panelView(){
+  const ym = S.mesSel || ymDe(today());
+  mesesNecesarios(ym, 6).forEach(m=>cargarMes(m, false)); mesesNecesarios(ym, 1).forEach(m=>cargarMes(m, true));
+  if (!mesesNecesarios(ym, 6).every(m=>mesListo(m, false)) || !mesesNecesarios(ym, 1).every(m=>mesListo(m, true)) || !datosListos()) return mesNav(ym) + `<p class="muted">Cargando los datos del mes…</p>`;
+  const D = datosMes(ym), P = datosMes(ymMas(ym,-1)), T = D.T, vacio = !D.dias.some(d=>d.a || d.b);
+  // Estado de la residencia (siempre actual)
+  const com = activos(), conReg = com.filter(r=>r.regimen);
+  const pendCq = consultasVivas().filter(c=>!c.resuelto).length, pendEv = S.eventos.filter(e=>e.estado==="pendiente").length, pendAds = adsPendientes().length;
+  const sinDatos = S.residentes.filter(r=>r.activo!==false && faltanDatos(r)).length;
+  const est = (n, l, tab, av) => tab ? `<button class="${av&&n?"aviso":""}" data-a="tab" data-v="${tab}"><b>${n}</b><span>${l}</span></button>` : `<div class="${av&&n?"aviso":""}"><b>${n}</b><span>${l}</span></div>`;
+  const estado = `<div class="tarjeta"><h3>Ahora mismo</h3><p class="sub">Toca un recuadro para ir a esa sección.</p><div class="estado-g">
+    ${est(com.length, "comensales activos", "usuarios")}${est(conReg.length, "con régimen", "usuarios")}${est(pendCq, "mensajes de residentes sin resolver", "consultas", true)}
+    ${est(pendEv, "eventos por aprobar", "calendario", true)}${est(pendAds, "propuestas de adscritos", "extras", true)}${est(sinDatos, "sin cumpleaños o gustos", "cumples", true)}</div></div>`;
+  if (vacio) return avisoResumen(true) + mesNav(ym) + estado + `<div class="empty">No hay datos guardados de este mes.</div>` + descargasHTML(ym, true);
+  // Turnos de comida
+  const turnos = `<div class="tarjeta"><h3>Comida por turnos</h3><p class="sub">Total del mes, con extras y adscritos.</p>${barrasH([{l:"1.er turno", v:T.t1},{l:"Normal", v:T.tn},{l:"2.º turno", v:T.t2},{l:"En bolsa", v:T.cb, c:"var(--accent)"}])}
+    <p class="muted small" style="margin-bottom:0">Comensales extra en comida y cena: <b>${T.ex}</b> · Adscritos: <b>${T.ad}</b></p></div>`;
+  // Evolución de los últimos meses (media diaria, para comparar meses enteros con el actual)
+  const evo = mesesNecesarios(ym, 5).reverse().map(m=>{ const x = datosMes(m); return {l:mesCorto(m), ym:m, des:media(x.T.des, x.ndB), comT:media(x.T.comT, x.nd), ce:media(x.T.ce, x.nd), T:x.T, nd:x.nd}; }).filter(x=>x.nd);
+  const evolucion = evo.length>1 ? `<div class="tarjeta"><h3>Evolución</h3><p class="sub">Media diaria de cada mes (así se pueden comparar aunque el mes actual no haya terminado).</p>${leyendaHTML(SERIES)}${graficoBarras(evo, SERIES)}
+    <div class="tablewrap" style="margin-top:10px"><table class="tabla-mes"><thead><tr><th>Mes</th><th>Días</th><th>Desayunos</th><th>Comidas</th><th>Cenas</th><th>Tupper y bolsa</th></tr></thead><tbody>${evo.map(x=>`<tr><td style="text-transform:capitalize">${esc(nombreMes(x.ym))}</td><td>${x.nd}</td><td>${x.T.des}</td><td>${x.T.comT}</td><td>${x.T.ce}</td><td>${x.T.llevar}</td></tr>`).join("")}</tbody></table></div></div>` : "";
+  // Por persona
+  const PM = personasMes(ym), filas = Object.entries(PM.out).map(([id,x])=>({r:resById(id), x, tot:x.c+x.cb+x.ce+x.d})).filter(o=>o.r).sort((a,b)=>b.tot-a.tot || String(a.r.nombre).localeCompare(String(b.r.nombre),"es"));
+  const ord = S.pmOrden || "tot"; if (ord!=="tot") filas.sort((a,b)=> ord==="nombre" ? String(a.r.nombre).localeCompare(String(b.r.nombre),"es") : (b.x[ord]-a.x[ord]));
+  const th = (k, l) => `<th><button class="th-btn" data-a="pm-orden" data-v="${k}">${l}${ord===k?" ▾":""}</button></th>`;
+  const personas = `<div class="tarjeta"><h3>Por persona</h3><p class="sub">Servicios de cada uno este mes (${PM.dias} día${PM.dias===1?"":"s"} con datos). Solo lo ven los administradores. Toca un encabezado para ordenar.</p>
+    ${filas.length ? `<div class="tablewrap"><table class="tabla-mes"><thead><tr>${th("nombre","Persona")}${th("d","Desay.")}${th("c","Comidas")}${th("cb","En bolsa")}${th("ce","Cenas")}${th("t","Tupper")}${th("bl","Bolsa")}</tr></thead><tbody>
+      ${filas.map(o=>`<tr><td>${esc(o.r.nombre||iniciales(o.r))}${o.r.regimen?` <span class="tag plantilla" title="${esc(o.r.regimen)}">R</span>`:""}${o.r.activo===false?' <span class="muted small">(baja)</span>':""}</td><td>${o.x.d}</td><td>${o.x.c}</td><td>${o.x.cb}</td><td>${o.x.ce}</td><td>${o.x.t}</td><td>${o.x.bl}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">Sin datos por persona este mes.</p>`}</div>`;
+  // Regímenes
+  const srv = {comida:0, cena:0, desayuno:0, llevar:0};
+  filas.forEach(o=>{ if (!o.r.regimen) return; if (regAplica(o.r,"comida")) srv.comida += o.x.c+o.x.cb; if (regAplica(o.r,"cena")) srv.cena += o.x.ce; if (regAplica(o.r,"desayuno")) srv.desayuno += o.x.d; if (regAplica(o.r,"llevar")) srv.llevar += o.x.t+o.x.bl; });
+  const regimen = conReg.length ? `<div class="tarjeta"><h3>Regímenes</h3><p class="sub">Servicios con régimen este mes, según el régimen que cada uno tiene ahora.</p>${barrasH([{l:"Comidas", v:srv.comida},{l:"Cenas", v:srv.cena, c:"var(--cena)"},{l:"Desayunos", v:srv.desayuno, c:"var(--accent)"},{l:"Para llevar", v:srv.llevar, c:"var(--muted)"}])}</div>` : "";
+  // Juego del día y cumpleaños del mes
+  const partidas = Object.values(S.wordle).filter(x=>x.fecha && ymDe(x.fecha)===ym && x.estado && x.estado!=="jugando");
+  const tj = {}; partidas.forEach(x=>{ tj[x.uid] = (tj[x.uid]||0) + (x.puntos||0); });
+  const lider = Object.entries(tj).sort((a,b)=>b[1]-a[1])[0];
+  const cumpMes = conCumple().filter(r=>r.cumple && Number(r.cumple.slice(0,2))===Number(ym.slice(5,7)));
+  const vida = `<div class="tarjeta"><h3>Vida de la casa</h3><div class="estado-g" style="margin-top:8px">
+    <div><b>${partidas.length}</b><span>partidas del juego</span></div><div><b>${Object.keys(tj).length}</b><span>personas han jugado</span></div>
+    <div><b style="font-size:17px;line-height:1.3">${lider && resById(lider[0]) ? esc(resById(lider[0]).nombre)+" ("+lider[1]+")" : "—"}</b><span>más puntos del mes</span></div>
+    <div><b>${cumpMes.length}</b><span>cumpleaños este mes</span></div></div>
+    ${cumpMes.length ? `<p class="small" style="margin-bottom:0">${cumpMes.sort((a,b)=>a.cumple.localeCompare(b.cumple)).map(r=>esc(r.nombre||iniciales(r))+" ("+Number(r.cumple.slice(3))+")").join(", ")}</p>` : ""}</div>`;
+  const maxDia = D.dias.filter(d=>d.comT!=null).sort((a,b)=>b.comT-a.comT)[0];
+  return avisoResumen(true) + mesNav(ym) + kpisHTML(D, P.nd ? P : null)
+    + (maxDia ? `<p class="muted small" style="margin:-8px 0 16px">Día con más comidas: <b>${esc(fmtLong(maxDia.f))}</b> (${maxDia.comT}). Total de servicios del mes: <b>${T.serv}</b>.</p>` : "")
+    + estado + diarioHTML(D) + `<div class="dos">${turnos}${regimen || vida}</div>` + semanaHTML(D) + evolucion + personas + (regimen ? vida : "")
+    + `<details class="plegable" ${S.drafts.pt_open?"open":""}><summary data-a="plegar" data-v="pt_open">Tabla del mes, día a día</summary>${tablaMesHTML(D)}</details>` + descargasHTML(ym, true);
+}
+
+/* --- Descargas del resumen mensual --- */
+async function entregarArchivo(blob, filename, titulo){
+  const movil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent));
+  try { const file = new File([blob], filename, {type: blob.type}); if (movil && navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:titulo}); return; } }
+  catch(e){ if (e && e.name==="AbortError") return; }
+  let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; } catch(e){}
+  if (dl){ try { await dl.save({filename, data: blob}); } catch(e){ if (!e || e.code!=="declined") toast("No se ha podido descargar."); } return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+function csvMes(ym){
+  const D = datosMes(ym), q = x => x==null ? "" : String(x), L = [];
+  L.push(["Día","Fecha","Desayunos","Comidas en comedor","Comidas en bolsa","Cenas","Tupper","Bolsa de comida","Total servicios"].join(";"));
+  D.dias.forEach(d=>L.push([DIAS[wd(d.f)], d.f.split("-").reverse().join("/"), q(d.des), q(d.com), q(d.cb), q(d.ce), q(d.tup), q(d.bol), (d.des||0)+(d.comT||0)+(d.ce||0)].join(";")));
+  const T = D.T; L.push(["Total","", T.des, T.com, T.cb, T.ce, T.tup, T.bol, T.serv].join(";"));
+  return "\ufeff" + L.join("\r\n");
+}
+function csvPersonas(ym){
+  const PM = personasMes(ym), L = [["Persona","Desayunos","Comidas en comedor","Comidas en bolsa","Cenas","Tupper","Bolsa de comida","Régimen"].join(";")];
+  const lim = t => '"'+String(t||"").replace(/"/g,'""')+'"';
+  Object.entries(PM.out).map(([id,x])=>({r:resById(id), x})).filter(o=>o.r).sort((a,b)=>String(a.r.nombre).localeCompare(String(b.r.nombre),"es"))
+    .forEach(o=>L.push([lim(o.r.nombre||iniciales(o.r)), o.x.d, o.x.c, o.x.cb, o.x.ce, o.x.t, o.x.bl, lim(o.r.regimen||"")].join(";")));
+  return "\ufeff" + L.join("\r\n");
+}
+async function pdfMes(ym){
+  if (!window.jspdf || !window.jspdf.jsPDF){
+    await new Promise(res=>{ const sc=document.createElement("script"); sc.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"; sc.onload=res; sc.onerror=res; document.head.appendChild(sc); });
+    if (!window.jspdf || !window.jspdf.jsPDF){ toast("No se ha podido preparar el PDF. Comprueba la conexión."); return null; }
+  }
+  const doc = new window.jspdf.jsPDF({unit:"mm", format:"a4"}), W = 210, H = 297, M = 14, CW = W-2*M;
+  const VERDE=[46,94,78], TINTA=[28,38,33], GRIS=[95,108,100], LINEA=[214,222,216], SUAVE=[232,240,235];
+  const col = c => doc.setTextColor(c[0],c[1],c[2]), D = datosMes(ym), T = D.T, ahora = new Date();
+  doc.setFillColor(...VERDE); doc.rect(0,0,W,5,"F");
+  let y = 16; doc.setFont("helvetica","normal"); doc.setFontSize(10); col(GRIS); doc.text("Libro de comidas - Mizar", M, y);
+  y += 9; doc.setFont("helvetica","bold"); doc.setFontSize(20); col(TINTA); const nm = nombreMes(ym); doc.text("Resumen de "+nm, M, y);
+  y += 8; doc.setFont("helvetica","normal"); doc.setFontSize(10.5); col(TINTA);
+  const cajas = [["Desayunos", T.des], ["Comidas", T.comT], ["Cenas", T.ce], ["Tupper", T.tup], ["Bolsa de comida", T.bol]], bw = (CW-4*3)/5;
+  cajas.forEach(([l,v],i)=>{ const x = M + i*(bw+3); doc.setFillColor(...SUAVE); doc.roundedRect(x, y, bw, 17, 2, 2, "F"); doc.setFontSize(8.5); col(GRIS); doc.text(l, x+3, y+5.5); doc.setFont("helvetica","bold"); doc.setFontSize(15); col(TINTA); doc.text(String(v), x+3, y+13.5); doc.setFont("helvetica","normal"); });
+  y += 22; doc.setFontSize(9); col(GRIS);
+  doc.text("Medias diarias: desayunos "+fmtN(media(T.des, D.ndB))+", comidas "+fmtN(media(T.comT, D.nd))+", cenas "+fmtN(media(T.ce, D.nd))+". Comidas en bolsa: "+T.cb+".", M, y);
+  y += 6;
+  const cols = [["Día",30],["Desayunos",24],["Comidas",24],["En bolsa",22],["Cenas",22],["Tupper",22],["Bolsa",22],["Total",16]];
+  const cab = () => { doc.setFillColor(...VERDE); doc.rect(M, y, CW, 7, "F"); doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(255,255,255); let x = M+2; cols.forEach(([t,w],i)=>{ doc.text(t, i ? x+w-3 : x, y+4.8, i ? {align:"right"} : undefined); x += w; }); y += 7; };
+  cab();
+  const fila = (vals, bold, fondo) => { if (y > H-20){ doc.addPage(); y = M; cab(); } if (fondo){ doc.setFillColor(...fondo); doc.rect(M, y, CW, 6.2, "F"); } doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(9.2); col(TINTA); let x = M+2; cols.forEach(([t,w],i)=>{ doc.text(String(vals[i]), i ? x+w-3 : x, y+4.3, i ? {align:"right"} : undefined); x += w; }); y += 6.2; doc.setDrawColor(...LINEA); doc.setLineWidth(0.15); doc.line(M, y, W-M, y); };
+  const v = x => x==null ? "-" : x;
+  D.dias.forEach(d=>fila([DIAS[wd(d.f)].slice(0,3)+" "+Number(d.f.slice(8))+(d.rec?" *":"")+(d.prov?" (prov.)":""), v(d.des), v(d.com), v(d.cb), v(d.ce), v(d.tup), v(d.bol), (d.des||0)+(d.comT||0)+(d.ce||0)], false, esFinde(d.f) ? [246,249,246] : null));
+  fila(["Total", T.des, T.com, T.cb, T.ce, T.tup, T.bol, T.serv], true, SUAVE);
+  y += 5; if (y > H-30){ doc.addPage(); y = M; }
+  doc.setFont("helvetica","normal"); doc.setFontSize(8.3); col(GRIS);
+  doc.text(doc.splitTextToSize("Cada fila es el día en que se sirve: el desayuno, el tupper y la bolsa de comida se piden la víspera. «Comidas» son las de comedor (todos los turnos) y «En bolsa», las comidas preparadas en bolsa. Incluye comensales extra y adscritos."+(D.dias.some(d=>d.rec)?" * Día reconstruido con los datos que había guardados.":"")+(D.dias.some(d=>d.prov)?" (prov.): todavía puede cambiar.":""), CW), M, y);
+  const n = doc.getNumberOfPages();
+  for (let i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(8); col(GRIS); doc.text("Generado el "+ahora.getDate()+"/"+(ahora.getMonth()+1)+"/"+ahora.getFullYear(), M, H-8); doc.text("Página "+i+" de "+n, W-M, H-8, {align:"right"}); }
+  return doc.output("blob");
+}
+function textoCorreo(ym){
+  const D = datosMes(ym), T = D.T;
+  return "Resumen de "+nombreMes(ym)+" (Libro de comidas - Mizar)\n\nDesayunos: "+T.des+"\nComidas: "+T.comT+" (en comedor: "+T.com+"; en bolsa: "+T.cb+")\nCenas: "+T.ce+"\nTupper: "+T.tup+"\nBolsa de comida: "+T.bol+"\nTotal de servicios: "+T.serv+"\n\nMedias diarias: desayunos "+fmtN(media(T.des, D.ndB))+", comidas "+fmtN(media(T.comT, D.nd))+", cenas "+fmtN(media(T.ce, D.nd))+".\n";
+}
+
 /* --- Datos personales: cumpleaños y gustos --- */
 function formDatos(u){
   const [m0,d0] = (u.cumple||"-").split("-");
@@ -932,18 +1319,24 @@ function avisoCumples(){
   return `<div class="alert no-print">${hoy.length?`<strong>Hoy cumple años: ${esc(hoy.join(", "))}.</strong> `:""}${man.length?`Mañana: ${esc(man.join(", "))}.`:""} <button class="link" data-a="tab" data-v="cumples">Ver gustos</button></div>`;
 }
 
-/* --- Juego del día: cuatro juegos que rotan cada lunes --- */
+/* --- Juego del día: cinco juegos que rotan cada lunes --- */
 const JUEGOS = {
   palabra: {nombre:"Palabra del día", corto:"Palabra", max:6, desc:"Adivina la palabra de 5 letras en 6 intentos. Verde: letra en su sitio. Amarillo: está en la palabra, en otro sitio. Gris: no está."},
   codigo:  {nombre:"Código secreto", corto:"Código", max:8, desc:"Adivina la combinación de 4 colores en 8 intentos (se pueden repetir). Tras cada intento: ● en su sitio, ○ está pero en otro sitio."},
-  parejas: {nombre:"Parejas", corto:"Parejas", max:24, desc:"Encuentra las 8 parejas dando la vuelta a dos cartas cada vez. Cuantos menos movimientos, más puntos (máximo 24)."},
-  sudoku:  {nombre:"Mini sudoku", corto:"Sudoku", max:3, desc:"Rellena la cuadrícula: cada fila, columna y bloque de 2×3 lleva los números del 1 al 6 sin repetir. Toca una casilla y luego el número. Puedes equivocarte 3 veces."}
+  sudoku9: {nombre:"Sudoku", corto:"Sudoku", max:3, desc:"Rellena la cuadrícula de 9×9: cada fila, cada columna y cada bloque de 3×3 lleva los números del 1 al 9 sin repetir. Toca una casilla y después el número. Con «Notas» apuntas los números posibles sin que cuenten. Puedes equivocarte 3 veces."},
+  nonograma: {nombre:"Nonograma", corto:"Nonograma", max:3, desc:"Descubre el dibujo escondido en la cuadrícula de 9×9. Los números de cada fila y de cada columna son los grupos de casillas seguidas que hay que pintar, en ese orden y con al menos un hueco entre grupo y grupo. Elige «Pintar» o «Marcar ✕» y toca las casillas. Puedes equivocarte 3 veces."},
+  reinas:  {nombre:"Reinas", corto:"Reinas", max:3, desc:"Coloca 8 reinas: una en cada fila, una en cada columna y una en cada color. Dos reinas no pueden tocarse, ni siquiera en diagonal. Elige «Reina» o «Marcar ✕» y toca las casillas. Puedes equivocarte 3 veces."},
+  /* Retirados: se conservan solo para mostrar bien las partidas antiguas */
+  parejas: {nombre:"Parejas", corto:"Parejas", max:24, retirado:true, desc:"Encuentra las 8 parejas dando la vuelta a dos cartas cada vez. Cuantos menos movimientos, más puntos (máximo 24)."},
+  sudoku:  {nombre:"Mini sudoku", corto:"Mini sudoku", max:3, retirado:true, desc:"Rellena la cuadrícula: cada fila, columna y bloque de 2×3 lleva los números del 1 al 6 sin repetir. Toca una casilla y luego el número. Puedes equivocarte 3 veces."}
 };
-const ORDEN_J = ["palabra","codigo","parejas","sudoku"];
+const ORDEN_J = ["palabra","codigo","sudoku9","nonograma","reinas"];
+const J_ERRORES = ["sudoku","sudoku9","nonograma","reinas"]; // juegos que puntúan por errores (máximo 3)
 const COLORES = ["#D9534F","#E8A33D","#E2C84B","#4CA36B","#3E7CC6","#8E5BB5"];
 const lunesDe = f => addDays(f, -wd(f));
-function juegoAuto(lunes){ const n = Math.floor(diasEntre("2026-01-05", lunes)/7); return ORDEN_J[((n % 4) + 4) % 4]; }
-const juegoSemana = lunes => { const x = ((S.config||{}).juegos||{})[lunes]; return JUEGOS[x] ? x : juegoAuto(lunes); };
+/* La semana del 2 de noviembre de 2026 toca Sudoku; desde ahí: Nonograma, Reinas, Palabra, Código… */
+function juegoAuto(lunes){ const n = Math.floor(diasEntre("2026-11-02", lunes)/7), L = ORDEN_J.length; return ORDEN_J[(((n + 2) % L) + L) % L]; }
+const juegoSemana = lunes => { const x = ((S.config||{}).juegos||{})[lunes]; return ORDEN_J.includes(x) ? x : juegoAuto(lunes); };
 const juegoHoy = () => juegoSemana(lunesDe(today()));
 function semilla(f, k){ let h = 2166136261; for (const c of f+"|"+k) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 function palabraDe(f){ const d = Math.round((parse(f) - new Date(2026,0,1))/86400000), n = WL_SOL.length; return WL_SOL[((d*7919) % n + n) % n]; }
@@ -969,6 +1362,98 @@ function sudokuDe(f){
   for (const k of barajar([...Array(36).keys()], r)){ const v = puzzle[k]; puzzle[k] = 0; if (sdContar(puzzle.slice(), 2)!==1) puzzle[k] = v; if (puzzle.filter(x=>!x).length>=22) break; }
   return SD_CACHE[f] = {sol, puzzle};
 }
+/* Sudoku 9×9 con solución única (mismo para todos ese día) */
+const S9_PE = (()=>{ const pe = []; for (let k=0;k<81;k++){ const r = Math.floor(k/9), c = k%9, s = new Set(); for (let i=0;i<9;i++){ s.add(r*9+i); s.add(i*9+c); } const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3; for (let i=br;i<br+3;i++) for (let j=bc;j<bc+3;j++) s.add(i*9+j); s.delete(k); pe.push([...s]); } return pe; })();
+function s9Hueco(g){ let best = -1, bm = 0, bn = 10; for (let k=0;k<81;k++){ if (g[k]) continue; let m = 0x3FE; for (const p of S9_PE[k]) m &= ~(1<<g[p]); let n = 0; for (let v=1;v<=9;v++) if (m>>v & 1) n++; if (!n) return {k:-2}; if (n<bn){ bn = n; best = k; bm = m; if (n===1) break; } } return {k:best, m:bm}; }
+function s9Contar(g, lim){ const h = s9Hueco(g); if (h.k===-2) return 0; if (h.k<0) return 1; let t = 0; for (let v=1; v<=9 && t<lim; v++) if (h.m>>v & 1){ g[h.k] = v; t += s9Contar(g, lim-t); g[h.k] = 0; } return t; }
+function s9Llenar(g, r){ const h = s9Hueco(g); if (h.k===-2) return false; if (h.k<0) return true; for (const v of barajar([1,2,3,4,5,6,7,8,9], r)) if (h.m>>v & 1){ g[h.k] = v; if (s9Llenar(g, r)) return true; g[h.k] = 0; } return false; }
+const S9_CACHE = {};
+function sudoku9De(f){
+  if (S9_CACHE[f]) return S9_CACHE[f];
+  const r = rng(semilla(f,"sudoku9")), sol = Array(81).fill(0); s9Llenar(sol, r);
+  const puzzle = sol.slice(); let vacias = 0;
+  for (const k of barajar([...Array(81).keys()], r)){ const v = puzzle[k]; puzzle[k] = 0; if (s9Contar(puzzle.slice(), 2)!==1) puzzle[k] = v; else vacias++; if (vacias>=46) break; }
+  return S9_CACHE[f] = {sol, puzzle};
+}
+function estadoSudoku9(j, f){ const {sol, puzzle} = sudoku9De(f), g = puzzle.slice(); let err = 0; (j.intentos||[]).forEach(m=>{ const [k,v] = String(m).split(":").map(Number); if (sol[k]===v) g[k] = v; else err++; }); return {g, err, sol, puzzle}; }
+/* Nonograma 9×9 que se resuelve solo con lógica (solución única) */
+const pistasLinea = a => { const o = []; let n = 0; for (const x of a){ if (x) n++; else if (n){ o.push(n); n = 0; } } if (n) o.push(n); return o.length ? o : [0]; };
+function nnLinea(len, clues, known){
+  const cl = clues[0]===0 ? [] : clues, memo = new Map(), canF = Array(len).fill(false), canE = Array(len).fill(false), vistos = new Set();
+  const encaja = (i, s, c) => { for (let k=i;k<s;k++) if (known[k]===1) return -1; for (let k=s;k<s+c;k++) if (known[k]===0) return 0; if (s+c<len && known[s+c]===1) return 0; return 1; };
+  function feas(i, j){ const key = i*20+j; if (memo.has(key)) return memo.get(key); let ok = false;
+    if (j===cl.length){ ok = true; for (let k=i;k<len;k++) if (known[k]===1){ ok = false; break; } }
+    else for (let s=i; s+cl[j]<=len; s++){ const e = encaja(i, s, cl[j]); if (e<0) break; if (e && feas(s+cl[j]+(s+cl[j]<len?1:0), j+1)){ ok = true; break; } }
+    memo.set(key, ok); return ok; }
+  function walk(i, j){
+    if (j===cl.length){ for (let k=i;k<len;k++) canE[k] = true; return; }
+    for (let s=i; s+cl[j]<=len; s++){ const e = encaja(i, s, cl[j]); if (e<0) break; if (!e) continue; const nx = s+cl[j]+(s+cl[j]<len?1:0); if (!feas(nx, j+1)) continue;
+      for (let k=i;k<s;k++) canE[k] = true; for (let k=s;k<s+cl[j];k++) canF[k] = true; if (s+cl[j]<len) canE[s+cl[j]] = true;
+      if (!vistos.has(nx*20+j+1)){ vistos.add(nx*20+j+1); walk(nx, j+1); } }
+  }
+  if (!feas(0,0)) return null; walk(0,0);
+  return known.map((v,k)=> v!==-1 ? v : (canF[k] && !canE[k] ? 1 : (!canF[k] && canE[k] ? 0 : -1)));
+}
+function nnPistas(sol, N){ const filas = [], cols = []; for (let i=0;i<N;i++){ filas.push(pistasLinea(sol.slice(i*N, i*N+N))); cols.push(pistasLinea(Array.from({length:N}, (_,r)=>sol[r*N+i]))); } return {filas, cols}; }
+function nnResoluble(sol, N){
+  const {filas, cols} = nnPistas(sol, N), g = Array(N*N).fill(-1); let cambio = true;
+  while (cambio){ cambio = false;
+    for (let i=0;i<N;i++){ const l = g.slice(i*N, i*N+N), n = nnLinea(N, filas[i], l); if (!n) return false; n.forEach((v,k)=>{ if (v!==l[k]){ g[i*N+k] = v; cambio = true; } }); }
+    for (let i=0;i<N;i++){ const l = Array.from({length:N}, (_,r)=>g[r*N+i]), n = nnLinea(N, cols[i], l); if (!n) return false; n.forEach((v,k)=>{ if (v!==l[k]){ g[k*N+i] = v; cambio = true; } }); }
+  }
+  return g.every(v=>v!==-1);
+}
+const NN_CACHE = {};
+function nonogramaDe(f){
+  if (NN_CACHE[f]) return NN_CACHE[f];
+  const N = 9, r = rng(semilla(f,"nonograma")); let sol = null;
+  for (let t=0; t<600 && !sol; t++){
+    const base = Array(N*N).fill(0), dens = 0.5 + r()*0.12;
+    for (let k=0;k<N*N;k++) base[k] = r()<dens ? 1 : 0;
+    const s2 = base.map((v,k)=>{ const i = Math.floor(k/N), j = k%N; let n = 0, c = 0; for (let a=-1;a<=1;a++) for (let b=-1;b<=1;b++){ const x = i+a, y = j+b; if (x>=0 && y>=0 && x<N && y<N){ c++; n += base[x*N+y]; } } return n*2>c ? 1 : (n*2===c ? v : 0); });
+    const llenas = s2.filter(Boolean).length;
+    if (llenas>=30 && llenas<=60 && nnResoluble(s2, N)) sol = s2;
+  }
+  if (!sol){ sol = Array(N*N).fill(0).map((_,k)=>(Math.floor(k/N)+k%N)%2 ? 1 : 0); }
+  return NN_CACHE[f] = {sol, N, ...nnPistas(sol, N)};
+}
+function estadoNonograma(j, f){ const {sol} = nonogramaDe(f), hechas = new Set(), malas = new Set(); let err = 0; (j.intentos||[]).forEach(m=>{ const k = Number(m); if (sol[k]) hechas.add(k); else { err++; malas.add(k); } }); return {hechas, malas, err, total: sol.filter(Boolean).length}; }
+/* Reinas 8×8: regiones de colores con solución única */
+const RN_COLORES = ["#F2B8A2","#F6D88E","#BFE0A6","#A9D6E0","#C9B8EA","#F3B6CF","#D9C7A7","#B7C4D6"];
+const V4 = [[1,0],[-1,0],[0,1],[0,-1]];
+function rnSoluciones(reg, N, lim, evitar){
+  const colU = Array(N).fill(false), regU = Array(N).fill(false), pos = [], out = [];
+  (function go(row){ if (out.length>=lim) return; if (row===N){ const x = pos.slice(); if (!evitar || x.some((c,i)=>c!==evitar[i])) out.push(x); return; }
+    for (let c=0;c<N;c++){ const g = reg[row*N+c]; if (colU[c] || regU[g] || (row>0 && Math.abs(pos[row-1]-c)<=1)) continue; colU[c] = regU[g] = true; pos[row] = c; go(row+1); colU[c] = regU[g] = false; } })(0);
+  return out;
+}
+function rnConexa(reg, N, g, sin){ const cel = []; for (let k=0;k<N*N;k++) if (reg[k]===g && k!==sin) cel.push(k); if (!cel.length) return false; const vis = new Set([cel[0]]), st = [cel[0]]; while (st.length){ const k = st.pop(), i = Math.floor(k/N), j = k%N; for (const [a,b] of V4){ const x = i+a, y = j+b; if (x<0||y<0||x>=N||y>=N) continue; const kk = x*N+y; if (kk!==sin && reg[kk]===g && !vis.has(kk)){ vis.add(kk); st.push(kk); } } } return vis.size===cel.length; }
+const RN_CACHE = {};
+function reinasDe(f){
+  if (RN_CACHE[f]) return RN_CACHE[f];
+  const N = 8, r = rng(semilla(f,"reinas"));
+  for (let t=0; t<60; t++){
+    let q = null; for (let u=0; u<500 && !q; u++){ const p = barajar([...Array(N).keys()], r); let ok = true; for (let i=1;i<N;i++) if (Math.abs(p[i]-p[i-1])<=1){ ok = false; break; } if (ok) q = p; }
+    if (!q) continue;
+    const reg = Array(N*N).fill(-1); q.forEach((c,i)=>{ reg[i*N+c] = i; });
+    for (let quedan = N*N-N; quedan>0; quedan--){ const cand = []; for (let k=0;k<N*N;k++){ if (reg[k]!==-1) continue; const i = Math.floor(k/N), j = k%N; V4.forEach(([a,b])=>{ const x = i+a, y = j+b; if (x>=0 && y>=0 && x<N && y<N && reg[x*N+y]!==-1) cand.push([k, reg[x*N+y]]); }); } const [k,g] = cand[Math.floor(r()*cand.length)]; reg[k] = g; }
+    const reina = new Set(q.map((c,i)=>i*N+c)); let unica = false;
+    for (let it=0; it<200; it++){
+      const otra = rnSoluciones(reg, N, 1, q)[0];
+      if (!otra){ unica = true; break; }
+      const movs = [];
+      otra.forEach((c,i)=>{ const x = i*N+c; if (reina.has(x)) return; const A = reg[x]; V4.forEach(([a,b])=>{ const ii = i+a, jj = c+b; if (ii<0||jj<0||ii>=N||jj>=N) return; const B = reg[ii*N+jj]; if (B===A) return; if (otra.some((cc,ri)=>ri!==i && reg[ri*N+cc]===B) && rnConexa(reg, N, A, x)) movs.push([x, B]); }); });
+      if (!movs.length) break;
+      const [x,B] = movs[Math.floor(r()*movs.length)]; reg[x] = B;
+    }
+    if (unica) return RN_CACHE[f] = {reg, sol: q.map((c,i)=>i*N+c), N};
+  }
+  const q = [1,3,5,7,0,2,4,6]; return RN_CACHE[f] = {reg: Array(64).fill(0).map((_,k)=>Math.floor(k/8)), sol: q.map((c,i)=>i*8+c), N:8};
+}
+function estadoReinas(j, f){ const {sol} = reinasDe(f), set = new Set(sol), puestas = new Set(), malas = new Set(); let err = 0; (j.intentos||[]).forEach(m=>{ const k = Number(m); if (set.has(k)) puestas.add(k); else { err++; malas.add(k); } }); return {puestas, malas, err}; }
+/* Marcas (✕) y notas del sudoku: solo en este dispositivo */
+function marcasDe(f, k){ const key = "mizar.marcas."+f+"."+k; if (!S.marcas || S.marcas.key!==key){ let v = {}; try { v = JSON.parse(localStorage.getItem(key)||"{}"); } catch(e){} S.marcas = {key, v}; } return S.marcas.v; }
+function guardarMarcas(){ if (!S.marcas) return; try { localStorage.setItem(S.marcas.key, JSON.stringify(S.marcas.v)); Object.keys(localStorage).filter(x=>x.startsWith("mizar.marcas.") && x.slice(13,23) < addDays(today(),-3)).forEach(x=>localStorage.removeItem(x)); } catch(e){} }
 function estadoSudoku(j, f){ const {sol, puzzle} = sudokuDe(f), g = puzzle.slice(); let err = 0; (j.intentos||[]).forEach(m=>{ const [k,v] = String(m).split(":").map(Number); if (sol[k]===v) g[k] = v; else err++; }); return {g, err, sol, puzzle}; }
 function evaluar(g, sol){
   const r = Array(5).fill("a"), cnt = {};
@@ -979,6 +1464,7 @@ function evaluar(g, sol){
 function pistaCodigo(g, sol){ let negras = 0; const a = {}, b = {}; for (let i=0;i<4;i++){ if (g[i]===sol[i]) negras++; else { a[g[i]]=(a[g[i]]||0)+1; b[sol[i]]=(b[sol[i]]||0)+1; } } let blancas = 0; for (const k in a) blancas += Math.min(a[k], b[k]||0); return {negras, blancas}; }
 function puntosDe(juego, n){
   if (juego==="palabra") return 7-n;
+  if (juego==="sudoku9" || juego==="nonograma" || juego==="reinas") return [6,4,2][n] || 1;
   if (juego==="codigo") return n<=3 ? 6 : Math.max(1, 9-n);
   if (juego==="parejas") return n<=10 ? 6 : n<=12 ? 5 : n<=14 ? 4 : n<=16 ? 3 : n<=20 ? 2 : 1;
   return [6,4,2][n] || 1;
@@ -991,6 +1477,7 @@ function resumenJ(x, f){
   if (k==="palabra") return `<span class="mini">${x.intentos.map(g=>evaluar(g, palabraDe(f)).map(c=>`<i class="${c}"></i>`).join("")).join("")}</span> <b style="font-size:16px;margin-left:6px">${x.estado==="ganado"?n:"X"}/6</b>`;
   if (k==="parejas") return `<b style="font-size:16px">${x.estado==="ganado" ? n+" movimientos" : "No terminó"}</b>`;
   if (k==="sudoku") { const e = estadoSudoku(x, f).err; return `<b style="font-size:16px">${x.estado==="ganado" ? e+" error"+(e===1?"":"es") : "No terminó"}</b>`; }
+  if (k==="sudoku9" || k==="nonograma" || k==="reinas"){ const e = k==="sudoku9" ? estadoSudoku9(x, f).err : k==="nonograma" ? estadoNonograma(x, f).err : estadoReinas(x, f).err; return `<b style="font-size:16px">${x.estado==="ganado" ? (e ? e+" error"+(e===1?"":"es") : "Sin errores") : "No terminó"}</b>`; }
   if (!JUEGOS[k]) return `<b style="font-size:16px">${x.puntos||0} pts</b>`;
   return `<b style="font-size:16px">${x.estado==="ganado"?n:"X"}/${JUEGOS[k].max}</b>`;
 }
@@ -1024,13 +1511,46 @@ function tableroJuego(k, j, f){
     const kb = `<div class="wl-kr">${[1,2,3,4,5,6].map(d=>`<button class="wl-k" data-a="wl-key" data-v="${d}">${d}</button>`).join("")}</div>`;
     return {tablero:`<div class="sd-g">${celdas}</div><div class="lt-vidas">${[0,1,2].map(i=>`<i class="${i<e.err?"fuera":""}"></i>`).join("")}<span class="muted small">Errores: ${e.err} de 3</span></div>`, teclado:kb, sol:"la cuadrícula completa"};
   }
+  const vidas = err => `<div class="lt-vidas">${[0,1,2].map(i=>`<i class="${i<err?"fuera":""}"></i>`).join("")}<span class="muted small">Errores: ${err} de 3</span></div>`;
+  const modo = (a, b, la, lb) => fin ? "" : `<div class="herr seg"><button class="opt" data-a="j-modo" data-v="${a}" aria-pressed="${(S.jModo||a)===a}">${la}</button><button class="opt" data-a="j-modo" data-v="${b}" aria-pressed="${S.jModo===b}">${lb}</button></div>`;
+  if (k==="sudoku9"){
+    const e = estadoSudoku9(j, f), sel = S.sdSel, notas = marcasDe(f, "sudoku9"), vSel = sel!=null ? e.g[sel] : 0;
+    const rS = sel!=null ? Math.floor(sel/9) : -1, cS = sel!=null ? sel%9 : -1, bS = sel!=null ? Math.floor(rS/3)*3+Math.floor(cS/3) : -1;
+    const celdas = e.g.map((v,i)=>{ const r = Math.floor(i/9), c = i%9, b = Math.floor(r/3)*3+Math.floor(c/3), fija = !!e.puzzle[i];
+      const zona = sel!=null && i!==sel && (r===rS || c===cS || b===bS), igual = vSel && v===vSel && i!==sel;
+      const cls = ["s9-c", fija?"fija":"", v&&!fija?"puesta":"", zona?"zona":"", igual?"igual":"", i===sel?"sel":"", S.sdMal===i?"mal":"", c===2||c===5?"br":"", r===2||r===5?"bb":""].filter(Boolean).join(" ");
+      const nt = !v && !fin && (notas[i]||[]).length ? `<span class="s9-n">${[1,2,3,4,5,6,7,8,9].map(d=>`<span>${(notas[i]||[]).includes(d)?d:""}</span>`).join("")}</span>` : "";
+      return `<button class="${cls}" data-a="sd-cell" data-v="${i}" ${fin?"disabled":""} aria-label="Fila ${r+1}, columna ${c+1}">${v||(fin?`<span style="color:var(--muted)">${e.sol[i]}</span>`:"")}${nt}</button>`; }).join("");
+    const usados = d => e.g.filter(x=>x===d).length;
+    const kb = `<div class="wl-kr">${[1,2,3,4,5,6,7,8,9].map(d=>`<button class="wl-k" data-a="wl-key" data-v="${d}" ${usados(d)>=9?"disabled":""}>${d}</button>`).join("")}</div>
+      <div class="wl-kr"><button class="wl-k wide" data-a="j-modo" data-v="${S.jModo==="notas"?"num":"notas"}" style="${S.jModo==="notas"?"background:var(--accent);color:#fff":""}">Notas: ${S.jModo==="notas"?"sí":"no"}</button><button class="wl-k wide" data-a="wl-key" data-v="back">Borrar notas</button></div>`;
+    return {tablero:`<div class="s9-g">${celdas}</div>${vidas(e.err)}`, teclado:kb, sol:"la cuadrícula completa"};
+  }
+  if (k==="nonograma"){
+    const P = nonogramaDe(f), N = P.N, e = estadoNonograma(j, f), marcas = marcasDe(f, "nonograma");
+    const colOk = c => { for (let r=0;r<N;r++){ const k2 = r*N+c; if (P.sol[k2] && !e.hechas.has(k2)) return false; } return true; };
+    const filaOk = r => { for (let c=0;c<N;c++){ const k2 = r*N+c; if (P.sol[k2] && !e.hechas.has(k2)) return false; } return true; };
+    const cab = `<tr><th></th>${P.cols.map((l,c)=>`<th class="${colOk(c)?"hecha":""}">${l.join("<br>")}</th>`).join("")}</tr>`;
+    const filas = Array.from({length:N}, (_,r)=>`<tr><th class="fila ${filaOk(r)?"hecha":""}">${P.filas[r].join(" ")}</th>${Array.from({length:N}, (_,c)=>{ const i = r*N+c, on = e.hechas.has(i) || (fin && P.sol[i]), x = !on && (e.malas.has(i) || marcas[i]);
+      const cls = ["nn-c", on?"on":"", x?"x":"", e.malas.has(i)?"mal":"", c===2||c===5?"br":"", r===2||r===5?"bb":""].filter(Boolean).join(" ");
+      return `<td><button class="${cls}" data-a="nn-cell" data-v="${i}" ${fin||e.hechas.has(i)||e.malas.has(i)?"disabled":""} aria-label="Fila ${r+1}, columna ${c+1}"></button></td>`; }).join("")}</tr>`).join("");
+    return {tablero:`${modo("pintar","marcar","■ Pintar","✕ Marcar")}<div class="nn-wrap"><table class="nn-t">${cab}${filas}</table></div><p class="muted small" style="text-align:center;margin:0 0 6px">Casillas pintadas: ${e.hechas.size} de ${e.total}</p>${vidas(e.err)}`, teclado:"", sol:"el dibujo completo"};
+  }
+  if (k==="reinas"){
+    const P = reinasDe(f), N = P.N, e = estadoReinas(j, f), marcas = marcasDe(f, "reinas"), sol = new Set(P.sol);
+    const celdas = P.reg.map((g,i)=>{ const r = Math.floor(i/N), c = i%N, reina = e.puestas.has(i) || (fin && sol.has(i)), x = !reina && (e.malas.has(i) || marcas[i]);
+      const br = c<N-1 && P.reg[i+1]!==g, bb = r<N-1 && P.reg[i+N]!==g;
+      const cls = ["rn-c", x?"x":"", e.malas.has(i)?"mal":"", br?"br":"", bb?"bb":""].filter(Boolean).join(" ");
+      return `<button class="${cls}" style="background:${RN_COLORES[g%RN_COLORES.length]}" data-a="rn-cell" data-v="${i}" ${fin||e.puestas.has(i)||e.malas.has(i)?"disabled":""} aria-label="Fila ${r+1}, columna ${c+1}">${reina?"♛":""}</button>`; }).join("");
+    return {tablero:`${modo("reina","marcar","♛ Reina","✕ Marcar")}<div class="rn-g">${celdas}</div><p class="muted small" style="text-align:center;margin:0 0 6px">Reinas colocadas: ${e.puestas.size} de ${N}</p>${vidas(e.err)}`, teclado:"", sol:"las 8 reinas"};
+  }
   return {tablero:`<div class="empty">Hoy ya has jugado.</div>`, teclado:"", sol:""};
 }
 function wordleView(u){
   const f = today(), j = juegoDe(u.id, f), k = tipoDe(j), J = JUEGOS[k] || {nombre:"Juego del día", desc:""}, fin = j.estado!=="jugando";
   const me = resById(S.session.uid), principal = rolDe(me)==="admin" && (esTitular(me) || principalHoy()===me.id);
   const tb = tableroJuego(k, j, f), n = j.intentos.length;
-  const res = fin ? `<div class="status ${j.estado==="ganado"?"def":"prov"}">${j.estado==="ganado" ? `¡Conseguido! Sumas ${j.puntos} punto${j.puntos===1?"":"s"}.` : `Hoy no ha podido ser. Era: <b>${tb.sol}</b>.`} Mañana, otro reto.</div>` : "";
+  const res = fin ? `<div class="status ${j.estado==="ganado"?"def":"prov"}">${j.estado==="ganado" ? `¡Conseguido! Sumas ${j.puntos} punto${j.puntos===1?"":"s"}.` : (J_ERRORES.includes(k) ? `Hoy no ha podido ser: te dejo la solución a la vista.` : `Hoy no ha podido ser. Era: <b>${tb.sol}</b>.`)} Mañana, otro reto.</div>` : "";
   const jugadores = S.residentes.filter(r=>r.activo!==false && rolDe(r)!=="cocina" && rolDe(r)!=="adscritos" && esComensal(r)).map(r=>({r, j:S.wordle[f+"_"+r.id]})).filter(x=>x.j && x.j.intentos && x.j.intentos.length);
   const hoyHTML = jugadores.length ? jugadores.sort((a,b)=>(b.j.puntos||0)-(a.j.puntos||0)).map(({r,j:x})=>`<div class="count"><span>${esc(r.nombre)}</span><span>${fin ? resumenJ(x, f) : `<span class="muted small">${x.estado==="jugando"?"Jugando":"Ha terminado"}</span>`}</span></div>`).join("") + (fin ? "" : `<p class="muted small">Verás cómo ha quedado cada uno cuando termines tu partida.</p>`) : `<p class="muted">Todavía no ha jugado nadie hoy.</p>`;
   // ranking semanal
@@ -1055,7 +1575,7 @@ async function wlTecla(key){
   if (j.estado!=="jugando") return;
   const guarda = async (intentos, gana, pierde) => {
     const estado = gana ? "ganado" : pierde ? "perdido" : "jugando";
-    const n = k==="sudoku" ? estadoSudoku({intentos}, f).err : intentos.length;
+    const n = k==="sudoku" ? estadoSudoku({intentos}, f).err : k==="sudoku9" ? estadoSudoku9({intentos}, f).err : k==="nonograma" ? estadoNonograma({intentos}, f).err : k==="reinas" ? estadoReinas({intentos}, f).err : intentos.length;
     const doc = {fecha:f, uid:u.id, juego:k, intentos, estado, puntos: gana ? puntosDe(k, n) : 0, ts:Date.now()};
     S.wordle[f+"_"+u.id] = doc; S.wlTyped = ""; render();
     await w(()=>S.db.doc("wordle/"+f+"_"+u.id).set(doc));
@@ -1071,6 +1591,32 @@ async function wlTecla(key){
     if (!ok){ S.pjMal = [a, i]; S.pjT = setTimeout(()=>{ S.pjMal = null; render(); }, 900); }
     const gana = ok && hechas.size + 2 === 16;
     return guarda(intentos, gana, !gana && intentos.length >= 24);
+  }
+  if (k==="sudoku9"){
+    const k2 = S.sdSel, e = estadoSudoku9(j, f), notas = marcasDe(f, "sudoku9");
+    if (key==="back"){ if (k2!=null && notas[k2]){ delete notas[k2]; guardarMarcas(); render(); } return; }
+    if (!/^[1-9]$/.test(key)) return;
+    if (k2==null || e.g[k2]){ toast("Toca primero una casilla vacía."); return; }
+    const v = Number(key);
+    if (S.jModo==="notas"){ const l = notas[k2] || []; notas[k2] = l.includes(v) ? l.filter(x=>x!==v) : [...l, v].sort(); if (!notas[k2].length) delete notas[k2]; guardarMarcas(); render(); return; }
+    const intentos = [...j.intentos, k2+":"+v];
+    if (e.sol[k2]!==v){ S.sdMal = k2; clearTimeout(S.sdT); S.sdT = setTimeout(()=>{ S.sdMal = null; render(); }, 700); }
+    else { delete notas[k2]; S9_PE[k2].forEach(p=>{ if (notas[p]){ notas[p] = notas[p].filter(x=>x!==v); if (!notas[p].length) delete notas[p]; } }); guardarMarcas(); }
+    const e2 = estadoSudoku9({intentos}, f), gana = !e2.g.includes(0);
+    return guarda(intentos, gana, !gana && e2.err >= 3);
+  }
+  if (k==="nonograma" || k==="reinas"){
+    if (!/^c\d+$/.test(String(key))) return;
+    const i = Number(String(key).slice(1));
+    const marcas = marcasDe(f, k), marcar = S.jModo==="marcar";
+    const e = k==="nonograma" ? estadoNonograma(j, f) : estadoReinas(j, f), hecha = k==="nonograma" ? e.hechas.has(i) : e.puestas.has(i);
+    if (hecha || e.malas.has(i)) return;
+    if (marcar){ if (marcas[i]) delete marcas[i]; else marcas[i] = 1; guardarMarcas(); render(); return; }
+    if (marcas[i]){ toast("Esa casilla está marcada con ✕. Quita la marca si quieres usarla."); return; }
+    const intentos = [...j.intentos, String(i)], e2 = k==="nonograma" ? estadoNonograma({intentos}, f) : estadoReinas({intentos}, f);
+    const gana = k==="nonograma" ? e2.hechas.size===e2.total : e2.puestas.size===reinasDe(f).N;
+    if (e2.err > e.err) toast(k==="nonograma" ? "Esa casilla va vacía: la marco con ✕." : "Ahí no va ninguna reina: la marco con ✕.");
+    return guarda(intentos, gana, !gana && e2.err >= 3);
   }
   if (k==="sudoku"){
     if (!/^[1-6]$/.test(key)) return;
@@ -1259,7 +1805,8 @@ function consultasView(rol){
       <div class="notes">${(abierta.mensajes||[]).map(m=>`<div class="note ${m.quien===S.session.uid?"mine":""}"><div class="meta">${m.de==="admin" ? esc((resById(m.quien)||{}).nombre||"Administrador") : esc((resById(m.quien)||{}).nombre||"Residente")}, ${hora(m.ts)}</div>${esc(m.texto).replace(/\n/g,"<br>")}
         ${rol==="admin" && m.de==="residente" ? `<div style="margin-top:6px"><button class="link" data-a="cq-pasar" data-v="${esc(m.texto)}">Pasar a la administración</button></div>` : ""}</div>`).join("")}</div>
       <div class="field" style="margin-top:16px"><label for="cq_resp">${rol==="admin"?"Responder":"Escribir"}</label><textarea class="input" id="cq_resp" data-draft="cq_resp">${esc(draft("cq_resp"))}</textarea></div>
-      <button class="btn" data-a="cq-responder">Enviar</button>`;
+      <button class="btn" data-a="cq-responder">Enviar</button>
+      ${rol==="admin" ? `<div style="margin-top:22px;border-top:1px solid var(--line);padding-top:12px">${S.drafts.cqDel ? `<p class="err" style="margin-top:0">Se borrará toda la conversación para todos. No se puede deshacer.</p><div class="row"><button class="btn danger" data-a="cq-del">Sí, borrar</button><button class="btn ghost" data-a="cq-del-no">Cancelar</button></div>` : `<button class="btn danger" data-a="cq-del-ask">Borrar esta conversación</button>`}</div>` : ""}`;
   }
   const avisosRes = rol==="admin" ? "" : ((S.avisos||[]).length ? `<h3 style="margin:0 0 8px">Avisos de los administradores</h3>${(S.avisos||[]).map(a=>{ const nuevo = !S.vistos.includes("av|"+a.id); return `<div class="res" style="grid-template-columns:1fr;${nuevo?"border-color:var(--accent)":""}"><div class="small muted">${esc(hora(a.ts))}. Visible hasta el ${esc(fmtLong(a.hasta).toLowerCase())} ${nuevo?'<span class="badge">Nuevo</span>':""}</div><div>${esc(a.texto).replace(/\n/g,"<br>")}</div>${nuevo?`<div><button class="link" data-a="av-visto" data-v="av|${esc(a.id)}">Marcar como leído</button></div>`:""}</div>`; }).join("")}<div style="height:10px"></div>` : "");
   const nueva = rol==="admin" ? "" : `<div class="panel"><h3 style="margin-bottom:6px">Nuevo mensaje a los administradores</h3>
@@ -1272,7 +1819,8 @@ function consultasView(rol){
     const estado = c.resuelto ? '<span class="tag abierto">Resuelto</span>' : '<span class="tag plantilla">Pendiente</span>';
     return `<button class="res" data-a="cq-abrir" data-id="${c.id}" style="width:100%;text-align:left;cursor:pointer;${sinLeer?"border-color:var(--accent)":""}"><div><strong>${rol==="admin" ? esc((resById(c.autor)||{}).nombre||"Residente") : "Administradores"}</strong> ${sinLeer?'<span class="badge">Nuevo</span>':""} ${estado}
       <div class="small muted">${esc(String(ult.texto||"").slice(0,90))}${String(ult.texto||"").length>90?"…":""}</div></div><span class="muted small">${hora(c.ultimoTs)}</span></button>`; }).join("")
-    : `<div class="empty">${rol==="admin" ? "Ningún residente ha escrito todavía." : "No tienes conversaciones abiertas."}</div>`);
+    : `<div class="empty">${rol==="admin" ? "Ningún residente ha escrito todavía." : "No tienes conversaciones abiertas."}</div>`)
+    + (rol==="admin" && (S.consultas||[]).length ? borrarPorFechaHTML("cb", "conversaciones", (S.consultas||[]).filter(c=>enFecha(c.ultimoTs||c.ts, draft("cb_f", today()), draft("cb_m","hasta"))).length) + `<p class="muted small" style="margin-top:-8px">Cuenta la fecha del último mensaje de cada conversación. Además, se borran solas al mes.</p>` : "");
 }
 
 /* --- Quién come: tabla del día para los residentes (sin regímenes) --- */
@@ -1348,15 +1896,16 @@ function guiaDe(rol){
     ["Quién come", [ "Ves cada día cuántos comen, cenan y desayunan, y quién.", "Toca un turno (por ejemplo, «Normal») para ver solo a esas personas, y toca los encabezados de la tabla para ordenarla." ]],
     ["Calendario", [ "Eventos de la residencia y cumpleaños. "+b("Toca un día")+" para ver lo que hay.", "Puedes "+b("proponer un evento")+": aparecerá cuando lo apruebe un administrador. No escribas nombres." ]],
     ["Mensajes y avisos", [ "Arriba verás los "+b("avisos de los administradores")+"; el número de la barra te avisa de los nuevos.", "Puedes escribir a los administradores: verás si lo han leído y cuándo está resuelto. Las conversaciones se borran al mes." ]],
-    ["Juego del día", [ "En "+b("Más → Juego del día")+". Un reto corto al día, el mismo para todos. Cada lunes cambia de juego: "+b("Palabra del día, Código secreto, Parejas o Mini sudoku")+".", "Arriba se explica cómo se juega el de esa semana.", "Puntos de 6 a 1 según los intentos, y 0 si no lo consigues. El "+b("ranking es semanal")+": empieza de nuevo cada lunes." ]],
+    ["Juego del día", [ "En "+b("Más → Juego del día")+". Un reto corto al día, el mismo para todos. Cada lunes cambia de juego: "+b("Palabra del día, Código secreto, Sudoku, Nonograma o Reinas")+".", "Arriba se explica cómo se juega el de esa semana.", "Puntos de 6 a 1 según los intentos, y 0 si no lo consigues. El "+b("ranking es semanal")+": empieza de nuevo cada lunes." ]],
     ["Mis datos", [ "En "+b("Más → Mis datos")+": tu fecha de nacimiento y lo que te gusta, para tu cumpleaños." ]]
   ];
   const CIRC = ["Tu círculo", [ "En el círculo con tus iniciales puedes "+b("cambiar la contraseña")+" y "+b("salir")+".", "Cuando haya una versión nueva saldrá arriba «Hay una versión nueva»: pulsa "+b("Actualizar ahora")+"." ]];
   const ADM = [
     ["Parte del día", [ "Recuentos por turno, cena, desayuno y para llevar, y el "+b("detalle por persona")+" con nombres.", b("Toca a una persona")+" para corregir lo que tiene marcado, aunque el parte esté cerrado. Si lo está, se avisa a la administración con una nota automática (con iniciales).", b("Descargar PDF")+" e "+b("Imprimir")+" salen siempre sin nombres, como los ve la administración." ]],
     ["Comensales extra y adscritos", [ "En "+b("Extras")+" sumas invitados con + y − en cada comida, bolsas con su hora y una nota (para la administración, los residentes o todos).", "Arriba aparecen las "+b("propuestas del jefe de adscritos")+": no cuentan en el parte hasta que pulsas "+b("Aprobar")+"." ]],
-    ["Notas con la administración", [ "Cada nota aparece en el parte del día que elijas. Escribe siempre con "+b("iniciales")+": la administración no debe ver nombres.", "Cuando ellas os escriben, os sale un número en Notas." ]],
-    ["Mensajes de residentes", [ "Respóndeles ahí mismo. Con "+b("«Pasar a la administración»")+" el texto se copia a una nota.", "Se ve quién lo ha leído. Marca "+b("«Resuelto»")+" cuando esté solucionado." ]],
+    ["Panel", [ "Resumen de cada mes: desayunos, comidas, cenas, tupper y bolsa, con medias diarias y comparación con el mes anterior.", "Gráficos día a día y por día de la semana, comida por turnos, regímenes, evolución de los últimos meses y "+b("servicios por persona")+" (con nombres, solo para administradores).", "Arriba, lo pendiente: mensajes sin resolver, eventos y propuestas de adscritos.", b("PDF, Excel y correo")+" salen sin nombres; el «Excel por persona» sí lleva nombres." ]],
+    ["Notas con la administración", [ "Funcionan como un "+b("chat")+": podéis escribir y responder a cualquier hora.", "Si marcas "+b("«Que salga también como aviso en el parte»")+", la nota aparece además en el parte del día que elijas.", "Puedes "+b("borrar")+" cualquier nota, o todas las de un día o anteriores a una fecha (abajo, «Borrar notas por fecha»).", "Escribe siempre con "+b("iniciales")+": la administración no debe ver nombres." ]],
+    ["Mensajes de residentes", [ "Respóndeles ahí mismo. Con "+b("«Pasar a la administración»")+" el texto se copia a una nota.", "Se ve quién lo ha leído. Marca "+b("«Resuelto»")+" cuando esté solucionado.", "Puedes "+b("borrar una conversación")+" o todas las de una fecha (o anteriores). Además, se borran solas al mes." ]],
     ["Avisos a residentes", [ "Un mensaje para todos los residentes, visible hasta la fecha que elijas. La administración no lo ve." ]],
     ["Calendario", [ "Añade, "+b("edita")+" y borra eventos: de un día (con hora si quieres), de varios días, o que "+b("se repiten")+" cada año, mes o semana.", "Arriba aparecen las propuestas de los residentes para aprobar o rechazar." ]],
     ["Cumpleaños", [ "Ordenados por meses, con la edad que cumple cada uno y sus gustos. Puedes pedir a alguien que actualice sus gustos." ]],
@@ -1368,9 +1917,10 @@ function guiaDe(rol){
   const ADMON = [
     ["El parte del día", [ "A partir de la "+b("hora límite")+" (9:30 entre semana, 10:30 el fin de semana) el parte es "+b("definitivo")+".", "Comida por turnos, bolsas agrupadas por hora, cena, desayuno del día siguiente y tuppers o bolsas para preparar esa noche.", "Los "+b("regímenes")+" aparecen con iniciales. Los comensales extra y los adscritos ya están sumados.", "Arriba, los avisos de los administradores para ese día." ]],
     ["PDF e impresión", [ "Con "+b("Descargar PDF")+" o "+b("Imprimir")+" tenéis el parte en papel. En el móvil se abre el menú Compartir." ]],
+    ["Resumen del mes", [ "Cuántos desayunos, comidas (y cuántas en bolsa), cenas, tuppers y bolsas de comida ha habido cada día y en total, con medias y gráficos.", "Cada fila es el día en que se sirve: el desayuno y lo que se lleva se piden la víspera.", "Con "+b("PDF")+", "+b("Excel")+" o "+b("Enviar por correo")+" lo tenéis para el resumen mensual. Con las flechas veis los meses anteriores." ]],
     ["Cumpleaños", [ "Ordenados por meses, con iniciales, edad que cumple y gustos. Podéis pedir que alguien actualice sus gustos." ]],
     ["Calendario", [ "Eventos y cumpleaños de cada mes. Toca un día para verlo. Podéis "+b("añadir eventos")+" y editar o borrar los vuestros." ]],
-    ["Notas", [ "Para hablar con los administradores. Cuando os escriban, saldrá un número en Notas." ]]
+    ["Notas", [ "Un chat con los administradores: escribid cuando queráis. Cuando os escriban, saldrá un número en Notas." ]]
   ];
   const ADS = [
     ["Los martes", [ "En "+b("Adscritos")+" ves los próximos martes. Indica con "+b("+ y −")+" cuántos adscritos comen en "+b("turno normal")+" y en "+b("2.º turno")+".", "Puedes cambiarlo hasta la hora límite de ese martes." ]],
@@ -1391,7 +1941,7 @@ function modalHTML(){
     const r = resById(m.uid), partidas = Object.entries(S.wordle).filter(([id,x])=>x.uid===m.uid && x.fecha>=m.sem && x.fecha<=addDays(m.sem,6)).sort((a,b)=>String(b[1].fecha).localeCompare(String(a[1].fecha)));
     tit = "Partidas de " + ((r||{}).nombre||"");
     cuerpo = `<p class="muted small" style="margin-top:0">Puedes borrar una partida, por ejemplo una de prueba. Sus puntos dejan de contar en el ranking. No se puede deshacer.</p>` +
-      (partidas.length ? partidas.map(([id,x])=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong><div class="small muted">${esc(JUEGOS[tipoDe(x)].nombre)}: ${x.estado==="ganado" ? "lo consiguió" : x.estado==="perdido" ? "no lo consiguió" : "sin terminar"}. ${x.puntos||0} punto${(x.puntos||0)===1?"":"s"}.</div></div>
+      (partidas.length ? partidas.map(([id,x])=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong><div class="small muted">${esc((JUEGOS[tipoDe(x)]||{nombre:"Juego"}).nombre)}: ${x.estado==="ganado" ? "lo consiguió" : x.estado==="perdido" ? "no lo consiguió" : "sin terminar"}. ${x.puntos||0} punto${(x.puntos||0)===1?"":"s"}.</div></div>
         ${S.drafts.wlDel===id ? `<div class="row"><button class="btn danger" data-a="wl-del" data-id="${id}">Sí, borrar</button><button class="btn ghost" data-a="wl-del-no">No</button></div>` : `<button class="link" style="color:var(--danger)" data-a="wl-del-ask" data-id="${id}">Borrar</button>`}</div>`).join("") : `<p class="muted">No tiene partidas esta semana.</p>`);
   }
   if (m.tipo==="guia"){
@@ -1444,20 +1994,42 @@ function avisosAdminView(){
 
 /* --- Notas entre administración y administrador --- */
 function unread(role){ return S.mensajes.filter(m=>m.para===role && !m.leido).length; }
+function diaChat(f){ const h = today(); return f===h ? "Hoy" : f===addDays(h,-1) ? "Ayer" : fmtLong(f); }
+const hhmm = t => { const d = new Date(t||0); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+/* Formulario para borrar en bloque por fecha (notas y mensajes de residentes) */
+function borrarPorFechaHTML(pre, que, n){
+  const f = draft(pre+"_f", today()), modo = draft(pre+"_m", "hasta");
+  return `<details class="plegable no-print" ${S.drafts[pre+"_open"]?"open":""}><summary data-a="plegar" data-v="${pre}_open">Borrar ${que} por fecha</summary>
+    <div class="field"><label for="${pre}_f">Fecha</label><input class="input" type="date" id="${pre}_f" data-draft="${pre}_f" max="${today()}" value="${esc(f)}" style="max-width:220px"></div>
+    <div class="field"><label>Qué borrar</label><div class="seg"><button class="opt" data-a="bf-modo" data-f="${pre}" data-v="dia" aria-pressed="${modo==="dia"}">Solo ese día</button><button class="opt" data-a="bf-modo" data-f="${pre}" data-v="hasta" aria-pressed="${modo==="hasta"}">Ese día y todos los anteriores</button></div></div>
+    <p class="muted small" style="margin-top:0">Coinciden ahora: <b>${n}</b>. Se borran para todos y no se puede deshacer.</p>
+    ${S.drafts[pre+"_ok"] ? `<div class="row"><button class="btn danger" data-a="bf-do" data-f="${pre}">Sí, borrar ${n}</button><button class="btn ghost" data-a="bf-no" data-f="${pre}">Cancelar</button></div>` : `<button class="btn danger" data-a="bf-ask" data-f="${pre}" ${n?"":"disabled"}>Borrar</button>`}</details>`;
+}
+const enFecha = (ts, f, modo) => { const d = iso(new Date(ts||0)); return modo==="dia" ? d===f : d<=f; };
+function notasDeChat(role){ const otro = role==="admin" ? "cocina" : "admin"; return S.mensajes.filter(m=>(m.de===role&&m.para===otro)||(m.de===otro&&m.para===role)); }
 function notasView(role){
-  const otro = role==="admin" ? "cocina" : "admin";
-  const nombre = r => r==="admin" ? "Administrador" : "Administración";
+  const esA = role==="admin", quien = r => r==="admin" ? "Administradores" : "Administración";
   const cargo = resById(principalHoy()) ? nombreVis(resById(principalHoy())) : "";
-  const aviso = role==="cocina" && cargo ? `<p class="muted small">Tus notas las ven todos los administradores. Hoy está al cargo ${esc(cargo)}.</p>` : "";
-  const list = S.mensajes.filter(m=>(m.de===role&&m.para===otro)||(m.de===otro&&m.para===role)).slice(-60);
-  return aviso + `<div class="field"><label for="msg">${role==="admin"?"Aviso para la administración":"Nota para el administrador"}</label>
-      <textarea class="input" id="msg" data-draft="msg" placeholder="${role==="admin"?"Por ejemplo: el jueves comemos antes por una reunión.":"Por ejemplo: falta reponer bolsas de picnic."}">${esc(draft("msg"))}</textarea>${role==="admin"?'<span class="muted small">La administración lo verá tal cual: usa iniciales, no nombres.</span>':""}</div>
-    ${role==="admin" ? `<div class="field"><label for="msg_fecha">Aparece en el parte del</label><input class="input" type="date" id="msg_fecha" data-draft="msg_fecha" min="${proxParte()}" value="${esc(draft("msg_fecha", proxParte()))}" style="max-width:220px"></div>` : ""}
-    <button class="btn" data-a="sendmsg" ${draft("msg").trim()?"":"disabled"}>Enviar</button>
-    <div class="notes">${list.length ? list.slice().reverse().map(m=>{
-      const d = new Date(m.ts||0);
-      return `<div class="note ${m.de===role?"mine":""}"><div class="meta">${nombre(m.de)}, ${d.getDate()} de ${MESES[d.getMonth()]} a las ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}${m.de===role?(m.leido?". Leída":". Sin leer"):""}${m.fecha?`. Para el parte del ${fmtLong(m.fecha).toLowerCase()}`:""}</div>${esc(m.texto).replace(/\n/g,"<br>")}</div>`;
-    }).join("") : `<div class="empty">Todavía no hay mensajes.</div>`}</div>`;
+  const aviso = role==="cocina" && cargo ? `<p class="muted small" style="margin-top:0">Lo que escribís lo ven todos los administradores. Hoy está al cargo ${esc(cargo)}.</p>` : `<p class="muted small" style="margin-top:0">Conversación con la administración: podéis escribir y responder a cualquier hora. ${esA?"Usa siempre iniciales: la administración lo ve tal cual.":""}</p>`;
+  const todas = notasDeChat(role), list = todas.slice(-80);
+  let dia = "", html = "";
+  list.forEach(m=>{
+    const f = iso(new Date(m.ts||0));
+    if (f!==dia){ dia = f; html += `<div class="chat-dia">${esc(diaChat(f))}</div>`; }
+    const mia = m.de===role;
+    html += `<div class="note ${mia?"mine":""}"><div class="meta">${quien(m.de)}, ${hhmm(m.ts)}${mia?(m.leido?" · Leída":" · Sin leer"):""}</div>${esc(m.texto).replace(/\n/g,"<br>")}
+      ${m.fecha ? `<div><span class="chat-tag">En el parte del ${esc(fmtLong(m.fecha).toLowerCase())}</span></div>` : ""}
+      ${esA && !S.vista ? `<div class="chat-acc">${S.drafts.ntDel===m.id ? `<span>¿Borrar esta nota?</span><button class="link" style="color:var(--danger)" data-a="nt-del" data-id="${m.id}">Sí, borrar</button><button class="link" data-a="nt-del-no">No</button>` : `<button class="link" style="color:var(--muted)" data-a="nt-del-ask" data-id="${m.id}">Borrar</button>`}</div>` : ""}</div>`;
+  });
+  const conParte = esA && draft("msg_parte", false)===true;
+  const caja = S.vista ? "" : `<div class="chat-box no-print"><label for="msg" class="sr-only" style="position:absolute;left:-9999px">Mensaje</label>
+      <textarea class="input" id="msg" data-draft="msg" placeholder="${esA?"Escribe a la administración…":"Escribe a los administradores…"}">${esc(draft("msg"))}</textarea>
+      ${esA ? `<label class="chk" style="margin:10px 0 0"><input type="checkbox" data-a="msg-parte" ${conParte?"checked":""}> Que salga también como aviso en el parte</label>
+        ${conParte ? `<div class="field" style="margin:8px 0 0"><label for="msg_fecha">Parte del</label><input class="input" type="date" id="msg_fecha" data-draft="msg_fecha" min="${today()}" value="${esc(draft("msg_fecha", proxParte()))}" style="max-width:220px"></div>` : ""}` : ""}
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn" data-a="sendmsg" ${draft("msg").trim()?"":"disabled"}>Enviar</button></div></div>`;
+  const borrar = esA && !S.vista ? borrarPorFechaHTML("nb", "notas", todas.filter(m=>enFecha(m.ts, draft("nb_f", today()), draft("nb_m","hasta"))).length) : "";
+  return aviso + (todas.length>list.length ? `<p class="muted small" style="text-align:center">Se muestran las ${list.length} notas más recientes de ${todas.length}.</p>` : "")
+    + `<div class="chat">${html || `<div class="empty">Todavía no hay notas.</div>`}</div><div id="notas-fin"></div>` + caja + borrar;
 }
 
 function avisoCocina(){
@@ -1497,7 +2069,7 @@ function usuariosView(){
 function historialHTML(){
   const c = S.config||{}, auto = !!c.limpiezaAuto, lim = draft("hs_fecha", addDays(today(),-91));
   return `<h2 style="margin:28px 0 8px">Historial</h2>
-    <p class="muted" style="margin-top:0">Se pueden borrar los pedidos, comensales extra, partidas del juego, notas y eventos antiguos. Los usuarios, plantillas, cumpleaños y gustos no se tocan nunca.</p>
+    <p class="muted" style="margin-top:0">Se pueden borrar los pedidos, comensales extra, partidas del juego, notas y eventos antiguos. Los usuarios, plantillas, cumpleaños y gustos no se tocan nunca, ni tampoco el resumen mensual (los recuentos de cada día).</p>
     <div class="field"><label>Borrado automático cada trimestre</label><div class="seg"><button class="opt" data-a="hs-auto" data-v="false" aria-pressed="${!auto}">Desactivado</button><button class="opt" data-a="hs-auto" data-v="true" aria-pressed="${auto}">Activado</button></div>
       <span class="muted small">${auto ? "Cada tres meses se borra solo todo lo que tenga más de tres meses, cuando entra un administrador." : "No se borra nada salvo que lo hagáis a mano."}</span></div>
     <div class="panel"><h3 style="margin-bottom:8px">Borrar ahora</h3>
@@ -1565,8 +2137,8 @@ function viewApp(uReal){
   if (rol==="residente") t.push(["calendario","Calendario","",G1],["consultas","Mensajes", consultasSinLeer("residente")||"",G1]);
   if (rol!=="cocina" && rol!=="adscritos") t.push(["datos","Mis datos","",G1]);
   if (rol==="adscritos"){ t.length = 0; t.push(["adscritos","Adscritos","",G2]); }
-  if (rol==="cocina") t.push(["parte","Parte del día","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Notas", unread("cocina")||"",G2]);
-  if (rol==="admin") t.push(["parte","Parte del día","",G2],["extras","Comensales extra", adsPendientes().length||"",G2],["notas","Notas", unread("admin")||"",G2],["consultas","Mensajes de residentes", consultasSinLeer("admin")||"",G2],["avisos","Avisos a residentes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario", S.eventos.filter(e=>e.estado==="pendiente").length||"",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
+  if (rol==="cocina") t.push(["parte","Parte del día","",G2],["resumen","Resumen del mes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Notas", unread("cocina")||"",G2]);
+  if (rol==="admin") t.push(["parte","Parte del día","",G2],["panel","Panel","",G2],["extras","Comensales extra", adsPendientes().length||"",G2],["notas","Notas", unread("admin")||"",G2],["consultas","Mensajes de residentes", consultasSinLeer("admin")||"",G2],["avisos","Avisos a residentes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario", S.eventos.filter(e=>e.estado==="pendiente").length||"",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
   if (!t.length) return cabecera(u.nombre||"") + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
   if (!t.find(x=>x[0]===S.tab)) S.tab = rol==="adscritos" ? "adscritos" : esComensal(u) ? "semana" : (t.find(x=>x[0]==="parte")||t[0])[0];
   let main;
@@ -1582,6 +2154,8 @@ function viewApp(uReal){
   else if (S.tab==="cumples") main = cumplesView();
   else if (S.tab==="notas") main = notasView(rol);
   else if (S.tab==="extras") main = extrasView();
+  else if (S.tab==="resumen") main = resumenView();
+  else if (S.tab==="panel") main = panelView();
   else if (S.tab==="usuarios") main = usuariosView();
   else main = ajustesView();
   const nuevas = !S.vista && (rol==="admin"||rol==="cocina") ? S.mensajes.filter(m=>m.para===rol && !m.leido) : [];
@@ -1744,6 +2318,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => {
   if (e.target.tagName==="SELECT" && e.target.dataset.draft){ S.drafts[e.target.dataset.draft] = e.target.value; return; }
+  if (e.target.type==="date" && /^(nb|cb)_f$/.test(e.target.dataset.draft||"")){ S.drafts[e.target.dataset.draft] = e.target.value; delete S.drafts[e.target.dataset.draft.slice(0,2)+"_ok"]; render(); return; }
   const ctx = e.target.dataset && e.target.dataset.hora;
   if (ctx) guardarSel(ctx, {...selDe(ctx), horaBolsa:e.target.value});
 });
@@ -1763,7 +2338,7 @@ document.addEventListener("click", e => {
 
 async function act(a, b){
   const v = b.dataset.v;
-  if (S.vista && !["tab","menu","parteday","cal-mes","cal-dia","modal-cerrar","pdf","print","vista-salir","logout","reload","cuenta"].includes(a)){ toast("Vista de la administración: solo lectura."); return; }
+  if (S.vista && !["tab","menu","parteday","cal-mes","cal-dia","modal-cerrar","pdf","print","vista-salir","logout","reload","cuenta","mes","mes-pdf","mes-csv","mes-mail","plegar"].includes(a)){ toast("Vista de la administración: solo lectura."); return; }
   switch(a){
     case "setup": {
       const nombre=String(draft("su_nombre","Nacho")).trim(), usuario=normU(draft("su_usuario","nacho")), pw=String(draft("su_pin")), h=draft("su_hora","09:30");
@@ -1837,6 +2412,7 @@ async function act(a, b){
         const texto = "Cambio en el parte de "+iniciales(r||{})+": antes "+t(antes)+". Ahora "+t(doc)+".";
         await w(()=>S.db.collection("mensajes").doc(newId("m")).set({de:"admin", para:"cocina", texto, ts:Date.now(), leido:false, fecha:m.f}));
       }
+      S.forzar.add(m.f); programarSync();
       S.modal = null; delete S.drafts.ed; delete S.drafts.ed_hora; delete S.drafts.ed_aviso;
       toast("Corrección guardada."); break;
     }
@@ -1858,7 +2434,7 @@ async function act(a, b){
       if (c && rolA!=="admin" && !c.leidoResidente) w(()=>S.db.doc("consultas/"+c.id).update({leidoResidente:true}));
       break;
     }
-    case "cq-cerrar": S.cqOpen = null; break;
+    case "cq-cerrar": S.cqOpen = null; delete S.drafts.cqDel; break;
     case "cq-resuelto": {
       if (!S.cqOpen) return; const marcado = b.checked, ts = Date.now();
       await w(()=>S.db.doc("consultas/"+S.cqOpen).update({resuelto: marcado ? {por:S.session.uid, ts} : null, ["leidoPor."+S.session.uid]: ts}));
@@ -1902,7 +2478,7 @@ async function act(a, b){
     }
     case "tab":
       S.tab=v; S.editRes=null; S.menu=false; window.scrollTo(0,0);
-      if (v==="notas" && !S.vista) marcarLeidos(rolDe(resById(S.session.uid)));
+      if (v==="notas"){ S.irAbajo = true; if (!S.vista) marcarLeidos(rolDe(resById(S.session.uid))); }
       break;
     case "week": S.weekOffset = v==="0" ? 0 : S.weekOffset + Number(v); S.openDay=null; break;
     case "openday": S.openDay = S.openDay===b.dataset.f ? null : b.dataset.f; break;
@@ -1964,9 +2540,43 @@ async function act(a, b){
       const t = draft("msg").trim(); if (!t) return;
       const role = rolDe(resById(S.session.uid)), para = role==="admin"?"cocina":"admin";
       S.drafts.msg = "";
-      const fecha = role==="admin" ? (draft("msg_fecha", proxParte()) || proxParte()) : null;
+      const fecha = role==="admin" && draft("msg_parte", false)===true ? (draft("msg_fecha", proxParte()) || proxParte()) : null;
+      delete S.drafts.msg_parte; delete S.drafts.msg_fecha; S.irAbajo = true;
       await w(()=>S.db.collection("mensajes").doc(newId("m")).set({de:role, para, texto:t.slice(0,2000), ts:Date.now(), leido:false, fecha}));
-      toast("Mensaje enviado."); break;
+      toast(fecha ? "Enviado. Saldrá también en el parte del "+fmtLong(fecha).toLowerCase()+"." : "Mensaje enviado."); break;
+    }
+    case "msg-parte": S.drafts.msg_parte = b.checked; break;
+    case "nt-del-ask": S.drafts.ntDel = b.dataset.id; break;
+    case "nt-del-no": delete S.drafts.ntDel; break;
+    case "nt-del": {
+      if (rolDe(resById(S.session.uid))!=="admin") return;
+      const id = b.dataset.id; delete S.drafts.ntDel;
+      await w(()=>S.db.doc("mensajes/"+id).delete()); toast("Nota borrada."); break;
+    }
+    case "plegar": { const el = b.closest("details"); setTimeout(()=>{ S.drafts[v] = !!(el && el.open); }, 0); return; }
+    case "bf-modo": S.drafts[b.dataset.f+"_m"] = v; delete S.drafts[b.dataset.f+"_ok"]; break;
+    case "bf-ask": S.drafts[b.dataset.f+"_ok"] = true; break;
+    case "bf-no": delete S.drafts[b.dataset.f+"_ok"]; break;
+    case "bf-do": {
+      if (rolDe(resById(S.session.uid))!=="admin") return;
+      const pre = b.dataset.f, f = draft(pre+"_f", today()), modo = draft(pre+"_m", "hasta");
+      if (!fechaValida(f)){ toast("Elige una fecha."); return; }
+      const lista = pre==="nb" ? notasDeChat("admin").filter(m=>enFecha(m.ts, f, modo)).map(m=>"mensajes/"+m.id)
+        : (S.consultas||[]).filter(c=>enFecha(c.ultimoTs||c.ts, f, modo)).map(c=>"consultas/"+c.id);
+      delete S.drafts[pre+"_ok"];
+      try {
+        for (let i=0; i<lista.length; i+=400){ const bt = writeBatch(fs); lista.slice(i,i+400).forEach(x=>bt.delete(fdoc(fs, x))); await bt.commit(); }
+        if (pre==="cb") S.cqOpen = null;
+        toast(lista.length===1 ? "Se ha borrado 1." : "Se han borrado "+lista.length+".");
+      } catch(e){ console.error(e); toast("No se ha podido borrar. Inténtalo de nuevo."); }
+      break;
+    }
+    case "cq-del-ask": S.drafts.cqDel = true; break;
+    case "cq-del-no": delete S.drafts.cqDel; break;
+    case "cq-del": {
+      if (rolDe(resById(S.session.uid))!=="admin" || !S.cqOpen) return;
+      const id = S.cqOpen; delete S.drafts.cqDel; S.cqOpen = null;
+      await w(()=>S.db.doc("consultas/"+id).delete()); toast("Conversación borrada."); break;
     }
     case "exday": S.exFecha = addDays(S.exFecha || proxParte(), Number(v)); if (S.exFecha<today()) S.exFecha=today(); S.drafts.ex_nota=undefined; S.drafts.ex_todos=undefined; delete S.drafts.ex_nota; delete S.drafts.ex_para; break;
     case "exmas": {
@@ -2000,7 +2610,9 @@ async function act(a, b){
     case "av-visto": S.vistos = [...S.vistos, v].slice(-100); try { localStorage.setItem("comedor.avisos", JSON.stringify(S.vistos)); } catch(e){} break;
     case "wl-key": await wlTecla(v); return;
     case "pj": await wlTecla(v); return;
-    case "sd-cell": S.sdSel = Number(v); break;
+    case "sd-cell": S.sdSel = S.sdSel===Number(v) ? null : Number(v); break;
+    case "nn-cell": case "rn-cell": await wlTecla("c"+v); return;
+    case "j-modo": S.jModo = v; break;
     case "wl-sem": { const base = S.wlSem || lunesDe(today()), nx = addDays(base, Number(v)); S.wlSem = nx>lunesDe(today()) ? lunesDe(today()) : nx; break; }
     case "juego-sel": {
       const me = resById(S.session.uid); if (!(rolDe(me)==="admin" && (esTitular(me) || principalHoy()===me.id))) return;
@@ -2011,6 +2623,20 @@ async function act(a, b){
       toast(v==="auto" ? "Juego automático para esa semana." : JUEGOS[v].nombre+" para esa semana."); break;
     }
     case "cal-mes": S.calMes = v; break;
+    case "mes": { const hoy = ymDe(today()), act = S.mesSel || hoy; S.mesSel = v==="0" ? hoy : ymMas(act, Number(v)); if (S.mesSel > hoy) S.mesSel = hoy; break; }
+    case "pm-orden": S.pmOrden = S.pmOrden===v ? "tot" : v; break;
+    case "mes-csv": await entregarArchivo(new Blob([csvMes(v)], {type:"text/csv;charset=utf-8"}), "resumen-"+v+".csv", "Resumen de "+nombreMes(v)); return;
+    case "mes-csv-p": if (rolDe(resById(S.session.uid))!=="admin" || S.vista) return; await entregarArchivo(new Blob([csvPersonas(v)], {type:"text/csv;charset=utf-8"}), "por-persona-"+v+".csv", "Por persona, "+nombreMes(v)); return;
+    case "mes-pdf": { const bl = await pdfMes(v); if (bl) await entregarArchivo(bl, "resumen-"+v+".pdf", "Resumen de "+nombreMes(v)); return; }
+    case "mes-mail": {
+      const bl = await pdfMes(v); if (!bl) return;
+      const nombre = "resumen-"+v+".pdf", asunto = "Resumen de comidas de "+nombreMes(v)+" - Mizar", cuerpo = textoCorreo(v);
+      try { const file = new File([bl], nombre, {type:"application/pdf"}); if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:asunto, text:cuerpo}); return; } }
+      catch(e){ if (e && e.name==="AbortError") return; }
+      await entregarArchivo(bl, nombre, asunto);
+      setTimeout(()=>{ location.href = "mailto:?subject="+encodeURIComponent(asunto)+"&body="+encodeURIComponent(cuerpo+"\n(Adjunta el PDF que se acaba de descargar: "+nombre+")"); }, 800);
+      toast("PDF descargado. Se abre el correo: adjúntalo antes de enviar."); return;
+    }
     case "ev-edit": {
       const e = S.eventos.find(x=>x.id===b.dataset.id); if (!e) return;
       Object.assign(S.drafts, {ev_tipo: finEv(e)!==e.fecha ? "varios" : "uno", ev_fecha:e.fecha, ev_fin:finEv(e), ev_hora:e.hora||"", ev_rep:e.repite||"no", ev_tit:e.titulo||"", ev_det:e.detalle||""});
@@ -2050,7 +2676,7 @@ async function act(a, b){
       const f = b.dataset.f, a0 = S.adscritos[f]; if (!a0) return;
       const p = adsProp(a0);
       const nuevo = a==="ads-ok" ? {...a0, normal:p.normal, segundo:p.segundo, estado:"aprobado", revisadoPor:S.session.uid} : {...a0, estado:"rechazado", revisadoPor:S.session.uid};
-      await w(()=>S.db.doc("adscritos/"+f).set(nuevo));
+      await w(()=>S.db.doc("adscritos/"+f).set(nuevo)); S.forzar.add(f);
       toast(nuevo.estado==="aprobado" ? (locked(f) ? "Aprobado. El parte ya estaba cerrado: avisa a la administración con una nota." : "Aprobado: ya se suma al parte.") : "Propuesta rechazada."); break;
     }
     case "ev-del": { const e = S.eventos.find(x=>x.id===b.dataset.id); await w(()=>S.db.doc("eventos/"+b.dataset.id).delete()); toast(e && e.repite && e.repite!=="no" ? "Evento quitado, con todas sus repeticiones." : "Evento quitado."); return; }
