@@ -289,8 +289,26 @@ textarea.input{min-height:90px;resize:vertical}
 .chat-tag{display:inline-block;font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:1px 8px;margin-top:6px}
 .chat-acc{margin-top:6px;display:flex;gap:12px;flex-wrap:wrap;font-size:14px}
 .chat-acc .link{padding:0;font-size:14px}
-.chat-box{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px;position:sticky;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:5;box-shadow:0 4px 18px rgba(0,0,0,.08)}
-.chat-box textarea.input{min-height:64px}
+.chat .note{cursor:pointer;-webkit-user-select:text;user-select:text;transition:box-shadow .2s}
+.chat .note.elegida{box-shadow:0 0 0 3px var(--accent)}
+.chat .note.destello{box-shadow:0 0 0 3px var(--primary)}
+.cita{display:block;width:100%;text-align:left;background:color-mix(in srgb, var(--ink) 6%, transparent);border:0;border-left:4px solid var(--primary);border-radius:8px;padding:6px 10px;margin:0 0 6px;font-size:14px;color:var(--ink);line-height:1.35}
+.cita b{display:block;font-size:12px;color:var(--primary)}
+.note.mine .cita{border-left-color:var(--accent)}
+.note.mine .cita b{color:var(--accent)}
+.cbar{padding:2px 4px 8px;max-width:760px;margin:0 auto}
+.cbar-resp{display:flex;align-items:center;gap:8px;background:var(--bg);border-left:4px solid var(--primary);border-radius:10px;padding:6px 6px 6px 10px;margin:0 0 6px;font-size:14px}
+.cbar-resp div{flex:1;min-width:0}
+.cbar-resp b{display:block;font-size:12px;color:var(--primary)}
+.cbar-resp span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.cbar-resp button{flex:none;width:32px;height:32px;border-radius:50%;border:0;background:var(--surface);font-size:20px;line-height:1}
+.cbar-in{display:flex;gap:8px;align-items:flex-end}
+.cbar-in textarea.input{flex:1;min-height:44px;max-height:132px;resize:none;border-radius:22px;padding:10px 16px;line-height:1.35;overflow-y:auto}
+.cbar-send{flex:none;width:46px;height:46px;border-radius:50%;border:0;background:var(--primary);color:var(--primary-ink);display:grid;place-items:center}
+.cbar-send svg{width:22px;height:22px}
+.cbar-send:disabled{opacity:.4}
+.av-parte{background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:12px 14px;margin:0 0 16px}
+.av-parte .res{margin:8px 0 0}
 .chk{display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer}
 .chk input{width:22px;height:22px;accent-color:var(--primary)}
 details.plegable{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:10px 14px;margin:18px 0}
@@ -402,7 +420,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.07-1";
+const VERSION = "2026.11.07-2";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -703,6 +721,7 @@ function render(){
   const a = document.activeElement, fid = a && a.id, sel = a && a.selectionStart;
   $app.innerHTML = view();
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus({preventScroll:true}); try { if (sel!=null) el.setSelectionRange(sel,sel); } catch(e){} } }
+  if (S.focoMsg){ S.focoMsg = false; const m = document.getElementById("msg"); if (m) m.focus(); }
   if (S.irAbajo){ S.irAbajo = false; const fin = document.getElementById("notas-fin"); if (fin) setTimeout(()=>fin.scrollIntoView({block:"end"}), 30); }
   if (S.miRol==="admin" || S.miRol==="cocina") programarSync();
 }
@@ -749,6 +768,7 @@ function cabecera(nombre, esAdm, rolTxt){
     ${S.cuenta ? `<div class="cuenta no-print"><div class="yo">${esc(nombre)}<small>${esc(rolTxt || (esAdm?"Administrador":"Residente"))}</small></div>
       ${esAdm?`<button data-a="vista-admon">Ver como la administración</button>`:""}
       <button data-a="guia">Cómo se usa</button>
+      ${novedadesDe(rolDe(resById(S.session && S.session.uid))).length ? `<button data-a="nov">Novedades</button>` : ""}
       <button data-a="pw-ver">Cambiar contraseña</button>
       <button class="salir" data-a="logout">Salir</button>
       <p class="muted small" style="margin:8px 10px 0">Versión ${VERSION}</p></div>` : ""}`;
@@ -793,8 +813,9 @@ function navegacion(list, rol, comensal){
   const resto = list.filter(x=>!visibles.includes(x));
   const enResto = resto.some(x=>x[0]===S.tab), pendResto = resto.reduce((n,x)=>n+(Number(x[2])||0),0);
   const bn = ([k,l,b]) => `<button class="bn" data-a="tab" data-v="${k}" aria-current="${S.tab===k}"><span class="ico">${svg(k)}</span>${CORTO[k]||l}${b?`<span class="badge">${b}</span>`:""}</button>`;
+  const chat = S.tab==="notas" && !S.vista && !S.menu && (rol==="admin" || rol==="cocina") ? barraChat(rol) : "";
   return `${S.menu && resto.length ? `<div class="velo" data-a="menu"></div><div class="hoja" role="dialog" aria-label="Más secciones"><div class="hoja-in"><p class="hoja-t">Más secciones</p><div class="hoja-g">${resto.map(([k,l,b])=>`<button class="hb" data-a="tab" data-v="${k}" aria-current="${S.tab===k}">${svg(k)}${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</div></div></div>` : ""}
-  <nav class="bnav no-print" aria-label="Secciones"><div class="bnav-in">${visibles.map(bn).join("")}${resto.length ? `<button class="bn" data-a="menu" aria-current="${enResto || !!S.menu}" aria-expanded="${!!S.menu}"><span class="ico">${svg("mas")}</span>Más${pendResto?`<span class="badge">${pendResto}</span>`:""}</button>` : ""}</div></nav>`;
+  <nav class="bnav no-print" aria-label="Secciones">${chat}<div class="bnav-in">${visibles.map(bn).join("")}${resto.length ? `<button class="bn" data-a="menu" aria-current="${enResto || !!S.menu}" aria-expanded="${!!S.menu}"><span class="ico">${svg("mas")}</span>Más${pendResto?`<span class="badge">${pendResto}</span>`:""}</button>` : ""}</div></nav>`;
 }
 function tabs(list){
   // Pocas secciones: botones a la vista. Muchas: un menú desplegable agrupado.
@@ -937,7 +958,7 @@ function bolsasPorHora(bolsas, extraB, anon){
   });
 }
 const sumaBolsas = b => Object.values(b||{}).reduce((a,n)=>a+(n>0?n:0),0);
-function parteHTML(f, anon){
+function parteHTML(f, anon, sinAvisos){
   const d = datosParte(f), lk = locked(f), manana = DIAS[wd(addDays(f,1))].toLowerCase();
   const line = (label, list, extra, srv, ads) => { const rt = regTxt(list, anon, srv), it = incluyeTxt(extra, ads||0); return `<div class="count"><span>${label}</span><b>${list.length+(extra||0)}</b></div>${it?`<div class="muted small" style="margin:-2px 0 4px">${esc(it)}</div>`:""}${rt?`<div class="reg">${esc(rt)}</div>`:""}`; };
   const exB = sumaBolsas(d.bolsasExtra);
@@ -946,7 +967,7 @@ function parteHTML(f, anon){
   const llevarNombres = !anon && (d.tupper.length+d.bolsaM.length) ? `<ul class="list">${[...d.tupper,...d.bolsaM].map(o=>`<li>${esc(o.r.nombre)}: ${o.sel.llevar==="tupper"?"tupper":"bolsa de comida"}</li>`).join("")}</ul>` : "";
   return `
     <div class="status ${lk?"def":"prov"}">${lk ? "Parte cerrado. Es el definitivo." : `Provisional: puede cambiar hasta las ${esc(horaCierre(f))} del ${fmtLong(f).toLowerCase()}.`}</div>
-    ${d.avisos.length ? `<div class="alert"><strong>Avisos para este parte</strong>${d.avisos.map(t=>`<p style="margin:6px 0 0">${esc(t).replace(/\n/g,"<br>")}</p>`).join("")}</div>` : ""}
+    ${d.avisos.length && !sinAvisos ? `<div class="alert"><strong>Avisos para este parte</strong>${d.avisos.map(t=>`<p style="margin:6px 0 0">${esc(t).replace(/\n/g,"<br>")}</p>`).join("")}</div>` : ""}
     <div class="blocks">
       <section class="block"><h3>Comida (${totalComida})</h3>
         ${d.turnos.map(t=>line(t[0], t[1], t[2], "comida", t[3])).join("")}
@@ -966,6 +987,7 @@ function parteHTML(f, anon){
 }
 function parteView(){
   const f = S.parteFecha, anon = verAnon();
+  if (!S.vista && S.miRol==="cocina" && avisosParteSinLeer("cocina").some(m=>m.fecha===f)) setTimeout(()=>marcarLeidos("cocina", m=>m.fecha===f), 0);
   return `<div class="weeknav no-print">
       <button class="arrow" data-a="parteday" data-v="-1" aria-label="Día anterior">‹</button>
       <h2>${fmtLong(f)}</h2>
@@ -976,7 +998,17 @@ function parteView(){
       <div class="row"><button class="btn" data-a="pdf" data-f="${f}">Descargar PDF</button><button class="btn ghost" data-a="print" data-f="${f}">Imprimir</button></div>
     </div>
     ${anon ? "" : `<p class="muted small no-print" style="margin-top:-6px">El PDF y la impresión salen siempre como los ve la administración: sin nombres, con iniciales.</p>`}
-    ${parteHTML(f, anon)}`;
+    ${anon ? "" : avisosParteAdmin(f)}
+    ${parteHTML(f, anon, !anon)}`;
+}
+function avisosParteAdmin(f){
+  const l = S.mensajes.filter(m=>m.de==="admin" && m.fecha===f), ex = extrasDe(f), exNota = ex.nota && notaParaDe(ex)!=="residentes" ? ex.nota : "";
+  const pasado = f < today();
+  return `<div class="av-parte no-print"><h3 style="margin:0 0 4px">Avisos para este parte</h3><p class="muted small" style="margin:0">La administración los ve arriba del parte, en el PDF y en la impresión, y le salta un aviso. Usa iniciales, no nombres.</p>
+    ${l.map(m=>`<div class="res"><div><div class="small muted">${esc(hora(m.ts))}${m.leido?" · Leído":" · Sin leer"}</div><div>${esc(m.texto).replace(/\n/g,"<br>")}</div></div>${S.drafts.ntDel===m.id ? `<div class="row"><button class="link" style="color:var(--danger)" data-a="nt-del" data-id="${m.id}">Sí, quitar</button><button class="link" data-a="nt-del-no">No</button></div>` : `<button class="link" data-a="nt-del-ask" data-id="${m.id}">Quitar</button>`}</div>`).join("")}
+    ${exNota ? `<div class="res"><div><div class="small muted">Nota de «Comensales extra» (se cambia allí)</div><div>${esc(exNota).replace(/\n/g,"<br>")}</div></div></div>` : ""}
+    ${!l.length && !exNota ? `<p class="muted small" style="margin:8px 0 0">Este parte no tiene avisos.</p>` : ""}
+    ${pasado ? "" : `<div class="field" style="margin:12px 0 8px"><label for="pa_txt">Nuevo aviso</label><textarea class="input" id="pa_txt" data-draft="pa_txt" style="min-height:64px" placeholder="Por ejemplo: el jueves comemos a las 13:30 por una reunión.">${esc(draft("pa_txt"))}</textarea></div><button class="btn" data-a="parte-aviso" data-f="${f}">Añadir al parte</button>`}</div>`;
 }
 
 /* ---------- Resumen mensual: cada parte cerrado se guarda como recuento ---------- */
@@ -1070,7 +1102,7 @@ function deltaTxt(a, b){ if (!b) return ""; const p = Math.round((a-b)/b*100); r
 const SERIES = [{k:"des", n:"Desayunos", c:"var(--accent)"}, {k:"comT", n:"Comidas", c:"var(--primary)"}, {k:"ce", n:"Cenas", c:"var(--cena)"}];
 const leyendaHTML = series => `<div class="leyenda">${series.map(x=>`<span><i style="background:${x.c}"></i>${x.n}</span>`).join("")}</div>`;
 function techo(max){ const p = [5,10,15,20,25,30,40,50,60,80,100,150,200,300,400,500,800,1000,1500,2000,3000,5000]; return p.find(x=>x>=max) || Math.ceil(max/1000)*1000; }
-function graficoLineas(puntos, series, etiqueta){
+function graficoLineas(puntos, series, etiqueta, titulo){
   const W = 700, H = 230, L = 34, R = 10, T = 10, B = 26, n = puntos.length;
   const tope = techo(Math.max(4, ...series.flatMap(x=>puntos.map(p=>p[x.k]||0))));
   const X = i => n<=1 ? L+(W-L-R)/2 : L + i*(W-L-R)/(n-1), Y = v => T + (H-T-B)*(1 - v/tope);
@@ -1079,7 +1111,9 @@ function graficoLineas(puntos, series, etiqueta){
   puntos.forEach((p,i)=>{ const e = etiqueta(p,i); if (e) o += `<text x="${X(i)}" y="${H-6}" text-anchor="middle">${esc(e)}</text>`; });
   series.forEach(x=>{ let d = "", pen = false; puntos.forEach((p,i)=>{ const v = p[x.k]; if (v==null){ pen = false; return; } d += (pen?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)+" "; pen = true; });
     o += `<path d="${d}" fill="none" stroke="${x.c}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`;
-    if (n<=40) puntos.forEach((p,i)=>{ const v = p[x.k]; if (v!=null) o += `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.8" fill="${x.c}"><title>${esc(x.n)}: ${v}</title></circle>`; }); });
+    if (n<=40) puntos.forEach((p,i)=>{ const v = p[x.k]; if (v!=null) o += `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="3.4" fill="${x.c}"/>`; }); });
+  const banda = n<=1 ? (W-L-R) : (W-L-R)/(n-1);
+  puntos.forEach((p,i)=>{ const t = (titulo ? titulo(p) : "")+": "+series.map(x=>x.n.toLowerCase()+" "+(p[x.k]==null?"—":fmtN(p[x.k]))).join(", "); o += `<rect x="${(X(i)-banda/2).toFixed(1)}" y="${T}" width="${banda.toFixed(1)}" height="${H-T-B+18}" fill="transparent" style="cursor:pointer" data-a="g-val" data-v="${esc(t)}"><title>${esc(t)}</title></rect>`; });
   return o + `</svg>`;
 }
 function graficoBarras(cats, series){
@@ -1089,8 +1123,9 @@ function graficoBarras(cats, series){
   let o = `<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de barras">`;
   for (let g=0; g<=4; g++){ const v = tope*g/4, y = Y(v); o += `<line class="rej" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+4}" text-anchor="end">${fmtN(v,0)}</text>`; }
   cats.forEach((c,i)=>{ const x0 = L + i*ancho + (ancho - bw*m)/2;
-    series.forEach((x,j)=>{ const v = c[x.k]||0, y = Y(v); o += `<rect x="${(x0+j*bw).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${Math.max(0, H-B-y).toFixed(1)}" rx="3" fill="${x.c}"><title>${esc(c.l)} · ${esc(x.n)}: ${fmtN(v)}</title></rect>`; });
+    series.forEach((x,j)=>{ const v = c[x.k]||0, y = Y(v); o += `<rect x="${(x0+j*bw).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${Math.max(0, H-B-y).toFixed(1)}" rx="3" fill="${x.c}"/>`; });
     o += `<text x="${(L+i*ancho+ancho/2).toFixed(1)}" y="${H-6}" text-anchor="middle">${esc(c.l)}</text>`; });
+  cats.forEach((c,i)=>{ const t = (c.t||c.l)+": "+series.map(x=>x.n.toLowerCase()+" "+fmtN(c[x.k]||0)).join(", "); o += `<rect x="${(L+i*ancho).toFixed(1)}" y="${T}" width="${ancho.toFixed(1)}" height="${H-T}" fill="transparent" style="cursor:pointer" data-a="g-val" data-v="${esc(t)}"><title>${esc(t)}</title></rect>`; });
   return o + `</svg>`;
 }
 function barrasH(lista){ const max = Math.max(1, ...lista.map(x=>x.v)); return `<div class="hb-l">${lista.map(x=>`<span>${esc(x.l)}</span><div class="hb-b"><i style="width:${(x.v/max*100).toFixed(1)}%;background:${x.c||"var(--primary)"}"></i></div><b>${x.v}</b>`).join("")}</div>`; }
@@ -1113,11 +1148,11 @@ function kpisHTML(D, P){
 }
 function diarioHTML(D){
   if (!D.dias.length) return "";
-  return `<div class="tarjeta"><h3>Día a día</h3><p class="sub">Comensales de cada servicio.</p>${leyendaHTML(SERIES)}${graficoLineas(D.dias, SERIES, (p,i)=>{ const d = Number(p.f.slice(8)); return (d===1 || d%5===0) ? String(d) : ""; })}</div>`;
+  return `<div class="tarjeta"><h3>Día a día</h3><p class="sub">Comensales de cada servicio.</p>${leyendaHTML(SERIES)}${graficoLineas(D.dias, SERIES, (p,i)=>{ const d = Number(p.f.slice(8)); return (d===1 || d%5===0) ? String(d) : ""; }, p=>fmtLong(p.f))}<p class="muted small" style="margin:6px 0 0">Toca un día para ver sus cifras.</p></div>`;
 }
 function semanaHTML(D){
-  const cats = DIAS.map((l,i)=>{ const ds = D.dias.filter(d=>wd(d.f)===i); const m = k => { const v = ds.filter(d=>d[k]!=null); return v.length ? v.reduce((t,d)=>t+d[k],0)/v.length : 0; }; return {l:l.slice(0,3), des:m("des"), comT:m("comT"), ce:m("ce")}; });
-  return `<div class="tarjeta"><h3>Media por día de la semana</h3><p class="sub">Cuántos hay de media cada lunes, martes…</p>${leyendaHTML(SERIES)}${graficoBarras(cats, SERIES)}</div>`;
+  const cats = DIAS.map((l,i)=>{ const ds = D.dias.filter(d=>wd(d.f)===i); const m = k => { const v = ds.filter(d=>d[k]!=null); return v.length ? v.reduce((t,d)=>t+d[k],0)/v.length : 0; }; return {l:l.slice(0,3), t:"Media de los "+l.toLowerCase()+(l.endsWith("s")?"":"s"), des:m("des"), comT:m("comT"), ce:m("ce")}; });
+  return `<div class="tarjeta"><h3>Media por día de la semana</h3><p class="sub">Cuántos hay de media cada lunes, martes… Toca una columna para ver las cifras.</p>${leyendaHTML(SERIES)}${graficoBarras(cats, SERIES)}</div>`;
 }
 function tablaMesHTML(D){
   if (!D.dias.length) return `<div class="empty">Este mes todavía no tiene días.</div>`;
@@ -1179,7 +1214,7 @@ function panelView(){
   const turnos = `<div class="tarjeta"><h3>Comida por turnos</h3><p class="sub">Total del mes, con extras y adscritos.</p>${barrasH([{l:"1.er turno", v:T.t1},{l:"Normal", v:T.tn},{l:"2.º turno", v:T.t2},{l:"En bolsa", v:T.cb, c:"var(--accent)"}])}
     <p class="muted small" style="margin-bottom:0">Comensales extra en comida y cena: <b>${T.ex}</b> · Adscritos: <b>${T.ad}</b></p></div>`;
   // Evolución de los últimos meses (media diaria, para comparar meses enteros con el actual)
-  const evo = mesesNecesarios(ym, 5).reverse().map(m=>{ const x = datosMes(m); return {l:mesCorto(m), ym:m, des:media(x.T.des, x.ndB), comT:media(x.T.comT, x.nd), ce:media(x.T.ce, x.nd), T:x.T, nd:x.nd}; }).filter(x=>x.nd);
+  const evo = mesesNecesarios(ym, 5).reverse().map(m=>{ const x = datosMes(m); return {l:mesCorto(m), t:nombreMes(m)+" (media diaria)", ym:m, des:media(x.T.des, x.ndB), comT:media(x.T.comT, x.nd), ce:media(x.T.ce, x.nd), T:x.T, nd:x.nd}; }).filter(x=>x.nd);
   const evolucion = evo.length>1 ? `<div class="tarjeta"><h3>Evolución</h3><p class="sub">Media diaria de cada mes (así se pueden comparar aunque el mes actual no haya terminado).</p>${leyendaHTML(SERIES)}${graficoBarras(evo, SERIES)}
     <div class="tablewrap" style="margin-top:10px"><table class="tabla-mes"><thead><tr><th>Mes</th><th>Días</th><th>Desayunos</th><th>Comidas</th><th>Cenas</th><th>Tupper y bolsa</th></tr></thead><tbody>${evo.map(x=>`<tr><td style="text-transform:capitalize">${esc(nombreMes(x.ym))}</td><td>${x.nd}</td><td>${x.T.des}</td><td>${x.T.comT}</td><td>${x.T.ce}</td><td>${x.T.llevar}</td></tr>`).join("")}</tbody></table></div></div>` : "";
   // Por persona
@@ -1735,7 +1770,7 @@ function calendarioView(modo){
 }
 function avisoEventos(){
   const vis = new Set(), l = eventosEntre(today(), addDays(today(),3)).filter(x=>{ if (vis.has(x.clave)) return false; vis.add(x.clave); return true; });
-  return l.length ? `<div class="alert no-print"><strong>Próximos eventos:</strong> ${l.map(x=>esc(x.cuando)+": "+esc(x.texto)).join("; ")}. <button class="link" data-a="tab" data-v="calendario">Ver calendario</button></div>` : "";
+  return l.length ? `<div class="alert no-print"><strong>Próximos eventos:</strong> ${l.map(x=>(x.cuando ? esc(x.cuando)+": " : x.fecha ? esc(fmtLong(x.fecha))+": " : "")+esc(x.texto)).join("; ")}. <button class="link" data-a="tab" data-v="calendario">Ver calendario</button></div>` : "";
 }
 
 /* --- Comensales extra (solo administradores) --- */
@@ -1886,6 +1921,24 @@ function adscritosView(){
 }
 
 /* ---------- Guía de uso por perfil (menú del círculo) ---------- */
+/* ---------- Novedades: se enseñan una vez a cada usuario tras actualizar ---------- */
+const NOV_ID = "2026.11.07";
+function novedadesDe(rol){
+  const b = s => "<b>"+s+"</b>";
+  const JUEGO = ["Juego del día: juegos nuevos", [ "Se van las Parejas y el Mini sudoku. Siguen la Palabra del día y el Código secreto.", "Entran el "+b("Sudoku 9×9")+" (con botón «Notas» para apuntar posibles números), el "+b("Nonograma")+" (descubrir un dibujo con las pistas de filas y columnas) y "+b("Reinas")+" (una por fila, columna y color, sin tocarse).", "Cambia cada lunes. En los tres nuevos puedes equivocarte 3 veces: 6 puntos sin errores, 4 con uno y 2 con dos." ]];
+  if (rol==="admin") return [
+    ["Panel", [ "En "+b("Más → Panel")+": resumen del mes con medias y comparación, gráficos, turnos, regímenes, evolución de 6 meses, servicios por persona y lo pendiente.", b("Toca un día o una columna")+" de los gráficos para ver sus cifras sin mirar los ejes.", b("PDF, Excel y correo")+" sin nombres; el «Excel por persona» sí lleva nombres." ]],
+    ["Notas: un chat con la administración", [ "Escribe abajo, en la barra, a cualquier hora.", b("Toca un mensaje")+" para responderlo citándolo, o para borrarlo. Abajo puedes borrar todas las de un día o hasta una fecha." ]],
+    ["Avisos para un parte", [ "Ahora se ponen en "+b("Parte del día")+", en el recuadro «Avisos para este parte». La administración los ve en ese parte (y en el PDF) y le salta un aviso.", "Ya no se mezclan con la conversación de Notas." ]],
+    ["Mensajes de residentes", [ "Puedes borrar una conversación o todas las de una fecha (o anteriores)." ]],
+    JUEGO ];
+  if (rol==="cocina") return [
+    ["Resumen del mes", [ "Nueva sección en la barra de abajo: desayunos, comidas (y en bolsa), cenas, tuppers y bolsas de comida de cada día y del mes, con medias y gráficos.", b("Toca un día o una columna")+" de los gráficos para ver sus cifras.", "Con "+b("PDF, Excel o Enviar por correo")+" lo tenéis para el cierre de mes. Con las flechas veis los meses anteriores." ]],
+    ["Notas: un chat con los administradores", [ "Escribid abajo, en la barra, cuando queráis: os pueden responder a cualquier hora.", b("Tocad un mensaje")+" para responderlo citándolo." ]],
+    ["Avisos para el parte", [ "Los avisos de los administradores para un día salen "+b("arriba de ese parte")+". Cuando llega uno nuevo os sale un aviso y un número en «Parte»." ]] ];
+  if (rol==="residente") return [JUEGO];
+  return [];
+}
 function guiaDe(rol){
   const b = s => "<b>"+s+"</b>";
   const RES = [
@@ -1904,7 +1957,8 @@ function guiaDe(rol){
     ["Parte del día", [ "Recuentos por turno, cena, desayuno y para llevar, y el "+b("detalle por persona")+" con nombres.", b("Toca a una persona")+" para corregir lo que tiene marcado, aunque el parte esté cerrado. Si lo está, se avisa a la administración con una nota automática (con iniciales).", b("Descargar PDF")+" e "+b("Imprimir")+" salen siempre sin nombres, como los ve la administración." ]],
     ["Comensales extra y adscritos", [ "En "+b("Extras")+" sumas invitados con + y − en cada comida, bolsas con su hora y una nota (para la administración, los residentes o todos).", "Arriba aparecen las "+b("propuestas del jefe de adscritos")+": no cuentan en el parte hasta que pulsas "+b("Aprobar")+"." ]],
     ["Panel", [ "Resumen de cada mes: desayunos, comidas, cenas, tupper y bolsa, con medias diarias y comparación con el mes anterior.", "Gráficos día a día y por día de la semana, comida por turnos, regímenes, evolución de los últimos meses y "+b("servicios por persona")+" (con nombres, solo para administradores).", "Arriba, lo pendiente: mensajes sin resolver, eventos y propuestas de adscritos.", b("PDF, Excel y correo")+" salen sin nombres; el «Excel por persona» sí lleva nombres." ]],
-    ["Notas con la administración", [ "Funcionan como un "+b("chat")+": podéis escribir y responder a cualquier hora.", "Si marcas "+b("«Que salga también como aviso en el parte»")+", la nota aparece además en el parte del día que elijas.", "Puedes "+b("borrar")+" cualquier nota, o todas las de un día o anteriores a una fecha (abajo, «Borrar notas por fecha»).", "Escribe siempre con "+b("iniciales")+": la administración no debe ver nombres." ]],
+    ["Notas con la administración", [ "Funcionan como un "+b("chat")+": escribe abajo, en la barra, a cualquier hora.", b("Toca un mensaje")+" para responderlo citándolo, o para borrarlo. Abajo puedes borrar todas las de un día o anteriores a una fecha.", "Escribe siempre con "+b("iniciales")+": la administración no debe ver nombres." ]],
+    ["Avisos para un parte", [ "En "+b("Parte del día")+", elige el día y escribe en «Avisos para este parte». La administración lo ve arriba de ese parte, en el PDF y en la impresión.", "Ahí mismo puedes quitarlos. Las correcciones de un parte cerrado también dejan ahí su aviso automático." ]],
     ["Mensajes de residentes", [ "Respóndeles ahí mismo. Con "+b("«Pasar a la administración»")+" el texto se copia a una nota.", "Se ve quién lo ha leído. Marca "+b("«Resuelto»")+" cuando esté solucionado.", "Puedes "+b("borrar una conversación")+" o todas las de una fecha (o anteriores). Además, se borran solas al mes." ]],
     ["Avisos a residentes", [ "Un mensaje para todos los residentes, visible hasta la fecha que elijas. La administración no lo ve." ]],
     ["Calendario", [ "Añade, "+b("edita")+" y borra eventos: de un día (con hora si quieres), de varios días, o que "+b("se repiten")+" cada año, mes o semana.", "Arriba aparecen las propuestas de los residentes para aprobar o rechazar." ]],
@@ -1920,7 +1974,8 @@ function guiaDe(rol){
     ["Resumen del mes", [ "Cuántos desayunos, comidas (y cuántas en bolsa), cenas, tuppers y bolsas de comida ha habido cada día y en total, con medias y gráficos.", "Cada fila es el día en que se sirve: el desayuno y lo que se lleva se piden la víspera.", "Con "+b("PDF")+", "+b("Excel")+" o "+b("Enviar por correo")+" lo tenéis para el resumen mensual. Con las flechas veis los meses anteriores." ]],
     ["Cumpleaños", [ "Ordenados por meses, con iniciales, edad que cumple y gustos. Podéis pedir que alguien actualice sus gustos." ]],
     ["Calendario", [ "Eventos y cumpleaños de cada mes. Toca un día para verlo. Podéis "+b("añadir eventos")+" y editar o borrar los vuestros." ]],
-    ["Notas", [ "Un chat con los administradores: escribid cuando queráis. Cuando os escriban, saldrá un número en Notas." ]]
+    ["Notas", [ "Un chat con los administradores: escribid abajo, en la barra, cuando queráis. Tocad un mensaje para responderlo citándolo.", "Cuando os escriban, saldrá un número en Notas." ]],
+    ["Avisos para el parte", [ "Los avisos de los administradores para un día concreto salen arriba de ese parte. Cuando llega uno nuevo, os sale un aviso y un número en «Parte»." ]]
   ];
   const ADS = [
     ["Los martes", [ "En "+b("Adscritos")+" ves los próximos martes. Indica con "+b("+ y −")+" cuántos adscritos comen en "+b("turno normal")+" y en "+b("2.º turno")+".", "Puedes cambiarlo hasta la hora límite de ese martes." ]],
@@ -1943,6 +1998,11 @@ function modalHTML(){
     cuerpo = `<p class="muted small" style="margin-top:0">Puedes borrar una partida, por ejemplo una de prueba. Sus puntos dejan de contar en el ranking. No se puede deshacer.</p>` +
       (partidas.length ? partidas.map(([id,x])=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong><div class="small muted">${esc((JUEGOS[tipoDe(x)]||{nombre:"Juego"}).nombre)}: ${x.estado==="ganado" ? "lo consiguió" : x.estado==="perdido" ? "no lo consiguió" : "sin terminar"}. ${x.puntos||0} punto${(x.puntos||0)===1?"":"s"}.</div></div>
         ${S.drafts.wlDel===id ? `<div class="row"><button class="btn danger" data-a="wl-del" data-id="${id}">Sí, borrar</button><button class="btn ghost" data-a="wl-del-no">No</button></div>` : `<button class="link" style="color:var(--danger)" data-a="wl-del-ask" data-id="${id}">Borrar</button>`}</div>`).join("") : `<p class="muted">No tiene partidas esta semana.</p>`);
+  }
+  if (m.tipo==="nov"){
+    tit = "Novedades de la aplicación";
+    cuerpo = `<p class="muted" style="margin-top:0">Esto es lo que cambia para ti en esta versión.</p>` + novedadesDe(m.rol).map(([h, l])=>`<div class="guia-s"><h3 style="margin:14px 0 6px;color:var(--primary)">${esc(h)}</h3><ul class="guia-l">${l.map(x=>`<li>${x}</li>`).join("")}</ul></div>`).join("")
+      + `<div class="row" style="margin-top:6px"><button class="btn" data-a="modal-cerrar">Entendido</button></div><p class="muted small" style="margin:12px 0 0">Puedes volver a verlo en el círculo de tus iniciales → «Novedades».</p>`;
   }
   if (m.tipo==="guia"){
     const g = guiaDe(m.rol), ab = S.guiaAb;
@@ -1993,7 +2053,7 @@ function avisosAdminView(){
 }
 
 /* --- Notas entre administración y administrador --- */
-function unread(role){ return S.mensajes.filter(m=>m.para===role && !m.leido).length; }
+function unread(role){ return S.mensajes.filter(m=>m.para===role && !m.leido && !m.fecha).length; }
 function diaChat(f){ const h = today(); return f===h ? "Hoy" : f===addDays(h,-1) ? "Ayer" : fmtLong(f); }
 const hhmm = t => { const d = new Date(t||0); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
 /* Formulario para borrar en bloque por fecha (notas y mensajes de residentes) */
@@ -2006,30 +2066,36 @@ function borrarPorFechaHTML(pre, que, n){
     ${S.drafts[pre+"_ok"] ? `<div class="row"><button class="btn danger" data-a="bf-do" data-f="${pre}">Sí, borrar ${n}</button><button class="btn ghost" data-a="bf-no" data-f="${pre}">Cancelar</button></div>` : `<button class="btn danger" data-a="bf-ask" data-f="${pre}" ${n?"":"disabled"}>Borrar</button>`}</details>`;
 }
 const enFecha = (ts, f, modo) => { const d = iso(new Date(ts||0)); return modo==="dia" ? d===f : d<=f; };
-function notasDeChat(role){ const otro = role==="admin" ? "cocina" : "admin"; return S.mensajes.filter(m=>(m.de===role&&m.para===otro)||(m.de===otro&&m.para===role)); }
+function notasDeChat(role){ const otro = role==="admin" ? "cocina" : "admin"; return S.mensajes.filter(m=>!m.fecha && ((m.de===role&&m.para===otro)||(m.de===otro&&m.para===role))); }
+const avisosParteSinLeer = role => S.mensajes.filter(m=>m.para===role && m.fecha && !m.leido);
+function quienNota(m){ return m.de==="admin" ? "Administradores" : "Administración"; }
 function notasView(role){
-  const esA = role==="admin", quien = r => r==="admin" ? "Administradores" : "Administración";
+  const esA = role==="admin";
   const cargo = resById(principalHoy()) ? nombreVis(resById(principalHoy())) : "";
-  const aviso = role==="cocina" && cargo ? `<p class="muted small" style="margin-top:0">Lo que escribís lo ven todos los administradores. Hoy está al cargo ${esc(cargo)}.</p>` : `<p class="muted small" style="margin-top:0">Conversación con la administración: podéis escribir y responder a cualquier hora. ${esA?"Usa siempre iniciales: la administración lo ve tal cual.":""}</p>`;
-  const todas = notasDeChat(role), list = todas.slice(-80);
+  const aviso = `<p class="muted small" style="margin-top:0">${role==="cocina" ? `Lo que escribís lo ven todos los administradores${cargo?". Hoy está al cargo "+esc(cargo):""}.` : "Conversación con la administración, a cualquier hora. Usa siempre iniciales: lo ven tal cual. Los avisos para un parte concreto se ponen en «Parte del día»."} Toca un mensaje para responderlo.</p>`;
+  const todas = notasDeChat(role), list = todas.slice(-80), ids = new Set(todas.map(m=>m.id));
   let dia = "", html = "";
   list.forEach(m=>{
     const f = iso(new Date(m.ts||0));
     if (f!==dia){ dia = f; html += `<div class="chat-dia">${esc(diaChat(f))}</div>`; }
-    const mia = m.de===role;
-    html += `<div class="note ${mia?"mine":""}"><div class="meta">${quien(m.de)}, ${hhmm(m.ts)}${mia?(m.leido?" · Leída":" · Sin leer"):""}</div>${esc(m.texto).replace(/\n/g,"<br>")}
-      ${m.fecha ? `<div><span class="chat-tag">En el parte del ${esc(fmtLong(m.fecha).toLowerCase())}</span></div>` : ""}
-      ${esA && !S.vista ? `<div class="chat-acc">${S.drafts.ntDel===m.id ? `<span>¿Borrar esta nota?</span><button class="link" style="color:var(--danger)" data-a="nt-del" data-id="${m.id}">Sí, borrar</button><button class="link" data-a="nt-del-no">No</button>` : `<button class="link" style="color:var(--muted)" data-a="nt-del-ask" data-id="${m.id}">Borrar</button>`}</div>` : ""}</div>`;
+    const mia = m.de===role, sel = S.notaSel===m.id;
+    const cita = m.resp ? `<button class="cita" data-a="ir-nota" data-id="${esc(m.resp.id)}"><b>${esc(m.resp.de==="admin"?"Administradores":"Administración")}</b>${esc(String(m.resp.t||"").slice(0,140))}${String(m.resp.t||"").length>140?"…":""}${ids.has(m.resp.id)?"":' <span class="muted">(ya borrado)</span>'}</button>` : "";
+    const acc = sel && !S.vista ? `<div class="chat-acc">${S.drafts.ntDel===m.id ? `<span>¿Borrar para todos?</span><button class="link" style="color:var(--danger)" data-a="nt-del" data-id="${m.id}">Sí, borrar</button><button class="link" data-a="nt-del-no">No</button>`
+      : `<button class="link" data-a="resp-set" data-id="${m.id}">↩ Responder</button>${esA ? `<button class="link" style="color:var(--danger)" data-a="nt-del-ask" data-id="${m.id}">Borrar</button>` : ""}`}</div>` : "";
+    html += `<div class="note ${mia?"mine":""} ${sel?"elegida":""}" id="n-${m.id}" data-a="nota-sel" data-id="${m.id}"><div class="meta">${quienNota(m)}, ${hhmm(m.ts)}${mia?(m.leido?" · Leída":" · Sin leer"):""}</div>${cita}${esc(m.texto).replace(/\n/g,"<br>")}${acc}</div>`;
   });
-  const conParte = esA && draft("msg_parte", false)===true;
-  const caja = S.vista ? "" : `<div class="chat-box no-print"><label for="msg" class="sr-only" style="position:absolute;left:-9999px">Mensaje</label>
-      <textarea class="input" id="msg" data-draft="msg" placeholder="${esA?"Escribe a la administración…":"Escribe a los administradores…"}">${esc(draft("msg"))}</textarea>
-      ${esA ? `<label class="chk" style="margin:10px 0 0"><input type="checkbox" data-a="msg-parte" ${conParte?"checked":""}> Que salga también como aviso en el parte</label>
-        ${conParte ? `<div class="field" style="margin:8px 0 0"><label for="msg_fecha">Parte del</label><input class="input" type="date" id="msg_fecha" data-draft="msg_fecha" min="${today()}" value="${esc(draft("msg_fecha", proxParte()))}" style="max-width:220px"></div>` : ""}` : ""}
-      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn" data-a="sendmsg" ${draft("msg").trim()?"":"disabled"}>Enviar</button></div></div>`;
   const borrar = esA && !S.vista ? borrarPorFechaHTML("nb", "notas", todas.filter(m=>enFecha(m.ts, draft("nb_f", today()), draft("nb_m","hasta"))).length) : "";
   return aviso + (todas.length>list.length ? `<p class="muted small" style="text-align:center">Se muestran las ${list.length} notas más recientes de ${todas.length}.</p>` : "")
-    + `<div class="chat">${html || `<div class="empty">Todavía no hay notas.</div>`}</div><div id="notas-fin"></div>` + caja + borrar;
+    + `<div class="chat">${html || `<div class="empty">Todavía no hay notas. Escribe abajo para empezar.</div>`}</div><div id="notas-fin"></div>` + borrar
+    + `<div aria-hidden="true" style="height:${S.drafts.msgResp ? 120 : 70}px"></div>`;
+}
+/* Barra de escribir, fija abajo como en WhatsApp (va dentro de la barra de navegación) */
+function barraChat(role){
+  const r = S.drafts.msgResp ? S.mensajes.find(m=>m.id===S.drafts.msgResp) : null;
+  const txt = draft("msg"), filas = Math.min(4, Math.max(1, txt.split("\n").length + Math.floor(txt.length/38)));
+  return `<div class="cbar">${r ? `<div class="cbar-resp"><div><b>Respondiendo a ${esc(quienNota(r))}</b><span>${esc(r.texto)}</span></div><button data-a="resp-no" aria-label="No responder a ese mensaje">×</button></div>` : ""}
+    <div class="cbar-in"><textarea class="input" id="msg" data-draft="msg" rows="${filas}" placeholder="${role==="admin"?"Escribe a la administración":"Escribe a los administradores"}" aria-label="Mensaje">${esc(txt)}</textarea>
+    <button class="cbar-send" data-a="sendmsg" aria-label="Enviar" ${txt.trim()?"":"disabled"}><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg></button></div></div>`;
 }
 
 function avisoCocina(){
@@ -2137,7 +2203,7 @@ function viewApp(uReal){
   if (rol==="residente") t.push(["calendario","Calendario","",G1],["consultas","Mensajes", consultasSinLeer("residente")||"",G1]);
   if (rol!=="cocina" && rol!=="adscritos") t.push(["datos","Mis datos","",G1]);
   if (rol==="adscritos"){ t.length = 0; t.push(["adscritos","Adscritos","",G2]); }
-  if (rol==="cocina") t.push(["parte","Parte del día","",G2],["resumen","Resumen del mes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Notas", unread("cocina")||"",G2]);
+  if (rol==="cocina") t.push(["parte","Parte del día", avisosParteSinLeer("cocina").length||"",G2],["resumen","Resumen del mes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Notas", unread("cocina")||"",G2]);
   if (rol==="admin") t.push(["parte","Parte del día","",G2],["panel","Panel","",G2],["extras","Comensales extra", adsPendientes().length||"",G2],["notas","Notas", unread("admin")||"",G2],["consultas","Mensajes de residentes", consultasSinLeer("admin")||"",G2],["avisos","Avisos a residentes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario", S.eventos.filter(e=>e.estado==="pendiente").length||"",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
   if (!t.length) return cabecera(u.nombre||"") + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
   if (!t.find(x=>x[0]===S.tab)) S.tab = rol==="adscritos" ? "adscritos" : esComensal(u) ? "semana" : (t.find(x=>x[0]==="parte")||t[0])[0];
@@ -2158,9 +2224,11 @@ function viewApp(uReal){
   else if (S.tab==="panel") main = panelView();
   else if (S.tab==="usuarios") main = usuariosView();
   else main = ajustesView();
-  const nuevas = !S.vista && (rol==="admin"||rol==="cocina") ? S.mensajes.filter(m=>m.para===rol && !m.leido) : [];
+  const nuevas = !S.vista && (rol==="admin"||rol==="cocina") ? S.mensajes.filter(m=>m.para===rol && !m.leido && !m.fecha) : [];
+  const avParte = !S.vista && rol==="cocina" ? avisosParteSinLeer("cocina").filter(m=>!(S.tab==="parte" && S.parteFecha===m.fecha)).sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))) : [];
+  const bannerParte = avParte.length ? `<div class="alert no-print" role="status"><strong>${avParte.length===1 ? "Aviso nuevo de los administradores" : avParte.length+" avisos nuevos de los administradores"} para el parte del ${esc(fmtLong(avParte[0].fecha).toLowerCase())}.</strong><p style="margin:6px 0">${esc(avParte[0].texto.slice(0,140))}${avParte[0].texto.length>140?"…":""}</p><button class="btn" data-a="parte-ir" data-f="${avParte[0].fecha}">Ver el parte</button></div>` : "";
   const banner = nuevas.length && S.tab!=="notas" ? `<div class="alert no-print" role="status"><strong>${nuevas.length===1?"Tienes una nota nueva":"Tienes "+nuevas.length+" notas nuevas"} de ${rol==="admin"?"la administración":"los administradores"}.</strong>
-      <p style="margin:6px 0">${esc(nuevas[nuevas.length-1].texto.slice(0,140))}${nuevas[nuevas.length-1].texto.length>140?"…":""}</p><button class="btn" data-a="tab" data-v="notas">Leer y marcar como leída</button></div>` : "";
+      <p style="margin:6px 0">${esc(nuevas[nuevas.length-1].texto.slice(0,140))}${nuevas[nuevas.length-1].texto.length>140?"…":""}</p><button class="btn" data-a="tab" data-v="notas">Leer y responder</button></div>` : "";
   const avsAdm = rol==="residente" && !S.vista ? (S.avisos||[]).filter(a=>!S.vistos.includes("av|"+a.id)) : [];
   const avs = esComensal(u) ? avisosResidente().filter(x=>!x.visto) : [];
   const bannerAdm = avsAdm.map(a=>`<div class="alert no-print" role="status" style="border-left-color:var(--primary)"><strong>Aviso de los administradores</strong> <span class="muted small">${esc(hora(a.ts))}</span><p style="margin:6px 0">${esc(a.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="av|${esc(a.id)}">Entendido</button></div>`).join("");
@@ -2168,8 +2236,11 @@ function viewApp(uReal){
   const cab = S.vista
     ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div></div>`
     : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin", ROLES[rol]) + panelPw();
+  if (!S.vista && !S.modal && !S.novVisto){ S.novVisto = true; let visto = ""; try { visto = localStorage.getItem("mizar.novedades")||""; } catch(e){}
+    if (visto!==NOV_ID && novedadesDe(rol).length){ S.modal = {tipo:"nov", rol}; }
+    try { localStorage.setItem("mizar.novedades", NOV_ID); } catch(e){} }
   const actual = t.find(x=>x[0]===S.tab);
-  return modalHTML() + cab + (actual ? `<h2 class="sec-t">${actual[1]}</h2>` : "") + (S.vista ? "" : avisoDatos(u)) + banner + bannerAv + main + (t.length>1 ? navegacion(t, rol, esComensal(u)) : "");
+  return modalHTML() + cab + (actual ? `<h2 class="sec-t">${actual[1]}</h2>` : "") + (S.vista ? "" : avisoDatos(u)) + bannerParte + banner + bannerAv + main + (t.length>1 ? navegacion(t, rol, esComensal(u)) : "");
 }
 
 /* ---------- PDF del parte ---------- */
@@ -2306,15 +2377,15 @@ function selDe(ctx){
   const t = S.plantillas[rid] && S.plantillas[rid]["d"+ctx.slice(2)];
   return norm(t);
 }
-function marcarLeidos(role){
-  S.mensajes.filter(m=>m.para===role && !m.leido).forEach(m=>{ m.leido=true; w(()=>S.db.doc("mensajes/"+m.id).update({leido:true})); });
+function marcarLeidos(role, fn){
+  S.mensajes.filter(m=>m.para===role && !m.leido && (fn ? fn(m) : !m.fecha)).forEach(m=>{ m.leido=true; w(()=>S.db.doc("mensajes/"+m.id).update({leido:true})); });
 }
 const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
 document.addEventListener("input", e => {
   const k = e.target.dataset && e.target.dataset.draft;
   if (k==="rf_regimen" && (!String(S.drafts[k]||"").trim()) !== (!e.target.value.trim())){ S.drafts[k] = e.target.value; render(); return; }
-  if (k){ S.drafts[k] = e.target.value; if (k==="msg"){ const b=document.querySelector('[data-a="sendmsg"]'); if (b) b.disabled = !e.target.value.trim(); } }
+  if (k){ S.drafts[k] = e.target.value; if (k==="msg"){ const b=document.querySelector('[data-a="sendmsg"]'); if (b) b.disabled = !e.target.value.trim(); e.target.style.height = "auto"; e.target.style.height = Math.min(132, e.target.scrollHeight+2)+"px"; } }
 });
 document.addEventListener("change", e => {
   if (e.target.tagName==="SELECT" && e.target.dataset.draft){ S.drafts[e.target.dataset.draft] = e.target.value; return; }
@@ -2327,6 +2398,7 @@ document.addEventListener("keydown", e => {
     const k = e.key==="Enter" ? "enter" : e.key==="Backspace" ? "back" : e.key.toLowerCase();
     if (k==="enter" || k==="back" || /^[a-zñ0-9]$/.test(k)){ e.preventDefault(); wlTecla(k); return; }
   }
+  if (e.key==="Enter" && (e.ctrlKey || e.metaKey) && e.target.id==="msg"){ e.preventDefault(); act("sendmsg", e.target); return; }
   if (e.key==="Enter" && e.target.id==="pin"){ e.preventDefault(); act("login", e.target); }
 });
 document.addEventListener("click", e => {
@@ -2338,7 +2410,7 @@ document.addEventListener("click", e => {
 
 async function act(a, b){
   const v = b.dataset.v;
-  if (S.vista && !["tab","menu","parteday","cal-mes","cal-dia","modal-cerrar","pdf","print","vista-salir","logout","reload","cuenta","mes","mes-pdf","mes-csv","mes-mail","plegar"].includes(a)){ toast("Vista de la administración: solo lectura."); return; }
+  if (S.vista && !["tab","menu","parteday","cal-mes","cal-dia","modal-cerrar","pdf","print","vista-salir","logout","reload","cuenta","mes","mes-pdf","mes-csv","mes-mail","plegar","nota-sel","ir-nota","g-val"].includes(a)){ toast("Vista de la administración: solo lectura."); return; }
   switch(a){
     case "setup": {
       const nombre=String(draft("su_nombre","Nacho")).trim(), usuario=normU(draft("su_usuario","nacho")), pw=String(draft("su_pin")), h=draft("su_hora","09:30");
@@ -2540,12 +2612,27 @@ async function act(a, b){
       const t = draft("msg").trim(); if (!t) return;
       const role = rolDe(resById(S.session.uid)), para = role==="admin"?"cocina":"admin";
       S.drafts.msg = "";
-      const fecha = role==="admin" && draft("msg_parte", false)===true ? (draft("msg_fecha", proxParte()) || proxParte()) : null;
-      delete S.drafts.msg_parte; delete S.drafts.msg_fecha; S.irAbajo = true;
-      await w(()=>S.db.collection("mensajes").doc(newId("m")).set({de:role, para, texto:t.slice(0,2000), ts:Date.now(), leido:false, fecha}));
-      toast(fecha ? "Enviado. Saldrá también en el parte del "+fmtLong(fecha).toLowerCase()+"." : "Mensaje enviado."); break;
+      const r = S.drafts.msgResp ? S.mensajes.find(m=>m.id===S.drafts.msgResp) : null;
+      const doc = {de:role, para, texto:t.slice(0,2000), ts:Date.now(), leido:false, fecha:null};
+      if (r) doc.resp = {id:r.id, de:r.de, t:String(r.texto).slice(0,160)};
+      delete S.drafts.msgResp; S.notaSel = null; S.irAbajo = true;
+      await w(()=>S.db.collection("mensajes").doc(newId("m")).set(doc));
+      break;
     }
-    case "msg-parte": S.drafts.msg_parte = b.checked; break;
+    case "nota-sel": S.notaSel = S.notaSel===b.dataset.id ? null : b.dataset.id; delete S.drafts.ntDel; break;
+    case "resp-set": S.drafts.msgResp = b.dataset.id; S.notaSel = null; S.focoMsg = true; break;
+    case "resp-no": delete S.drafts.msgResp; break;
+    case "ir-nota": { const el = document.getElementById("n-"+b.dataset.id); if (!el){ toast("Ese mensaje ya no está."); return; } el.scrollIntoView({block:"center", behavior:"smooth"}); el.classList.add("destello"); setTimeout(()=>el.classList.remove("destello"), 1400); return; }
+    case "g-val": toast(v); return;
+    case "parte-aviso": {
+      if (rolDe(resById(S.session.uid))!=="admin") return;
+      const f = b.dataset.f, t = String(draft("pa_txt")).trim().slice(0,2000); if (!t){ toast("Escribe el aviso."); return; }
+      delete S.drafts.pa_txt;
+      await w(()=>S.db.collection("mensajes").doc(newId("m")).set({de:"admin", para:"cocina", texto:t, ts:Date.now(), leido:false, fecha:f}));
+      toast("Aviso añadido al parte del "+fmtLong(f).toLowerCase()+"."); break;
+    }
+    case "parte-ir": S.parteFecha = b.dataset.f; S.tab = "parte"; S.menu = false; window.scrollTo(0,0); break;
+    case "nov": S.cuenta = false; S.modal = {tipo:"nov", rol: rolDe(resById(S.session.uid))}; break;
     case "nt-del-ask": S.drafts.ntDel = b.dataset.id; break;
     case "nt-del-no": delete S.drafts.ntDel; break;
     case "nt-del": {
