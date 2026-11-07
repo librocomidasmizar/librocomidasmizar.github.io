@@ -292,6 +292,13 @@ textarea.input{min-height:90px;resize:vertical}
 .chat .note{cursor:pointer;-webkit-user-select:text;user-select:text;transition:box-shadow .2s}
 .chat .note.elegida{box-shadow:0 0 0 3px var(--accent)}
 .chat .note.destello{box-shadow:0 0 0 3px var(--primary)}
+.chat-ap{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px}
+.chat .note.es-ap{border-color:var(--accent);border-style:dashed}
+.msg-seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:4px;margin:0 0 14px}
+.msg-seg button{border:0;border-radius:10px;padding:10px 8px;background:none;font-weight:700;font-size:15px;color:var(--muted);line-height:1.2;position:relative}
+.msg-seg button small{display:block;font-weight:400;font-size:12px}
+.msg-seg button[aria-current="true"]{background:var(--primary);color:var(--primary-ink)}
+.msg-seg .badge{margin-left:6px}
 .cita{display:block;width:100%;text-align:left;background:color-mix(in srgb, var(--ink) 6%, transparent);border:0;border-left:4px solid var(--primary);border-radius:8px;padding:6px 10px;margin:0 0 6px;font-size:14px;color:var(--ink);line-height:1.35}
 .cita b{display:block;font-size:12px;color:var(--primary)}
 .note.mine .cita{border-left-color:var(--accent)}
@@ -409,6 +416,7 @@ window.addEventListener("unhandledrejection", e => { const a = document.getEleme
 /* ---------- Conexión con Firebase ---------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, initializeAuth, inMemoryPersistence, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getMessaging, getToken, deleteToken, isSupported as pushSoportado } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { initializeFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsnap, query, where as fwhere, writeBatch, deleteField, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const FB_CONFIG = {
@@ -420,7 +428,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.07-2";
+const VERSION = "2026.11.08-1";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -684,11 +692,82 @@ async function entrarCon(user){
     if (!p.exists || p.data().activo===false){ S.loginErr = "Tu usuario está dado de baja."; await signOut(auth); return; }
     S.session = {uid:pid}; S.authListo = true; S.loginErr = "";
     suscribir(pid, p.data().rol || "residente");
+    if (PUSH_ROLES.includes(p.data().rol || "residente")) setTimeout(refrescarPush, 4000);
   } catch(e){ console.error(e); S.loginErr = e.code==="permission-denied" ? "Tu usuario está dado de baja o no tiene acceso. Habla con el administrador." : "No se ha podido entrar ("+(e.code||e.message)+")."; S.authListo = true; try { await signOut(auth); } catch(e2){} }
   render();
 }
 S.db.doc("config/general").onSnapshot(s => { S.config = s.exists ? s.data() : null; S.cfgLoaded = true; render(); }, e => { console.error(e); S.loadErr = e.code||e.message; S.cfgLoaded = true; render(); });
 onAuthStateChanged(auth, user => { if (S.enAlta) return; entrarCon(user); });
+
+/* ---------- Avisos al móvil (notificaciones push, las envía el robot de GitHub) ---------- */
+const PUSH_ROLES = ["residente","cocina","admin"];
+const esIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent));
+const instalada = () => !!((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone===true);
+const dispositivo = () => esIOS() ? "iPhone" : /Android/i.test(navigator.userAgent) ? "Android" : "Ordenador";
+let swReg = null, msgApi = null;
+async function pushListo(){
+  if (msgApi) return msgApi;
+  if (!("serviceWorker" in navigator) || !("Notification" in window)) return null;
+  try { if (!(await pushSoportado())) return null; } catch(e){ return null; }
+  swReg = await navigator.serviceWorker.register("firebase-messaging-sw.js");
+  await navigator.serviceWorker.ready;
+  msgApi = getMessaging(fbApp); return msgApi;
+}
+const tokenGuardado = () => { try { return localStorage.getItem("mizar.push") || ""; } catch(e){ return ""; } };
+function estadoPush(){
+  if (esIOS() && !instalada()) return "ios";
+  if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) return "no";
+  if (Notification.permission==="denied") return "bloqueado";
+  if (Notification.permission==="granted" && tokenGuardado()) return "on";
+  return "off";
+}
+async function guardarToken(tk){
+  const viejo = tokenGuardado();
+  if (viejo && viejo!==tk){ try { await S.db.doc("tokens/"+viejo).delete(); } catch(e){} }
+  await S.db.doc("tokens/"+tk).set({perfil:S.session.uid, ts:Date.now(), disp:dispositivo()});
+  try { localStorage.setItem("mizar.push", tk); } catch(e){}
+}
+async function activarPush(){
+  const vapid = (S.config||{}).vapid;
+  if (!vapid){ toast("Los avisos todavía no están configurados. Avisa al administrador principal."); return; }
+  let perm = "default"; try { perm = await Notification.requestPermission(); } catch(e){}
+  if (perm!=="granted"){ toast(perm==="denied" ? "Has bloqueado los avisos: actívalos en los ajustes del móvil." : "No se han activado."); render(); return; }
+  try {
+    const m = await pushListo(); if (!m){ toast("Este dispositivo no admite avisos."); return; }
+    await guardarToken(await getToken(m, {vapidKey:vapid, serviceWorkerRegistration:swReg}));
+    toast("Avisos activados en este dispositivo.");
+  } catch(e){ console.error(e); toast("No se han podido activar ("+(e.code||e.message)+")."); }
+  render();
+}
+async function desactivarPush(){
+  const tk = tokenGuardado();
+  try { const m = await pushListo(); if (m) await deleteToken(m); } catch(e){}
+  if (tk){ try { await S.db.doc("tokens/"+tk).delete(); } catch(e){} }
+  try { localStorage.removeItem("mizar.push"); } catch(e){}
+  toast("Avisos desactivados en este dispositivo."); render();
+}
+/* Al entrar: si los avisos estaban activados, renueva el registro y lo asocia a quien ha entrado */
+async function refrescarPush(){
+  try {
+    if (!S.session || estadoPush()!=="on" || !(S.config||{}).vapid) return;
+    const m = await pushListo(); if (!m) return;
+    await guardarToken(await getToken(m, {vapidKey:S.config.vapid, serviceWorkerRegistration:swReg}));
+  } catch(e){ console.warn("Avisos:", e); }
+}
+function queAvisa(rol){
+  if (rol==="admin") return ["mensajes de la administración (y sus avisos)", "mensajes de residentes", "propuestas de eventos y de adscritos"];
+  if (rol==="cocina") return ["mensajes de los administradores", "avisos para el parte (📌)"];
+  return ["respuestas de los administradores a tus mensajes", "avisos de los administradores para todos"];
+}
+function pushModalHTML(rol){
+  const e = estadoPush(), lista = `<ul class="guia-l">${queAvisa(rol).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
+  const pie = `<p class="muted small" style="margin:12px 0 0">Los avisos pueden tardar unos minutos en llegar. Se activan en cada dispositivo por separado.</p>`;
+  if (e==="ios") return `<p style="margin-top:0">En iPhone los avisos solo funcionan con la aplicación <b>instalada en la pantalla de inicio</b> (iOS 16.4 o posterior):</p><ol class="guia-l"><li>Abre la aplicación en <b>Safari</b>.</li><li>Pulsa el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba).</li><li>Elige <b>«Añadir a pantalla de inicio»</b>.</li><li>Abre la aplicación desde ese icono y vuelve aquí: círculo de tus iniciales → «Avisos en el móvil».</li></ol>` + pie;
+  if (e==="no") return `<p style="margin-top:0">Este navegador no admite avisos. En Android usa <b>Chrome</b>; en iPhone, la aplicación instalada en la pantalla de inicio.</p>`;
+  if (e==="bloqueado") return `<p style="margin-top:0">Los avisos están <b>bloqueados</b> para esta aplicación. Para permitirlos:</p><ul class="guia-l"><li><b>Android (Chrome):</b> toca el candado o los tres puntos → Información del sitio → Notificaciones → Permitir.</li><li><b>iPhone:</b> Ajustes → Notificaciones → Mizar → Permitir notificaciones.</li></ul><p>Después vuelve aquí y pulsa «Activar avisos».</p><button class="btn" data-a="push-on">Activar avisos</button>` + pie;
+  if (e==="on") return `<div class="status def">Avisos activados en este dispositivo.</div><p>Te avisaremos de:</p>${lista}<button class="btn danger" data-a="push-off">Desactivar en este dispositivo</button>` + pie;
+  return `<p style="margin-top:0">Recibe un aviso en el móvil aunque tengas la aplicación cerrada. Te avisaremos de:</p>${lista}<button class="btn" data-a="push-on">Activar avisos</button><p class="muted small">El móvil te preguntará si permites las notificaciones: pulsa «Permitir».</p>` + pie;
+}
 
 /* ---------- ¿Hay una versión nueva publicada? ---------- */
 let ultimaComprobacion = 0;
@@ -713,8 +792,8 @@ function franjaVersion(){
 /* ---------- Render ---------- */
 function notificar(m){
   const quien = m.de==="admin" ? "los administradores" : "la administración";
-  toast("Nueva nota de "+quien+".");
-  try { if ("Notification" in window && Notification.permission==="granted") new Notification("Libro de comidas - Mizar", {body:"Nota de "+quien+": "+String(m.texto).slice(0,120)}); } catch(e){}
+  toast((m.fecha ? "Nuevo aviso para el parte, de " : "Nuevo mensaje de ")+quien+".");
+  try { if ("Notification" in window && Notification.permission==="granted") new Notification("Libro de comidas - Mizar", {body:"Mensaje de "+quien+": "+String(m.texto).slice(0,120)}); } catch(e){}
 }
 function render(){
   try { const me = S.session && resById(S.session.uid), rol = me && rolDe(me); const n = rol ? S.mensajes.filter(m=>m.para===rol && !m.leido).length + (rol==="residente" ? consultasSinLeer("residente") : 0) : 0; document.title = (n?"("+n+") ":"")+"Libro de comidas - Mizar"; } catch(e){}
@@ -768,7 +847,8 @@ function cabecera(nombre, esAdm, rolTxt){
     ${S.cuenta ? `<div class="cuenta no-print"><div class="yo">${esc(nombre)}<small>${esc(rolTxt || (esAdm?"Administrador":"Residente"))}</small></div>
       ${esAdm?`<button data-a="vista-admon">Ver como la administración</button>`:""}
       <button data-a="guia">Cómo se usa</button>
-      ${novedadesDe(rolDe(resById(S.session && S.session.uid))).length ? `<button data-a="nov">Novedades</button>` : ""}
+      ${PUSH_ROLES.includes(rolDe(resById(S.session && S.session.uid))) ? `<button data-a="push-abrir">Avisos en el móvil${estadoPush()==="on"?" · activados":""}</button>` : ""}
+      ${novedadesDe(rolDe(resById(S.session && S.session.uid)), "").length ? `<button data-a="nov">Novedades</button>` : ""}
       <button data-a="pw-ver">Cambiar contraseña</button>
       <button class="salir" data-a="logout">Salir</button>
       <p class="muted small" style="margin:8px 10px 0">Versión ${VERSION}</p></div>` : ""}`;
@@ -803,18 +883,23 @@ const ICO = {
   mas:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'
 };
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]||ICO.mas}</svg>`;
-const CORTO = {adscritos:"Adscritos", semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Juego", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", resumen:"Resumen", panel:"Panel", extras:"Extras", notas:"Notas", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
+const CORTO = {adscritos:"Adscritos", semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Juego", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", resumen:"Resumen", panel:"Panel", extras:"Extras", notas:"Mensajes", mensajes:"Mensajes", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
 function navegacion(list, rol, comensal){
+  if (rol==="admin"){ // Mensajes con la administración y de residentes, juntos en un botón
+    const n = list.find(x=>x[0]==="notas"), c = list.find(x=>x[0]==="consultas");
+    if (n && c){ const i = list.indexOf(n); list = list.filter(x=>x!==n && x!==c); list.splice(i, 0, ["mensajes","Mensajes",(Number(n[2])||0)+(Number(c[2])||0)||"",n[3]]); }
+  }
   const pref = rol==="adscritos" ? ["adscritos"]
     : rol==="cocina" ? ["parte","resumen","notas","calendario","cumples"]
-    : rol==="admin" ? (comensal ? ["semana","parte","consultas","notas"] : ["parte","extras","consultas","notas"])
+    : rol==="admin" ? (comensal ? ["semana","parte","mensajes","panel"] : ["parte","panel","extras","mensajes"])
     : ["semana","quien","calendario","consultas"];
   const visibles = pref.map(k=>list.find(x=>x[0]===k)).filter(Boolean);
   const resto = list.filter(x=>!visibles.includes(x));
-  const enResto = resto.some(x=>x[0]===S.tab), pendResto = resto.reduce((n,x)=>n+(Number(x[2])||0),0);
-  const bn = ([k,l,b]) => `<button class="bn" data-a="tab" data-v="${k}" aria-current="${S.tab===k}"><span class="ico">${svg(k)}</span>${CORTO[k]||l}${b?`<span class="badge">${b}</span>`:""}</button>`;
+  const enResto = resto.some(x=>x[0]===S.tab || (x[0]==="mensajes" && (S.tab==="notas" || S.tab==="consultas"))), pendResto = resto.reduce((n,x)=>n+(Number(x[2])||0),0);
+  const esMsg = S.tab==="notas" || S.tab==="consultas", dest = k => k==="mensajes" ? (S.msgUlt || "notas") : k, cur = k => k==="mensajes" ? esMsg : S.tab===k;
+  const bn = ([k,l,b]) => `<button class="bn" data-a="tab" data-v="${dest(k)}" aria-current="${cur(k)}"><span class="ico">${svg(k)}</span>${CORTO[k]||l}${b?`<span class="badge">${b}</span>`:""}</button>`;
   const chat = S.tab==="notas" && !S.vista && !S.menu && (rol==="admin" || rol==="cocina") ? barraChat(rol) : "";
-  return `${S.menu && resto.length ? `<div class="velo" data-a="menu"></div><div class="hoja" role="dialog" aria-label="Más secciones"><div class="hoja-in"><p class="hoja-t">Más secciones</p><div class="hoja-g">${resto.map(([k,l,b])=>`<button class="hb" data-a="tab" data-v="${k}" aria-current="${S.tab===k}">${svg(k)}${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</div></div></div>` : ""}
+  return `${S.menu && resto.length ? `<div class="velo" data-a="menu"></div><div class="hoja" role="dialog" aria-label="Más secciones"><div class="hoja-in"><p class="hoja-t">Más secciones</p><div class="hoja-g">${resto.map(([k,l,b])=>`<button class="hb" data-a="tab" data-v="${dest(k)}" aria-current="${cur(k)}">${svg(k)}${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("")}</div></div></div>` : ""}
   <nav class="bnav no-print" aria-label="Secciones">${chat}<div class="bnav-in">${visibles.map(bn).join("")}${resto.length ? `<button class="bn" data-a="menu" aria-current="${enResto || !!S.menu}" aria-expanded="${!!S.menu}"><span class="ico">${svg("mas")}</span>Más${pendResto?`<span class="badge">${pendResto}</span>`:""}</button>` : ""}</div></nav>`;
 }
 function tabs(list){
@@ -987,7 +1072,6 @@ function parteHTML(f, anon, sinAvisos){
 }
 function parteView(){
   const f = S.parteFecha, anon = verAnon();
-  if (!S.vista && S.miRol==="cocina" && avisosParteSinLeer("cocina").some(m=>m.fecha===f)) setTimeout(()=>marcarLeidos("cocina", m=>m.fecha===f), 0);
   return `<div class="weeknav no-print">
       <button class="arrow" data-a="parteday" data-v="-1" aria-label="Día anterior">‹</button>
       <h2>${fmtLong(f)}</h2>
@@ -1004,7 +1088,7 @@ function parteView(){
 function avisosParteAdmin(f){
   const l = S.mensajes.filter(m=>m.de==="admin" && m.fecha===f), ex = extrasDe(f), exNota = ex.nota && notaParaDe(ex)!=="residentes" ? ex.nota : "";
   const pasado = f < today();
-  return `<div class="av-parte no-print"><h3 style="margin:0 0 4px">Avisos para este parte</h3><p class="muted small" style="margin:0">La administración los ve arriba del parte, en el PDF y en la impresión, y le salta un aviso. Usa iniciales, no nombres.</p>
+  return `<div class="av-parte no-print"><h3 style="margin:0 0 4px">Avisos para este parte</h3><p class="muted small" style="margin:0">La administración los ve arriba del parte, en el PDF y en la impresión, y le llegan también a sus Mensajes. Usa iniciales, no nombres.</p>
     ${l.map(m=>`<div class="res"><div><div class="small muted">${esc(hora(m.ts))}${m.leido?" · Leído":" · Sin leer"}</div><div>${esc(m.texto).replace(/\n/g,"<br>")}</div></div>${S.drafts.ntDel===m.id ? `<div class="row"><button class="link" style="color:var(--danger)" data-a="nt-del" data-id="${m.id}">Sí, quitar</button><button class="link" data-a="nt-del-no">No</button></div>` : `<button class="link" data-a="nt-del-ask" data-id="${m.id}">Quitar</button>`}</div>`).join("")}
     ${exNota ? `<div class="res"><div><div class="small muted">Nota de «Comensales extra» (se cambia allí)</div><div>${esc(exNota).replace(/\n/g,"<br>")}</div></div></div>` : ""}
     ${!l.length && !exNota ? `<p class="muted small" style="margin:8px 0 0">Este parte no tiene avisos.</p>` : ""}
@@ -1922,20 +2006,27 @@ function adscritosView(){
 
 /* ---------- Guía de uso por perfil (menú del círculo) ---------- */
 /* ---------- Novedades: se enseñan una vez a cada usuario tras actualizar ---------- */
-const NOV_ID = "2026.11.07";
-function novedadesDe(rol){
+/* Lista de novedades por versión. A cada usuario se le enseñan las que no ha visto y le afectan. */
+const NOVEDADES = [
+  {id:"2026.11.07b", de: rol => novedades1(rol)},
+  {id:"2026.11.08", de: rol => PUSH_ROLES.includes(rol) ? [["Avisos en el móvil", [ "Ahora la aplicación puede avisarte en el móvil aunque la tengas cerrada.", "Actívalo en el "+"<b>círculo de tus iniciales → «Avisos en el móvil»</b>. En iPhone hace falta tener la aplicación instalada en la pantalla de inicio.", "Te avisará de: "+queAvisa(rol).join("; ")+". Puede tardar unos minutos." ]]] : []}
+];
+const NOV_ID = NOVEDADES[NOVEDADES.length-1].id;
+function novedadesDe(rol, desde){ return NOVEDADES.filter(n=>!desde || n.id > desde).flatMap(n=>n.de(rol)); }
+function novedades1(rol){
   const b = s => "<b>"+s+"</b>";
   const JUEGO = ["Juego del día: juegos nuevos", [ "Se van las Parejas y el Mini sudoku. Siguen la Palabra del día y el Código secreto.", "Entran el "+b("Sudoku 9×9")+" (con botón «Notas» para apuntar posibles números), el "+b("Nonograma")+" (descubrir un dibujo con las pistas de filas y columnas) y "+b("Reinas")+" (una por fila, columna y color, sin tocarse).", "Cambia cada lunes. En los tres nuevos puedes equivocarte 3 veces: 6 puntos sin errores, 4 con uno y 2 con dos." ]];
   if (rol==="admin") return [
     ["Panel", [ "En "+b("Más → Panel")+": resumen del mes con medias y comparación, gráficos, turnos, regímenes, evolución de 6 meses, servicios por persona y lo pendiente.", b("Toca un día o una columna")+" de los gráficos para ver sus cifras sin mirar los ejes.", b("PDF, Excel y correo")+" sin nombres; el «Excel por persona» sí lleva nombres." ]],
-    ["Notas: un chat con la administración", [ "Escribe abajo, en la barra, a cualquier hora.", b("Toca un mensaje")+" para responderlo citándolo, o para borrarlo. Abajo puedes borrar todas las de un día o hasta una fecha." ]],
-    ["Avisos para un parte", [ "Ahora se ponen en "+b("Parte del día")+", en el recuadro «Avisos para este parte». La administración los ve en ese parte (y en el PDF) y le salta un aviso.", "Ya no se mezclan con la conversación de Notas." ]],
+    ["Mensajes: dos apartados", [ "Un solo botón, "+b("Mensajes")+", con dos pestañas arriba: "+b("Administración")+" (vuestro chat con ellas, antes «Notas») y "+b("Residentes")+". Cada una lleva su número de pendientes.", "Cuando la administración escribe, sale un aviso arriba de la pantalla y un número en Mensajes." ]],
+    ["Chat con la administración", [ "Escribe abajo, en la barra, a cualquier hora.", b("Toca un mensaje")+" para responderlo citándolo, o para borrarlo. Abajo puedes borrar todas las de un día o hasta una fecha." ]],
+    ["Avisos para un parte", [ "Se ponen en "+b("Parte del día")+", en el recuadro «Avisos para este parte». La administración los ve en ese parte (y en el PDF) y además le llegan a sus Mensajes, marcados con 📌." ]],
     ["Mensajes de residentes", [ "Puedes borrar una conversación o todas las de una fecha (o anteriores)." ]],
     JUEGO ];
   if (rol==="cocina") return [
     ["Resumen del mes", [ "Nueva sección en la barra de abajo: desayunos, comidas (y en bolsa), cenas, tuppers y bolsas de comida de cada día y del mes, con medias y gráficos.", b("Toca un día o una columna")+" de los gráficos para ver sus cifras.", "Con "+b("PDF, Excel o Enviar por correo")+" lo tenéis para el cierre de mes. Con las flechas veis los meses anteriores." ]],
-    ["Notas: un chat con los administradores", [ "Escribid abajo, en la barra, cuando queráis: os pueden responder a cualquier hora.", b("Tocad un mensaje")+" para responderlo citándolo." ]],
-    ["Avisos para el parte", [ "Los avisos de los administradores para un día salen "+b("arriba de ese parte")+". Cuando llega uno nuevo os sale un aviso y un número en «Parte»." ]] ];
+    ["Mensajes: un chat con los administradores", [ "El botón «Notas» pasa a llamarse "+b("Mensajes")+". Escribid abajo, en la barra, cuando queráis: os pueden responder a cualquier hora.", b("Tocad un mensaje")+" para responderlo citándolo." ]],
+    ["Avisos para el parte", [ "Los avisos de los administradores para un día salen "+b("arriba de ese parte")+" y también os llegan a Mensajes, marcados con 📌. Desde ahí, tocándolos, podéis ir a ese parte." ]] ];
   if (rol==="residente") return [JUEGO];
   return [];
 }
@@ -1957,9 +2048,9 @@ function guiaDe(rol){
     ["Parte del día", [ "Recuentos por turno, cena, desayuno y para llevar, y el "+b("detalle por persona")+" con nombres.", b("Toca a una persona")+" para corregir lo que tiene marcado, aunque el parte esté cerrado. Si lo está, se avisa a la administración con una nota automática (con iniciales).", b("Descargar PDF")+" e "+b("Imprimir")+" salen siempre sin nombres, como los ve la administración." ]],
     ["Comensales extra y adscritos", [ "En "+b("Extras")+" sumas invitados con + y − en cada comida, bolsas con su hora y una nota (para la administración, los residentes o todos).", "Arriba aparecen las "+b("propuestas del jefe de adscritos")+": no cuentan en el parte hasta que pulsas "+b("Aprobar")+"." ]],
     ["Panel", [ "Resumen de cada mes: desayunos, comidas, cenas, tupper y bolsa, con medias diarias y comparación con el mes anterior.", "Gráficos día a día y por día de la semana, comida por turnos, regímenes, evolución de los últimos meses y "+b("servicios por persona")+" (con nombres, solo para administradores).", "Arriba, lo pendiente: mensajes sin resolver, eventos y propuestas de adscritos.", b("PDF, Excel y correo")+" salen sin nombres; el «Excel por persona» sí lleva nombres." ]],
-    ["Notas con la administración", [ "Funcionan como un "+b("chat")+": escribe abajo, en la barra, a cualquier hora.", b("Toca un mensaje")+" para responderlo citándolo, o para borrarlo. Abajo puedes borrar todas las de un día o anteriores a una fecha.", "Escribe siempre con "+b("iniciales")+": la administración no debe ver nombres." ]],
-    ["Avisos para un parte", [ "En "+b("Parte del día")+", elige el día y escribe en «Avisos para este parte». La administración lo ve arriba de ese parte, en el PDF y en la impresión.", "Ahí mismo puedes quitarlos. Las correcciones de un parte cerrado también dejan ahí su aviso automático." ]],
-    ["Mensajes de residentes", [ "Respóndeles ahí mismo. Con "+b("«Pasar a la administración»")+" el texto se copia a una nota.", "Se ve quién lo ha leído. Marca "+b("«Resuelto»")+" cuando esté solucionado.", "Puedes "+b("borrar una conversación")+" o todas las de una fecha (o anteriores). Además, se borran solas al mes." ]],
+    ["Mensajes con la administración", [ "En "+b("Mensajes → Administración")+". Funcionan como un "+b("chat")+": escribe abajo, en la barra, a cualquier hora.", b("Toca un mensaje")+" para responderlo citándolo, o para borrarlo. Abajo puedes borrar todas las de un día o anteriores a una fecha.", "Escribe siempre con "+b("iniciales")+": la administración no debe ver nombres." ]],
+    ["Avisos para un parte", [ "En "+b("Parte del día")+", elige el día y escribe en «Avisos para este parte». La administración lo ve arriba de ese parte, en el PDF y en la impresión, y le llega también a sus Mensajes.", "Ahí mismo puedes quitarlos. Las correcciones de un parte cerrado también dejan ahí su aviso automático." ]],
+    ["Mensajes de residentes", [ "En "+b("Mensajes → Residentes")+". Respóndeles ahí mismo. Con "+b("«Pasar a la administración»")+" el texto se copia a una nota.", "Se ve quién lo ha leído. Marca "+b("«Resuelto»")+" cuando esté solucionado.", "Puedes "+b("borrar una conversación")+" o todas las de una fecha (o anteriores). Además, se borran solas al mes." ]],
     ["Avisos a residentes", [ "Un mensaje para todos los residentes, visible hasta la fecha que elijas. La administración no lo ve." ]],
     ["Calendario", [ "Añade, "+b("edita")+" y borra eventos: de un día (con hora si quieres), de varios días, o que "+b("se repiten")+" cada año, mes o semana.", "Arriba aparecen las propuestas de los residentes para aprobar o rechazar." ]],
     ["Cumpleaños", [ "Ordenados por meses, con la edad que cumple cada uno y sus gustos. Puedes pedir a alguien que actualice sus gustos." ]],
@@ -1974,8 +2065,8 @@ function guiaDe(rol){
     ["Resumen del mes", [ "Cuántos desayunos, comidas (y cuántas en bolsa), cenas, tuppers y bolsas de comida ha habido cada día y en total, con medias y gráficos.", "Cada fila es el día en que se sirve: el desayuno y lo que se lleva se piden la víspera.", "Con "+b("PDF")+", "+b("Excel")+" o "+b("Enviar por correo")+" lo tenéis para el resumen mensual. Con las flechas veis los meses anteriores." ]],
     ["Cumpleaños", [ "Ordenados por meses, con iniciales, edad que cumple y gustos. Podéis pedir que alguien actualice sus gustos." ]],
     ["Calendario", [ "Eventos y cumpleaños de cada mes. Toca un día para verlo. Podéis "+b("añadir eventos")+" y editar o borrar los vuestros." ]],
-    ["Notas", [ "Un chat con los administradores: escribid abajo, en la barra, cuando queráis. Tocad un mensaje para responderlo citándolo.", "Cuando os escriban, saldrá un número en Notas." ]],
-    ["Avisos para el parte", [ "Los avisos de los administradores para un día concreto salen arriba de ese parte. Cuando llega uno nuevo, os sale un aviso y un número en «Parte»." ]]
+    ["Mensajes", [ "Un chat con los administradores: escribid abajo, en la barra, cuando queráis. Tocad un mensaje para responderlo citándolo.", "Cuando os escriban, saldrá un número en Mensajes." ]],
+    ["Avisos para el parte", [ "Los avisos de los administradores para un día concreto salen arriba de ese parte y también os llegan a Mensajes, marcados con 📌." ]]
   ];
   const ADS = [
     ["Los martes", [ "En "+b("Adscritos")+" ves los próximos martes. Indica con "+b("+ y −")+" cuántos adscritos comen en "+b("turno normal")+" y en "+b("2.º turno")+".", "Puedes cambiarlo hasta la hora límite de ese martes." ]],
@@ -1999,10 +2090,11 @@ function modalHTML(){
       (partidas.length ? partidas.map(([id,x])=>`<div class="res"><div><strong>${esc(fmtLong(x.fecha))}</strong><div class="small muted">${esc((JUEGOS[tipoDe(x)]||{nombre:"Juego"}).nombre)}: ${x.estado==="ganado" ? "lo consiguió" : x.estado==="perdido" ? "no lo consiguió" : "sin terminar"}. ${x.puntos||0} punto${(x.puntos||0)===1?"":"s"}.</div></div>
         ${S.drafts.wlDel===id ? `<div class="row"><button class="btn danger" data-a="wl-del" data-id="${id}">Sí, borrar</button><button class="btn ghost" data-a="wl-del-no">No</button></div>` : `<button class="link" style="color:var(--danger)" data-a="wl-del-ask" data-id="${id}">Borrar</button>`}</div>`).join("") : `<p class="muted">No tiene partidas esta semana.</p>`);
   }
+  if (m.tipo==="push"){ tit = "Avisos en el móvil"; cuerpo = pushModalHTML(m.rol); }
   if (m.tipo==="nov"){
     tit = "Novedades de la aplicación";
-    cuerpo = `<p class="muted" style="margin-top:0">Esto es lo que cambia para ti en esta versión.</p>` + novedadesDe(m.rol).map(([h, l])=>`<div class="guia-s"><h3 style="margin:14px 0 6px;color:var(--primary)">${esc(h)}</h3><ul class="guia-l">${l.map(x=>`<li>${x}</li>`).join("")}</ul></div>`).join("")
-      + `<div class="row" style="margin-top:6px"><button class="btn" data-a="modal-cerrar">Entendido</button></div><p class="muted small" style="margin:12px 0 0">Puedes volver a verlo en el círculo de tus iniciales → «Novedades».</p>`;
+    cuerpo = `<p class="muted" style="margin-top:0">${m.desde ? "Esto es lo nuevo para ti desde la última vez." : "Novedades recientes que te afectan."}</p>` + novedadesDe(m.rol, m.desde).map(([h, l])=>`<div class="guia-s"><h3 style="margin:14px 0 6px;color:var(--primary)">${esc(h)}</h3><ul class="guia-l">${l.map(x=>`<li>${x}</li>`).join("")}</ul></div>`).join("")
+      + `<div class="row" style="margin-top:6px">${PUSH_ROLES.includes(m.rol) && estadoPush()!=="on" ? `<button class="btn" data-a="push-abrir">Activar avisos en el móvil</button><button class="btn ghost" data-a="modal-cerrar">Entendido</button>` : `<button class="btn" data-a="modal-cerrar">Entendido</button>`}</div><p class="muted small" style="margin:12px 0 0">Puedes volver a verlo en el círculo de tus iniciales → «Novedades».</p>`;
   }
   if (m.tipo==="guia"){
     const g = guiaDe(m.rol), ab = S.guiaAb;
@@ -2053,7 +2145,7 @@ function avisosAdminView(){
 }
 
 /* --- Notas entre administración y administrador --- */
-function unread(role){ return S.mensajes.filter(m=>m.para===role && !m.leido && !m.fecha).length; }
+function unread(role){ return S.mensajes.filter(m=>m.para===role && !m.leido).length; }
 function diaChat(f){ const h = today(); return f===h ? "Hoy" : f===addDays(h,-1) ? "Ayer" : fmtLong(f); }
 const hhmm = t => { const d = new Date(t||0); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
 /* Formulario para borrar en bloque por fecha (notas y mensajes de residentes) */
@@ -2066,13 +2158,13 @@ function borrarPorFechaHTML(pre, que, n){
     ${S.drafts[pre+"_ok"] ? `<div class="row"><button class="btn danger" data-a="bf-do" data-f="${pre}">Sí, borrar ${n}</button><button class="btn ghost" data-a="bf-no" data-f="${pre}">Cancelar</button></div>` : `<button class="btn danger" data-a="bf-ask" data-f="${pre}" ${n?"":"disabled"}>Borrar</button>`}</details>`;
 }
 const enFecha = (ts, f, modo) => { const d = iso(new Date(ts||0)); return modo==="dia" ? d===f : d<=f; };
-function notasDeChat(role){ const otro = role==="admin" ? "cocina" : "admin"; return S.mensajes.filter(m=>!m.fecha && ((m.de===role&&m.para===otro)||(m.de===otro&&m.para===role))); }
+function notasDeChat(role){ const otro = role==="admin" ? "cocina" : "admin"; return S.mensajes.filter(m=>(m.de===role&&m.para===otro)||(m.de===otro&&m.para===role)); }
 const avisosParteSinLeer = role => S.mensajes.filter(m=>m.para===role && m.fecha && !m.leido);
 function quienNota(m){ return m.de==="admin" ? "Administradores" : "Administración"; }
 function notasView(role){
   const esA = role==="admin";
   const cargo = resById(principalHoy()) ? nombreVis(resById(principalHoy())) : "";
-  const aviso = `<p class="muted small" style="margin-top:0">${role==="cocina" ? `Lo que escribís lo ven todos los administradores${cargo?". Hoy está al cargo "+esc(cargo):""}.` : "Conversación con la administración, a cualquier hora. Usa siempre iniciales: lo ven tal cual. Los avisos para un parte concreto se ponen en «Parte del día»."} Toca un mensaje para responderlo.</p>`;
+  const aviso = `<p class="muted small" style="margin-top:0">${role==="cocina" ? `Lo que escribís lo ven todos los administradores${cargo?". Hoy está al cargo "+esc(cargo):""}. Aquí os llegan también los avisos para el parte (📌).` : "Solo con la administración (los residentes no lo ven). Usa siempre iniciales: lo ven tal cual. Los avisos para un parte concreto se ponen en «Parte del día» y también llegan aquí."} Toca un mensaje para responderlo.</p>`;
   const todas = notasDeChat(role), list = todas.slice(-80), ids = new Set(todas.map(m=>m.id));
   let dia = "", html = "";
   list.forEach(m=>{
@@ -2082,7 +2174,9 @@ function notasView(role){
     const cita = m.resp ? `<button class="cita" data-a="ir-nota" data-id="${esc(m.resp.id)}"><b>${esc(m.resp.de==="admin"?"Administradores":"Administración")}</b>${esc(String(m.resp.t||"").slice(0,140))}${String(m.resp.t||"").length>140?"…":""}${ids.has(m.resp.id)?"":' <span class="muted">(ya borrado)</span>'}</button>` : "";
     const acc = sel && !S.vista ? `<div class="chat-acc">${S.drafts.ntDel===m.id ? `<span>¿Borrar para todos?</span><button class="link" style="color:var(--danger)" data-a="nt-del" data-id="${m.id}">Sí, borrar</button><button class="link" data-a="nt-del-no">No</button>`
       : `<button class="link" data-a="resp-set" data-id="${m.id}">↩ Responder</button>${esA ? `<button class="link" style="color:var(--danger)" data-a="nt-del-ask" data-id="${m.id}">Borrar</button>` : ""}`}</div>` : "";
-    html += `<div class="note ${mia?"mine":""} ${sel?"elegida":""}" id="n-${m.id}" data-a="nota-sel" data-id="${m.id}"><div class="meta">${quienNota(m)}, ${hhmm(m.ts)}${mia?(m.leido?" · Leída":" · Sin leer"):""}</div>${cita}${esc(m.texto).replace(/\n/g,"<br>")}${acc}</div>`;
+    const ap = m.fecha ? `<div class="chat-ap">📌 Aviso para el parte del ${esc(fmtLong(m.fecha).toLowerCase())}</div>` : "";
+    const verParte = m.fecha && sel ? `<button class="link" data-a="parte-ir" data-f="${m.fecha}">Ver el parte</button>` : "";
+    html += `<div class="note ${mia?"mine":""} ${m.fecha?"es-ap":""} ${sel?"elegida":""}" id="n-${m.id}" data-a="nota-sel" data-id="${m.id}"><div class="meta">${quienNota(m)}, ${hhmm(m.ts)}${mia?(m.leido?" · Leída":" · Sin leer"):""}</div>${ap}${cita}${esc(m.texto).replace(/\n/g,"<br>")}${verParte ? `<div class="chat-acc">${verParte}</div>` : ""}${acc}</div>`;
   });
   const borrar = esA && !S.vista ? borrarPorFechaHTML("nb", "notas", todas.filter(m=>enFecha(m.ts, draft("nb_f", today()), draft("nb_m","hasta"))).length) : "";
   return aviso + (todas.length>list.length ? `<p class="muted small" style="text-align:center">Se muestran las ${list.length} notas más recientes de ${todas.length}.</p>` : "")
@@ -2131,6 +2225,19 @@ function usuariosView(){
       <div class="row">${rolDe(r)!=="admin"||can||r.id===S.session.uid?`<button class="link" data-a="res-edit" data-id="${r.id}">Editar</button>`:""}${r.id!==S.session.uid&&!esTitular(r)&&(rolDe(r)!=="admin"||can)?`<button class="link" style="color:var(--danger)" data-a="res-del-ask" data-id="${r.id}">Eliminar</button>`:""}</div>
       ${S.drafts.delId===r.id ? `<div style="grid-column:1/-1;background:var(--danger-soft);border-radius:10px;padding:10px 12px;margin-top:6px"><p style="margin:0 0 8px;font-weight:700;color:var(--danger)">¿Eliminar a ${esc(r.nombre||"")} y todos sus datos?</p><p class="small" style="margin:0 0 10px">Se borran su acceso, su plantilla, sus comidas apuntadas, su fecha de nacimiento y gustos, sus partidas y sus mensajes. No se puede deshacer.</p><div class="row"><button class="btn danger" data-a="res-del" data-id="${r.id}">Sí, eliminar</button><button class="btn ghost" data-a="res-del-no">Cancelar</button></div></div>` : ""}
     </div>`).join("") : `<div class="empty">Añade usuarios para que puedan empezar a usar la aplicación.</div>`);
+}
+function avisosAjustesHTML(){
+  const me = resById(S.session.uid), c = S.config||{}, rb = S.robot;
+  if (!puedeGestionarAdmins(me)) return "";
+  const hace = t => { const m = Math.round((Date.now()-t)/60000); return m<1 ? "hace menos de un minuto" : m<60 ? "hace "+m+" min" : m<1440 ? "hace "+Math.round(m/60)+" h" : "hace "+Math.round(m/1440)+" días"; };
+  const est = !rb ? `<button class="link" data-a="robot-ver">Comprobar el robot</button>` : rb.error ? `<span class="err">No se puede leer el estado (¿reglas publicadas?).</span> <button class="link" data-a="robot-ver">Reintentar</button>`
+    : rb.nunca ? `<span class="muted">El robot todavía no ha funcionado nunca.</span> <button class="link" data-a="robot-ver">Volver a comprobar</button>`
+    : `<span class="${Date.now()-rb.ultimo > 45*60000 ? "err" : ""}">Última revisión: ${esc(hace(rb.ultimo))}. Avisos entregados en total: ${rb.avisosEnviados||0}.</span> <button class="link" data-a="robot-ver">Actualizar</button>`;
+  return `<h2 style="margin:28px 0 8px">Avisos al móvil</h2>
+    <p class="muted" style="margin-top:0">Los envía un robot gratuito de GitHub cada pocos minutos. Cada persona los activa en su móvil desde el círculo de sus iniciales.</p>
+    <div class="field"><label for="cf_vapid">Clave de avisos web (Firebase → Cloud Messaging → certificados web push)</label><input class="input" id="cf_vapid" data-draft="cf_vapid" value="${esc(draft("cf_vapid", c.vapid||""))}" placeholder="Empieza por B… y es muy larga" autocomplete="off"></div>
+    <div class="row" style="margin-bottom:10px"><button class="btn ghost" data-a="cfg-vapid">Guardar clave</button><span class="small ${c.vapid?"":"err"}">${c.vapid ? "Clave guardada." : "Falta la clave."}</span></div>
+    <p class="small">${est}</p>`;
 }
 function historialHTML(){
   const c = S.config||{}, auto = !!c.limpiezaAuto, lim = draft("hs_fecha", addDays(today(),-91));
@@ -2191,7 +2298,7 @@ function ajustesView(){
       <div class="field"><label for="exc_f">Día</label><input class="input" type="date" id="exc_f" data-draft="exc_f" min="${today()}" value="${esc(draft("exc_f", today()))}" style="max-width:200px"></div>
       <div class="field"><label for="exc_h">Hora límite ese día</label><input class="input" type="time" id="exc_h" data-draft="exc_h" value="${esc(draft("exc_h","11:00"))}" style="max-width:150px"></div>
       <button class="btn ghost" data-a="exc-add" style="margin-bottom:14px">Añadir día especial</button>
-    </div>` + proteccionHTML() + historialHTML() + deleg;
+    </div>` + avisosAjustesHTML() + proteccionHTML() + historialHTML() + deleg;
 }
 function viewApp(uReal){
   const u = S.vista ? {id:"vista", nombre:"Administración", rol:"cocina", comensal:false, activo:true} : uReal;
@@ -2203,8 +2310,8 @@ function viewApp(uReal){
   if (rol==="residente") t.push(["calendario","Calendario","",G1],["consultas","Mensajes", consultasSinLeer("residente")||"",G1]);
   if (rol!=="cocina" && rol!=="adscritos") t.push(["datos","Mis datos","",G1]);
   if (rol==="adscritos"){ t.length = 0; t.push(["adscritos","Adscritos","",G2]); }
-  if (rol==="cocina") t.push(["parte","Parte del día", avisosParteSinLeer("cocina").length||"",G2],["resumen","Resumen del mes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Notas", unread("cocina")||"",G2]);
-  if (rol==="admin") t.push(["parte","Parte del día","",G2],["panel","Panel","",G2],["extras","Comensales extra", adsPendientes().length||"",G2],["notas","Notas", unread("admin")||"",G2],["consultas","Mensajes de residentes", consultasSinLeer("admin")||"",G2],["avisos","Avisos a residentes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario", S.eventos.filter(e=>e.estado==="pendiente").length||"",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
+  if (rol==="cocina") t.push(["parte","Parte del día","",G2],["resumen","Resumen del mes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Mensajes", unread("cocina")||"",G2]);
+  if (rol==="admin") t.push(["parte","Parte del día","",G2],["panel","Panel","",G2],["extras","Comensales extra", adsPendientes().length||"",G2],["notas","Mensajes con la administración", unread("admin")||"",G2],["consultas","Mensajes de residentes", consultasSinLeer("admin")||"",G2],["avisos","Avisos a residentes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario", S.eventos.filter(e=>e.estado==="pendiente").length||"",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
   if (!t.length) return cabecera(u.nombre||"") + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
   if (!t.find(x=>x[0]===S.tab)) S.tab = rol==="adscritos" ? "adscritos" : esComensal(u) ? "semana" : (t.find(x=>x[0]==="parte")||t[0])[0];
   let main;
@@ -2224,11 +2331,10 @@ function viewApp(uReal){
   else if (S.tab==="panel") main = panelView();
   else if (S.tab==="usuarios") main = usuariosView();
   else main = ajustesView();
-  const nuevas = !S.vista && (rol==="admin"||rol==="cocina") ? S.mensajes.filter(m=>m.para===rol && !m.leido && !m.fecha) : [];
-  const avParte = !S.vista && rol==="cocina" ? avisosParteSinLeer("cocina").filter(m=>!(S.tab==="parte" && S.parteFecha===m.fecha)).sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))) : [];
-  const bannerParte = avParte.length ? `<div class="alert no-print" role="status"><strong>${avParte.length===1 ? "Aviso nuevo de los administradores" : avParte.length+" avisos nuevos de los administradores"} para el parte del ${esc(fmtLong(avParte[0].fecha).toLowerCase())}.</strong><p style="margin:6px 0">${esc(avParte[0].texto.slice(0,140))}${avParte[0].texto.length>140?"…":""}</p><button class="btn" data-a="parte-ir" data-f="${avParte[0].fecha}">Ver el parte</button></div>` : "";
-  const banner = nuevas.length && S.tab!=="notas" ? `<div class="alert no-print" role="status"><strong>${nuevas.length===1?"Tienes una nota nueva":"Tienes "+nuevas.length+" notas nuevas"} de ${rol==="admin"?"la administración":"los administradores"}.</strong>
-      <p style="margin:6px 0">${esc(nuevas[nuevas.length-1].texto.slice(0,140))}${nuevas[nuevas.length-1].texto.length>140?"…":""}</p><button class="btn" data-a="tab" data-v="notas">Leer y responder</button></div>` : "";
+  const nuevas = !S.vista && (rol==="admin"||rol==="cocina") ? S.mensajes.filter(m=>m.para===rol && !m.leido) : [];
+  const bannerParte = "";
+  const banner = nuevas.length && S.tab!=="notas" ? `<div class="alert no-print" role="status"><strong>${nuevas.length===1?"Tienes un mensaje nuevo":"Tienes "+nuevas.length+" mensajes nuevos"} de ${rol==="admin"?"la administración":"los administradores"}.</strong>
+      <p style="margin:6px 0">${esc(nuevas[nuevas.length-1].texto.slice(0,140))}${nuevas[nuevas.length-1].texto.length>140?"…":""}</p><button class="btn" data-a="tab" data-v="notas">${rol==="admin" ? "Ir a Mensajes con la administración" : "Leer en Mensajes"}</button></div>` : "";
   const avsAdm = rol==="residente" && !S.vista ? (S.avisos||[]).filter(a=>!S.vistos.includes("av|"+a.id)) : [];
   const avs = esComensal(u) ? avisosResidente().filter(x=>!x.visto) : [];
   const bannerAdm = avsAdm.map(a=>`<div class="alert no-print" role="status" style="border-left-color:var(--primary)"><strong>Aviso de los administradores</strong> <span class="muted small">${esc(hora(a.ts))}</span><p style="margin:6px 0">${esc(a.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="av|${esc(a.id)}">Entendido</button></div>`).join("");
@@ -2237,10 +2343,12 @@ function viewApp(uReal){
     ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div></div>`
     : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin", ROLES[rol]) + panelPw();
   if (!S.vista && !S.modal && !S.novVisto){ S.novVisto = true; let visto = ""; try { visto = localStorage.getItem("mizar.novedades")||""; } catch(e){}
-    if (visto!==NOV_ID && novedadesDe(rol).length){ S.modal = {tipo:"nov", rol}; }
+    if (visto!==NOV_ID && novedadesDe(rol, visto).length){ S.modal = {tipo:"nov", rol, desde:visto}; }
     try { localStorage.setItem("mizar.novedades", NOV_ID); } catch(e){} }
   const actual = t.find(x=>x[0]===S.tab);
-  return modalHTML() + cab + (actual ? `<h2 class="sec-t">${actual[1]}</h2>` : "") + (S.vista ? "" : avisoDatos(u)) + bannerParte + banner + bannerAv + main + (t.length>1 ? navegacion(t, rol, esComensal(u)) : "");
+  const segMsg = rol==="admin" && !S.vista && (S.tab==="notas" || S.tab==="consultas") ? (()=>{ const nA = unread("admin"), nR = consultasSinLeer("admin");
+    return `<h2 class="sec-t">Mensajes</h2><div class="msg-seg no-print" role="tablist"><button data-a="tab" data-v="notas" aria-current="${S.tab==="notas"}">Administración${nA?`<span class="badge">${nA}</span>`:""}<small>con la administración</small></button><button data-a="tab" data-v="consultas" aria-current="${S.tab==="consultas"}">Residentes${nR?`<span class="badge">${nR}</span>`:""}<small>mensajes de residentes</small></button></div>`; })() : "";
+  return modalHTML() + cab + (segMsg || (actual ? `<h2 class="sec-t">${actual[1]}</h2>` : "")) + (S.vista ? "" : avisoDatos(u)) + bannerParte + banner + bannerAv + main + (t.length>1 ? navegacion(t, rol, esComensal(u)) : "");
 }
 
 /* ---------- PDF del parte ---------- */
@@ -2378,7 +2486,7 @@ function selDe(ctx){
   return norm(t);
 }
 function marcarLeidos(role, fn){
-  S.mensajes.filter(m=>m.para===role && !m.leido && (fn ? fn(m) : !m.fecha)).forEach(m=>{ m.leido=true; w(()=>S.db.doc("mensajes/"+m.id).update({leido:true})); });
+  S.mensajes.filter(m=>m.para===role && !m.leido && (fn ? fn(m) : true)).forEach(m=>{ m.leido=true; w(()=>S.db.doc("mensajes/"+m.id).update({leido:true})); });
 }
 const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
@@ -2447,7 +2555,7 @@ async function act(a, b){
       }
       S.entrando=false; break;
     }
-    case "logout": S.cuenta = false; S.drafts={}; S.openDay=null; S.openWd=null; await signOut(auth); return;
+    case "logout": if (tokenGuardado()){ try { await S.db.doc("tokens/"+tokenGuardado()).delete(); } catch(e){} } S.cuenta = false; S.drafts={}; S.openDay=null; S.openWd=null; await signOut(auth); return;
     case "vista-admon": S.cuenta = false; S.vista = true; S.tabReal = S.tab; S.tab = "parte"; S.verPw = false; S.menu = false; window.scrollTo(0,0); break;
     case "vista-salir": S.vista = false; S.tab = S.tabReal || null; S.menu = false; window.scrollTo(0,0); break;
     case "menu": S.menu = !S.menu; S.cuenta = false; break;
@@ -2526,7 +2634,7 @@ async function act(a, b){
       await w(()=>S.db.doc("consultas/"+S.cqOpen).update(upd));
       delete S.drafts.cq_resp; break;
     }
-    case "cq-pasar": S.drafts.msg = v; S.tab = "notas"; S.cqOpen = null; marcarLeidos("admin"); toast("Revisa el texto y pulsa «Enviar» para pasárselo a la administración."); window.scrollTo(0,0); break;
+    case "cq-pasar": S.drafts.msg = v; S.tab = "notas"; S.msgUlt = "notas"; S.cqOpen = null; marcarLeidos("admin"); toast("Revisa el texto y pulsa «Enviar» para pasárselo a la administración."); window.scrollTo(0,0); break;
     case "hs-auto": await w(()=>S.db.doc("config/general").update({limpiezaAuto: v==="true"})); toast(v==="true" ? "Borrado trimestral activado." : "Borrado trimestral desactivado."); return;
     case "hs-ask": if (!/^\d{4}-\d{2}-\d{2}$/.test(draft("hs_fecha", addDays(today(),-91)))){ toast("Elige una fecha."); return; } S.drafts.hs_confirm = true; break;
     case "hs-cancel": S.drafts.hs_confirm = false; break;
@@ -2550,6 +2658,7 @@ async function act(a, b){
     }
     case "tab":
       S.tab=v; S.editRes=null; S.menu=false; window.scrollTo(0,0);
+      if (v==="notas" || v==="consultas") S.msgUlt = v;
       if (v==="notas"){ S.irAbajo = true; if (!S.vista) marcarLeidos(rolDe(resById(S.session.uid))); }
       break;
     case "week": S.weekOffset = v==="0" ? 0 : S.weekOffset + Number(v); S.openDay=null; break;
@@ -2632,7 +2741,17 @@ async function act(a, b){
       toast("Aviso añadido al parte del "+fmtLong(f).toLowerCase()+"."); break;
     }
     case "parte-ir": S.parteFecha = b.dataset.f; S.tab = "parte"; S.menu = false; window.scrollTo(0,0); break;
-    case "nov": S.cuenta = false; S.modal = {tipo:"nov", rol: rolDe(resById(S.session.uid))}; break;
+    case "nov": S.cuenta = false; S.modal = {tipo:"nov", rol: rolDe(resById(S.session.uid)), desde:""}; break;
+    case "push-abrir": S.cuenta = false; S.modal = {tipo:"push", rol: rolDe(resById(S.session.uid))}; break;
+    case "push-on": await activarPush(); return;
+    case "push-off": await desactivarPush(); return;
+    case "cfg-vapid": {
+      const me = resById(S.session.uid); if (!puedeGestionarAdmins(me)) return;
+      const k = String(draft("cf_vapid", (S.config||{}).vapid||"")).trim();
+      if (k && !/^[A-Za-z0-9_-]{60,}$/.test(k)){ toast("Esa clave no parece correcta: cópiala entera, sin espacios."); return; }
+      await w(()=>S.db.doc("config/general").update({vapid:k})); toast(k ? "Clave guardada. Ya se pueden activar los avisos." : "Clave borrada."); break;
+    }
+    case "robot-ver": { try { const r = await getDoc(fdoc(fs, "config/robot")); S.robot = r.exists() ? r.data() : {nunca:true}; } catch(e){ S.robot = {error:true}; } break; }
     case "nt-del-ask": S.drafts.ntDel = b.dataset.id; break;
     case "nt-del-no": delete S.drafts.ntDel; break;
     case "nt-del": {
