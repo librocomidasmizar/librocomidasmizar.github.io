@@ -1,0 +1,87 @@
+name: Avisos al móvil
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: avisos
+  cancel-in-progress: false
+
+jobs:
+  avisos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Revisar mensajes y enviar avisos
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: |
+          npm init -y > /dev/null
+          npm install firebase-admin@12 --silent --no-audit --no-fund
+          cat > avisos.mjs <<'FIN'
+          import admin from "firebase-admin";
+          if (!process.env.FIREBASE_SA) { console.error("Falta el secreto FIREBASE_SA."); process.exit(1); }
+          admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SA)) });
+          const db = admin.firestore(), fcm = admin.messaging();
+          const WEB = "https://librocomidasmizar.github.io/";
+          const ahora = Date.now(), estRef = db.doc("config/robot");
+          const est = (await estRef.get()).data() || {};
+          // Mira desde la última revisión (con 3 minutos de margen) y nunca más de 3 horas atrás
+          const desde = Math.max((est.ultimo || ahora - 10 * 60000) - 3 * 60000, ahora - 3 * 3600000);
+          const yaEnviados = new Set(est.enviados || []), nuevos = [];
+          const [us, nom, tks] = await Promise.all([db.collection("usuarios").get(), db.collection("nombres").get(), db.collection("tokens").get()]);
+          const U = {}, N = {}, porPerfil = {};
+          us.forEach(d => U[d.id] = d.data());
+          nom.forEach(d => N[d.id] = d.data());
+          tks.forEach(d => { const p = d.data().perfil; (porPerfil[p] = porPerfil[p] || []).push(d.id); });
+          const activo = id => U[id] && U[id].activo !== false;
+          const conRol = r => Object.keys(U).filter(id => activo(id) && (U[id].rol || "residente") === r);
+          const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+          const fechaTxt = f => { const [y, m, d] = String(f).split("-").map(Number); return DIAS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] + " " + d; };
+          const envios = [];
+          const avisar = (clave, perfiles, titulo, cuerpo) => {
+            if (yaEnviados.has(clave)) return;
+            nuevos.push(clave);
+            envios.push({ perfiles, titulo, cuerpo: String(cuerpo || "").replace(/\s+/g, " ").trim().slice(0, 160) });
+          };
+          (await db.collection("mensajes").where("ts", ">", desde).get()).forEach(d => {
+            const m = d.data(), para = m.para === "cocina" ? conRol("cocina") : conRol("admin");
+            const tit = m.fecha ? "📌 Aviso para el parte del " + fechaTxt(m.fecha) : (m.de === "admin" ? "Mensaje de los administradores" : "Mensaje de la administración");
+            avisar("m:" + d.id, para, tit, m.texto);
+          });
+          (await db.collection("consultas").where("ultimoTs", ">", desde).get()).forEach(d => {
+            const c = d.data();
+            (c.mensajes || []).filter(x => (x.ts || 0) > desde).forEach(x => {
+              if (x.de === "residente") avisar("c:" + d.id + ":" + x.ts, conRol("admin"), "Mensaje de " + ((N[c.autor] || {}).nombre || "un residente"), x.texto);
+              else avisar("c:" + d.id + ":" + x.ts, [c.autor], "Te han respondido los administradores", x.texto);
+            });
+          });
+          (await db.collection("avisos").where("ts", ">", desde).get()).forEach(d => {
+            avisar("a:" + d.id, conRol("residente"), "Aviso de los administradores", d.data().texto);
+          });
+          (await db.collection("eventos").where("ts", ">", desde).get()).forEach(d => {
+            const e = d.data(); if (e.estado === "pendiente") avisar("e:" + d.id, conRol("admin"), "Propuesta de evento para el calendario", e.titulo);
+          });
+          (await db.collection("adscritos").where("ts", ">", desde).get()).forEach(d => {
+            const a = d.data(); if (a.estado === "pendiente") avisar("ad:" + d.id + ":" + a.ts, conRol("admin"), "Propuesta del jefe de adscritos", "Para el " + fechaTxt(a.fecha) + ". Revísala en Comensales extra.");
+          });
+          let entregas = 0; const malos = new Set();
+          const BORRAR = ["messaging/registration-token-not-registered", "messaging/invalid-registration-token", "messaging/invalid-argument"];
+          for (const e of envios) {
+            const tokens = [...new Set(e.perfiles.filter(activo).flatMap(p => porPerfil[p] || []))];
+            for (let i = 0; i < tokens.length; i += 500) {
+              const lote = tokens.slice(i, i + 500);
+              const r = await fcm.sendEachForMulticast({ tokens: lote, webpush: { notification: { title: e.titulo, body: e.cuerpo, icon: WEB + "icon-192.png" }, fcmOptions: { link: WEB } } });
+              r.responses.forEach((x, k) => { if (x.success) entregas++; else if (BORRAR.includes(x.error && x.error.code)) malos.add(lote[k]); else console.log("Error al enviar:", x.error && x.error.code); });
+            }
+          }
+          for (const t of malos) await db.doc("tokens/" + t).delete();
+          await estRef.set({ ultimo: ahora, enviados: [...yaEnviados, ...nuevos].slice(-300), avisosEnviados: (est.avisosEnviados || 0) + entregas });
+          console.log("Revisado. Avisos nuevos: " + envios.length + ". Entregas: " + entregas + ". Dispositivos dados de baja: " + malos.size + ".");
+          FIN
+          node avisos.mjs
