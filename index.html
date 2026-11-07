@@ -947,7 +947,11 @@ function vistaComensal(r){
   if (S.tab==="semana"){
     const lunes = addDays(mondayOf(today()), 7*S.weekOffset);
     const domingo = addDays(lunes,6);
-    const days = [0,1,2,3,4,5,6].map(i=>addDays(lunes,i));
+    const todos = [0,1,2,3,4,5,6].map(i=>addDays(lunes,i));
+    // En la semana actual se ocultan los días anteriores a hoy ya cerrados (hoy siempre se ve)
+    const pasados = S.weekOffset===0 ? todos.filter(f => f<today() && locked(f) && locked(addDays(f,-1))) : [];
+    const days = S.verPasados ? todos : todos.filter(f => !pasados.includes(f));
+    const rango = n => n===1 ? DIAS[wd(pasados[0])].toLowerCase() : DIAS[wd(pasados[0])].toLowerCase()+" a "+DIAS[wd(pasados[n-1])].toLowerCase();
     main = `
       <div class="weeknav">
         <button class="arrow" data-a="week" data-v="-1" aria-label="Semana anterior" ${S.weekOffset<=-2?"disabled":""}>‹</button>
@@ -955,6 +959,7 @@ function vistaComensal(r){
         <button class="arrow" data-a="week" data-v="1" aria-label="Semana siguiente" ${S.weekOffset>=8?"disabled":""}>›</button>
       </div>
       ${S.weekOffset!==0?`<p class="row"><button class="link" data-a="week" data-v="0">Volver a esta semana</button></p>`:""}
+      ${pasados.length ? `<p class="row"><button class="link" data-a="ver-pasados" aria-expanded="${!!S.verPasados}">${S.verPasados ? "Ocultar los días ya pasados" : "Ver "+(pasados.length===1?"el día ya pasado":"los "+pasados.length+" días ya pasados")+" ("+rango(pasados.length)+")"}</button></p>` : ""}
       <div class="days">${days.map(f=>{
         const ant = addDays(f,-1), A = efectiva(r.id, f), B = efectiva(r.id, ant), v = vistaDia("d:"+f);
         const lkA = locked(f), lkB = locked(ant), lk = lkA && lkB, isToday = f===today(), open = S.openDay===f;
@@ -2661,7 +2666,8 @@ async function act(a, b){
       if (v==="notas" || v==="consultas") S.msgUlt = v;
       if (v==="notas"){ S.irAbajo = true; if (!S.vista) marcarLeidos(rolDe(resById(S.session.uid))); }
       break;
-    case "week": S.weekOffset = v==="0" ? 0 : S.weekOffset + Number(v); S.openDay=null; break;
+    case "week": S.weekOffset = v==="0" ? 0 : S.weekOffset + Number(v); S.openDay=null; S.verPasados=false; break;
+    case "ver-pasados": S.verPasados = !S.verPasados; if (!S.verPasados && S.openDay && S.openDay<today()) S.openDay=null; break;
     case "openday": S.openDay = S.openDay===b.dataset.f ? null : b.dataset.f; break;
     case "openwd": S.openWd = S.openWd===Number(v) ? null : Number(v); break;
     case "set": {
