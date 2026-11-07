@@ -428,7 +428,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.08-1";
+const VERSION = "2026.11.08-2";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -2014,7 +2014,8 @@ function adscritosView(){
 /* Lista de novedades por versión. A cada usuario se le enseñan las que no ha visto y le afectan. */
 const NOVEDADES = [
   {id:"2026.11.07b", de: rol => novedades1(rol)},
-  {id:"2026.11.08", de: rol => PUSH_ROLES.includes(rol) ? [["Avisos en el móvil", [ "Ahora la aplicación puede avisarte en el móvil aunque la tengas cerrada.", "Actívalo en el "+"<b>círculo de tus iniciales → «Avisos en el móvil»</b>. En iPhone hace falta tener la aplicación instalada en la pantalla de inicio.", "Te avisará de: "+queAvisa(rol).join("; ")+". Puede tardar unos minutos." ]]] : []}
+  {id:"2026.11.08", de: rol => PUSH_ROLES.includes(rol) ? [["Avisos en el móvil", [ "Ahora la aplicación puede avisarte en el móvil aunque la tengas cerrada.", "Actívalo en el "+"<b>círculo de tus iniciales → «Avisos en el móvil»</b>. En iPhone hace falta tener la aplicación instalada en la pantalla de inicio.", "Te avisará de: "+queAvisa(rol).join("; ")+". Puede tardar unos minutos." ]]] : []},
+  {id:"2026.11.08b", de: rol => (rol==="residente" || rol==="admin") ? [["Mi semana: solo lo que queda", [ "En "+"<b>Semana</b>"+" ya no aparecen los días de esta semana que ya han pasado. "+"<b>Hoy sigue apareciendo</b>"+", aunque esté cerrado, para que compruebes lo que pediste.", "Si quieres verlos, toca "+"<b>«Ver los días ya pasados»</b>"+" encima de la lista." ]]] : []}
 ];
 const NOV_ID = NOVEDADES[NOVEDADES.length-1].id;
 function novedadesDe(rol, desde){ return NOVEDADES.filter(n=>!desde || n.id > desde).flatMap(n=>n.de(rol)); }
