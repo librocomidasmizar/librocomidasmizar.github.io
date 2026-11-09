@@ -356,16 +356,25 @@ details.plegable[open] summary{margin-bottom:10px}
 .cal-d{position:relative}
 .cal-ef{position:absolute;right:3px;bottom:3px;min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;border-radius:8px;background:var(--cena);color:var(--surface);font-size:10px;font-weight:700;line-height:16px;text-align:center}
 .tag.ef{background:color-mix(in srgb, var(--cena) 16%, transparent);color:var(--cena)}
-.ef-card{display:block;width:100%;text-align:left;background:var(--accent-soft);border:2px solid color-mix(in srgb, var(--accent) 35%, transparent);border-radius:14px;padding:14px 16px;margin:0 0 16px;color:var(--ink);font:inherit;cursor:pointer}
-.ef-card > span{display:block}
+.ef-card{background:var(--accent-soft);border:2px solid color-mix(in srgb, var(--accent) 35%, transparent);border-radius:14px;padding:14px 16px;margin:0 0 16px;color:var(--ink)}
 .ef-card .ef-card-h,.ef-card .ef-card-f{display:flex}
+.ef-car{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.ef-car::-webkit-scrollbar{display:none}
+.ef-sl{flex:0 0 100%;min-width:0;scroll-snap-align:start;display:block;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
+.ef-sl > span{display:block}
+.ef-dots{display:flex;gap:2px;align-items:center}
+.ef-dot{width:28px;height:28px;border:0;background:none;padding:0;position:relative;cursor:pointer}
+.ef-dot::after{content:"";position:absolute;left:9px;top:9px;width:10px;height:10px;border-radius:50%;background:color-mix(in srgb, var(--accent) 35%, transparent)}
+.ef-dot[aria-current="true"]::after{background:var(--accent)}
+.ef-ver{text-decoration:none;font-weight:700;padding:6px 0}
+.ef-hint{margin:2px 0 0}
 .ef-card-h{justify-content:space-between;gap:8px;font-family:var(--head);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
 .ef-y{display:block;margin-top:6px}
 .ef-y b{font-family:var(--head);font-weight:750;font-size:28px;line-height:1;color:var(--primary);margin-right:6px}
 .ef-card .ef-y b{color:var(--ink)}
 .ef-t{display:block;font-family:var(--head);font-weight:600;font-size:19px;line-height:1.2;margin:4px 0 0}
 .ef-ex{font-size:15px;line-height:1.4;margin-top:6px}
-.ef-card-f{justify-content:space-between;align-items:flex-end;gap:10px;margin-top:10px;font-size:15px;font-weight:700}
+.ef-card-f{justify-content:space-between;align-items:center;gap:10px;margin-top:8px;font-size:15px;font-weight:700}
 .ef-ver{color:var(--primary);white-space:nowrap}
 .ef-art{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .ef-art .ef-t{margin:4px 0 8px;font-size:20px}
@@ -456,7 +465,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.09-2";
+const VERSION = "2026.11.09-3";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -829,6 +838,7 @@ function render(){
   try { const me = S.session && resById(S.session.uid), rol = me && rolDe(me); const n = rol ? S.mensajes.filter(m=>m.para===rol && !m.leido).length + (rol==="residente" ? consultasSinLeer("residente") : 0) : 0; document.title = (n?"("+n+") ":"")+"Libro de comidas - Mizar"; } catch(e){}
   const a = document.activeElement, fid = a && a.id, sel = a && a.selectionStart;
   $app.innerHTML = view();
+  efCarRestaurar(false);
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus({preventScroll:true}); try { if (sel!=null) el.setSelectionRange(sel,sel); } catch(e){} } }
   if (S.focoMsg){ S.focoMsg = false; const m = document.getElementById("msg"); if (m) m.focus(); }
   if (S.irAbajo){ S.irAbajo = false; const fin = document.getElementById("notas-fin"); if (fin) setTimeout(()=>fin.scrollIntoView({block:"end"}), 30); }
@@ -1929,14 +1939,33 @@ function tarjetaEfem(){
   if (!verEfem()) return "";
   const f = today(), l = efItems(mdDe(f));
   if (!l || !l.length) return "";
-  const it = l[0], ex = extracto(it.x);
-  return `<button class="ef-card no-print" data-a="ef-ir" data-f="${f}">
-    <span class="ef-card-h"><span>Tal día como hoy · ${Number(f.slice(8))} ${MESES[Number(f.slice(5,7))-1].slice(0,3)}</span>${l.length>1?`<span>1 de ${l.length}</span>`:""}</span>
-    ${it.a?`<span class="ef-y"><b>${it.a}</b><span class="muted small">${esc(haceAnios(it.a,f))}</span></span>`:""}
-    <span class="ef-t">${esc(it.t)}</span>
-    ${ex.txt?`<span class="ef-ex">${esc(ex.txt)}</span>`:""}
-    <span class="ef-card-f"><span class="muted">${l.length>1 ? "Y «"+esc(efTit(l[1]))+"»"+(l.length>2?" y "+(l.length-2)+" más":"") : ""}</span><span class="ef-ver">Ver efemérides →</span></span>
-  </button>`;
+  const n = l.length, act = Math.min(S.efSlide||0, n-1);
+  const slides = l.map((it,i)=>{ const ex = extracto(it.x);
+    return `<button class="ef-sl" data-a="ef-ir" data-f="${f}" data-i="${i}" aria-label="Leer ${esc(efTit(it))}">
+      ${it.a?`<span class="ef-y"><b>${it.a}</b><span class="muted small">${esc(haceAnios(it.a,f))}</span></span>`:""}
+      <span class="ef-t">${esc(it.t)}</span>
+      ${ex.txt?`<span class="ef-ex">${esc(ex.txt)}</span>`:""}
+    </button>`; }).join("");
+  const puntos = n>1 ? `<span class="ef-dots">${l.map((_,i)=>`<button class="ef-dot" data-a="ef-slide" data-v="${i}" aria-label="Ver la efeméride ${i+1} de ${n}" aria-current="${i===act}"></button>`).join("")}</span>` : "<span></span>";
+  return `<div class="ef-card no-print">
+    <div class="ef-card-h"><span>Tal día como hoy · ${Number(f.slice(8))} ${MESES[Number(f.slice(5,7))-1].slice(0,3)}</span>${n>1?`<span class="ef-n">${act+1} de ${n}</span>`:""}</div>
+    <div class="ef-car" id="ef-car">${slides}</div>
+    <div class="ef-card-f">${puntos}<button class="ef-ver link" data-a="ef-ir" data-f="${f}">Ver efemérides →</button></div>
+    ${n>1?`<p class="ef-hint muted small">Desliza para ver ${n===2?"la otra":"las demás"}</p>`:""}
+  </div>`;
+}
+/* Tarjeta deslizable: al moverla, actualiza el contador y los puntos sin redibujar la pantalla */
+function efCarIdx(car){ const w = car.clientWidth + 16; return Math.max(0, Math.round(car.scrollLeft / w)); }
+document.addEventListener("scroll", e => {
+  const car = e.target; if (!car || car.id!=="ef-car") return;
+  const i = efCarIdx(car), card = car.closest(".ef-card"); S.efSlide = i;
+  const n = card.querySelector(".ef-n"); if (n) n.textContent = (i+1)+" de "+car.children.length;
+  card.querySelectorAll(".ef-dot").forEach((d,k)=>d.setAttribute("aria-current", String(k===i)));
+}, true);
+function efCarRestaurar(suave){
+  const car = document.getElementById("ef-car"); if (!car) return;
+  const x = (S.efSlide||0) * (car.clientWidth + 16);
+  if (suave) car.scrollTo({left:x, behavior:"smooth"}); else car.scrollLeft = x;
 }
 function avisoEfemHTML(){
   const e = estadoPush(), on = efemOn() && e==="on";
@@ -2975,7 +3004,9 @@ async function act(a, b){
       toast(v==="auto" ? "Juego automático para esa semana." : JUEGOS[v].nombre+" para esa semana."); break;
     }
     case "cal-mes": S.calMes = v; break;
-    case "ef-ir": S.efFecha = b.dataset.f; S.efQ = ""; delete S.drafts.ef_q; S.tab = "efemerides"; S.modal = null; S.menu = false; window.scrollTo(0,0); break;
+    case "ef-slide": S.efSlide = Number(v)||0; efCarRestaurar(true); return;
+    case "ef-ir": if (b.dataset.i!=null){ (S.efAbiertas = S.efAbiertas || new Set()).add(mdDe(b.dataset.f)+"|"+b.dataset.i); }
+      S.efFecha = b.dataset.f; S.efQ = ""; delete S.drafts.ef_q; S.tab = "efemerides"; S.modal = null; S.menu = false; window.scrollTo(0,0); break;
     case "ef-dia": S.efFecha = addDays(S.efFecha || today(), Number(v)); window.scrollTo(0,0); break;
     case "ef-mas": { const s = S.efAbiertas = S.efAbiertas || new Set(); if (s.has(v)) s.delete(v); else s.add(v); break; }
     case "ef-buscar": S.efQ = String(draft("ef_q","")).trim(); if (S.efQ) cargarTodasEfem(); break;
