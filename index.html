@@ -456,7 +456,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.09-1";
+const VERSION = "2026.11.09-2";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -514,7 +514,7 @@ S.pub = {}; S.priv = {}; S.authListo = false; S.nom = {};
 S.listo = {}; S.partes = {}; S.det = {}; S.hist = {}; S.histDet = {}; S.histMes = {}; S.forzar = new Set();
 S.extras = {}; S.wordle = {}; S.eventos = []; S.wlTyped = "";
 try { S.vistos = JSON.parse(localStorage.getItem("comedor.avisos")||"[]"); } catch(e){ S.vistos = []; }
-try { if (new URLSearchParams(location.search).get("ir")==="efemerides") S.tab = "efemerides"; } catch(e){}
+try { if (new URLSearchParams(location.search).get("ir")==="efemerides"){ S.irEf = true; history.replaceState(null, "", location.pathname); } } catch(e){}
 function saveSession(){}
 
 function efectiva(rid,f){
@@ -2455,6 +2455,7 @@ function viewApp(uReal){
   if (rol==="cocina") t.push(["parte","Parte del día","",G2],["resumen","Resumen del mes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Mensajes", unread("cocina")||"",G2]);
   if (rol==="admin") t.push(["parte","Parte del día","",G2],["panel","Panel","",G2],["extras","Comensales extra", adsPendientes().length||"",G2],["notas","Mensajes con la administración", unread("admin")||"",G2],["consultas","Mensajes de residentes", consultasSinLeer("admin")||"",G2],["avisos","Avisos a residentes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario", S.eventos.filter(e=>e.estado==="pendiente").length||"",G2],["usuarios","Usuarios","",G2],["ajustes","Ajustes","",G2]);
   if (!t.length) return cabecera(u.nombre||"") + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
+  if (S.irEf && !S.vista && t.find(x=>x[0]==="efemerides")){ S.irEf = false; S.tab = "efemerides"; S.efFecha = today(); }
   if (!t.find(x=>x[0]===S.tab)) S.tab = rol==="adscritos" ? "adscritos" : esComensal(u) ? "semana" : (t.find(x=>x[0]==="parte")||t[0])[0];
   let main;
   if (S.tab==="semana"||S.tab==="plantilla") main = (S.tab==="semana" && S.weekOffset===0 ? tarjetaEfem() : "") + vistaComensal(u);
