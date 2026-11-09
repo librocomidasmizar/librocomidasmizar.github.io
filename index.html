@@ -352,6 +352,34 @@ details.plegable[open] summary{margin-bottom:10px}
 .cal-i{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:4px;padding:0 3px;margin-top:2px;font-size:11px}
 .cal-i.cumple{background:var(--accent-soft);color:var(--accent)}
 .cal-i.evento{background:var(--soft);color:var(--primary)}
+/* Efemérides */
+.cal-d{position:relative}
+.cal-ef{position:absolute;right:3px;bottom:3px;min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;border-radius:8px;background:var(--cena);color:var(--surface);font-size:10px;font-weight:700;line-height:16px;text-align:center}
+.tag.ef{background:color-mix(in srgb, var(--cena) 16%, transparent);color:var(--cena)}
+.ef-card{display:block;width:100%;text-align:left;background:var(--accent-soft);border:2px solid color-mix(in srgb, var(--accent) 35%, transparent);border-radius:14px;padding:14px 16px;margin:0 0 16px;color:var(--ink);font:inherit;cursor:pointer}
+.ef-card > span{display:block}
+.ef-card .ef-card-h,.ef-card .ef-card-f{display:flex}
+.ef-card-h{justify-content:space-between;gap:8px;font-family:var(--head);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.ef-y{display:block;margin-top:6px}
+.ef-y b{font-family:var(--head);font-weight:750;font-size:28px;line-height:1;color:var(--primary);margin-right:6px}
+.ef-card .ef-y b{color:var(--ink)}
+.ef-t{display:block;font-family:var(--head);font-weight:600;font-size:19px;line-height:1.2;margin:4px 0 0}
+.ef-ex{font-size:15px;line-height:1.4;margin-top:6px}
+.ef-card-f{justify-content:space-between;align-items:flex-end;gap:10px;margin-top:10px;font-size:15px;font-weight:700}
+.ef-ver{color:var(--primary);white-space:nowrap}
+.ef-art{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.ef-art .ef-t{margin:4px 0 8px;font-size:20px}
+.ef-p{margin:0 0 8px;font-size:16px;line-height:1.55}
+.ef-mas{margin-top:4px;padding:8px 14px}
+.ef-sub{display:block;font-family:var(--body);font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.ef-aviso{display:flex;justify-content:space-between;align-items:center;gap:14px;background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px 14px;margin:6px 0 16px}
+.ef-sw{flex:none;width:52px;height:32px;border-radius:999px;border:0;background:var(--line);position:relative;padding:0;cursor:pointer}
+.ef-sw span{position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.ef-sw[aria-checked="true"]{background:var(--primary)}
+.ef-sw[aria-checked="true"] span{left:24px}
+.ef-busca{flex-wrap:nowrap;margin-bottom:14px}
+.ef-busca .input{flex:1;min-width:0}
+.ef-hit{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;max-width:90vw;z-index:10}
 /* Resumen del mes y panel */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 18px}
@@ -428,7 +456,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.08-2";
+const VERSION = "2026.11.09-1";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -486,6 +514,7 @@ S.pub = {}; S.priv = {}; S.authListo = false; S.nom = {};
 S.listo = {}; S.partes = {}; S.det = {}; S.hist = {}; S.histDet = {}; S.histMes = {}; S.forzar = new Set();
 S.extras = {}; S.wordle = {}; S.eventos = []; S.wlTyped = "";
 try { S.vistos = JSON.parse(localStorage.getItem("comedor.avisos")||"[]"); } catch(e){ S.vistos = []; }
+try { if (new URLSearchParams(location.search).get("ir")==="efemerides") S.tab = "efemerides"; } catch(e){}
 function saveSession(){}
 
 function efectiva(rid,f){
@@ -568,6 +597,7 @@ function revisarPeticion(){
 function suscribir(pid, rol){
   S.miRol = rol;
   const add = u => subs.push(u), gest = rol==="admin" || rol==="cocina";
+  if (rol==="residente" || rol==="admin") cargarIndiceEfem();
   add(S.db.collection("usuarios").onSnapshot(q => {
     const o = {}; q.docs.forEach(d=>o[d.id]=d.data()); S.pub = o; S.resLoaded = true; mezclar();
     if (!o[pid] || o[pid].activo===false){ toast("Tu usuario ya no está activo."); signOut(auth); return; }
@@ -724,7 +754,7 @@ function estadoPush(){
 async function guardarToken(tk){
   const viejo = tokenGuardado();
   if (viejo && viejo!==tk){ try { await S.db.doc("tokens/"+viejo).delete(); } catch(e){} }
-  await S.db.doc("tokens/"+tk).set({perfil:S.session.uid, ts:Date.now(), disp:dispositivo()});
+  await S.db.doc("tokens/"+tk).set({perfil:S.session.uid, ts:Date.now(), disp:dispositivo(), efem:efemOn()});
   try { localStorage.setItem("mizar.push", tk); } catch(e){}
 }
 async function activarPush(){
@@ -755,9 +785,9 @@ async function refrescarPush(){
   } catch(e){ console.warn("Avisos:", e); }
 }
 function queAvisa(rol){
-  if (rol==="admin") return ["mensajes de la administración (y sus avisos)", "mensajes de residentes", "propuestas de eventos y de adscritos"];
+  if (rol==="admin") return ["mensajes de la administración (y sus avisos)", "mensajes de residentes", "propuestas de eventos y de adscritos", "la efeméride del día, si lo activas en Efemérides"];
   if (rol==="cocina") return ["mensajes de los administradores", "avisos para el parte (📌)"];
-  return ["respuestas de los administradores a tus mensajes", "avisos de los administradores para todos"];
+  return ["respuestas de los administradores a tus mensajes", "avisos de los administradores para todos", "la efeméride del día, si lo activas en Efemérides"];
 }
 function pushModalHTML(rol){
   const e = estadoPush(), lista = `<ul class="guia-l">${queAvisa(rol).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
@@ -879,11 +909,12 @@ const ICO = {
   ajustes:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   adscritos:'<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2.5 19c.5-3 2.8-5 5.5-5s5 2 5.5 5"/><path d="M13.5 15.2c.8-.8 1.6-1.2 2.5-1.2 2.7 0 5 2 5.5 5"/>',
   resumen:'<path d="M4 20.5h16"/><rect x="5.5" y="11" width="3" height="7" rx="1"/><rect x="10.5" y="6" width="3" height="12" rx="1"/><rect x="15.5" y="13.5" width="3" height="4.5" rx="1"/>',
+  efemerides:'<path d="M3.6 12a8.4 8.4 0 1 0 2.5-6"/><path d="M3.3 3.8v4.4h4.4"/><path d="M12 7.5V12l3 2"/>',
   panel:'<rect x="3.5" y="3.5" width="7.5" height="9" rx="1.8"/><rect x="13" y="3.5" width="7.5" height="5.5" rx="1.8"/><rect x="13" y="11" width="7.5" height="9.5" rx="1.8"/><rect x="3.5" y="14.5" width="7.5" height="6" rx="1.8"/>',
   mas:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'
 };
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]||ICO.mas}</svg>`;
-const CORTO = {adscritos:"Adscritos", semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Juego", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", resumen:"Resumen", panel:"Panel", extras:"Extras", notas:"Mensajes", mensajes:"Mensajes", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
+const CORTO = {efemerides:"Efemérides", adscritos:"Adscritos", semana:"Semana", plantilla:"Plantilla", quien:"Quién come", wordle:"Juego", calendario:"Calendario", consultas:"Mensajes", datos:"Mis datos", parte:"Parte", resumen:"Resumen", panel:"Panel", extras:"Extras", notas:"Mensajes", mensajes:"Mensajes", avisos:"Avisos", cumples:"Cumpleaños", usuarios:"Usuarios", ajustes:"Ajustes"};
 function navegacion(list, rol, comensal){
   if (rol==="admin"){ // Mensajes con la administración y de residentes, juntos en un botón
     const n = list.find(x=>x[0]==="notas"), c = list.find(x=>x[0]==="consultas");
@@ -1825,12 +1856,14 @@ function calendarioView(modo){
   const editable = modo==="admin" || modo==="cocina";
   const mes = S.calMes || today().slice(0,7), [yy,mm] = mes.split("-").map(Number);
   const primero = mes+"-01", ultimo = iso(new Date(yy, mm, 0)), items = eventosEntre(primero, ultimo);
+  const conEf = modo!=="cocina" && verEfem();
   const celdas = [];
   for (let i=0;i<wd(primero);i++) celdas.push(`<div class="cal-d vacio"></div>`);
   for (let f=primero; f<=ultimo; f=addDays(f,1)){
     const its = items.filter(x=>x.fecha===f);
-    const dentro = `<div class="cal-n">${Number(f.slice(8))}</div>${its.map(x=>`<span class="cal-i ${x.tipo}" title="${esc(x.texto)}">${esc(x.corto||x.texto)}</span>`).join("")}`;
-    celdas.push(its.length ? `<button class="cal-d ${f===today()?"hoy":""}" data-a="cal-dia" data-f="${f}" aria-label="Ver lo que hay el ${esc(fmtLong(f))}">${dentro}</button>` : `<div class="cal-d ${f===today()?"hoy":""}">${dentro}</div>`);
+    const nEf = conEf ? efCuenta(mdDe(f)) : 0;
+    const dentro = `<div class="cal-n">${Number(f.slice(8))}</div>${its.map(x=>`<span class="cal-i ${x.tipo}" title="${esc(x.texto)}">${esc(x.corto||x.texto)}</span>`).join("")}${nEf?`<span class="cal-ef" title="${nEf===1?"1 efeméride":nEf+" efemérides"}">${nEf}</span>`:""}`;
+    celdas.push((its.length || nEf) ? `<button class="cal-d ${f===today()?"hoy":""}" data-a="cal-dia" data-f="${f}" aria-label="Ver lo que hay el ${esc(fmtLong(f))}">${dentro}</button>` : `<div class="cal-d ${f===today()?"hoy":""}">${dentro}</div>`);
   }
   const mesAnt = iso(new Date(yy, mm-2, 1)).slice(0,7), mesSig = iso(new Date(yy, mm, 1)).slice(0,7);
   const vistos = new Set(), agenda = items.filter(x=>{ if (x.tipo!=="evento") return true; if (vistos.has(x.clave)) return false; vistos.add(x.clave); return true; });
@@ -1856,6 +1889,104 @@ function calendarioView(modo){
     <h2 style="margin-bottom:8px">Este mes</h2>
     ${agenda.length ? agenda.map(x=>`<div class="res"><div><strong>${esc(x.tipo==="evento" ? x.cuando : fmtLong(x.fecha))}</strong> <span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span><div>${esc(x.texto)}</div>${x.repite?`<div class="small" style="color:var(--accent);font-weight:700">↻ ${esc(x.repite)}</div>`:""}${x.detalle?`<div class="small muted">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>${x.tipo==="evento" && (modo==="admin" || (modo==="cocina" && x.autor===S.session.uid)) ? `<div class="row" style="gap:12px"><button class="link" data-a="ev-edit" data-id="${x.id}">Editar</button><button class="link" style="color:var(--danger)" data-a="ev-del" data-id="${x.id}">Borrar</button></div>` : "<span></span>"}</div>`).join("") : `<div class="empty">No hay cumpleaños ni eventos este mes.</div>`}
     ${mias}${form}`;
+}
+/* ---------- Efemérides: solo residentes y administradores (nunca la administración ni adscritos) ---------- */
+const verEfem = () => { const me = S.session && resById(S.session.uid), r = me && rolDe(me); return !S.vista && (r==="residente" || r==="admin"); };
+const mdDe = f => f.slice(5);
+const efemOn = () => { try { return localStorage.getItem("mizar.efem")==="1"; } catch(e){ return false; } };
+async function cargarIndiceEfem(){
+  try { const s = await S.db.doc("efemerides/_indice").get(); S.efIdx = s.exists ? (s.data().n||{}) : {}; } catch(e){ console.warn("Efemérides:", e); S.efIdx = {}; }
+  render();
+}
+async function cargarEfem(md){
+  S.efDia = S.efDia || {}; S.efPide = S.efPide || {};
+  if (S.efDia[md] || S.efPide[md]) return;
+  S.efPide[md] = true;
+  try { const s = await S.db.doc("efemerides/"+md).get(); S.efDia[md] = s.exists ? (s.data().items||[]) : []; }
+  catch(e){ console.warn("Efemérides:", e); S.efDia[md] = []; }
+  delete S.efPide[md]; render();
+}
+async function cargarTodasEfem(){
+  if (S.efTodas || S.efCargandoTodas) return;
+  S.efCargandoTodas = true; render();
+  try { const q = await S.db.collection("efemerides").get(); S.efDia = S.efDia || {}; q.docs.forEach(d=>{ if (d.id!=="_indice") S.efDia[d.id] = d.data().items||[]; }); S.efTodas = true; }
+  catch(e){ console.warn("Efemérides:", e); toast("No se han podido cargar las efemérides."); }
+  S.efCargandoTodas = false; render();
+}
+const efCuenta = md => (S.efIdx||{})[md] || 0;
+const efItems = md => { const l = (S.efDia||{})[md]; if (!l) cargarEfem(md); return l; };
+const haceAnios = (a, f) => { if (!a) return ""; const n = Number(f.slice(0,4)) - a; return n<=0 ? "" : n===1 ? "hace 1 año" : "hace "+n+" años"; };
+const efTit = it => (it.a ? it.a+" · " : "") + it.t;
+const EXTRACTO = 260;
+function extracto(x){
+  const s = String(x||"").replace(/\s+/g," ").trim();
+  if (s.length<=EXTRACTO) return {txt:s, corto:false};
+  const c = s.slice(0,EXTRACTO), i = c.lastIndexOf(" ");
+  return {txt:(i>EXTRACTO*0.7 ? c.slice(0,i) : c)+"…", corto:true};
+}
+const parrafos = x => String(x||"").trim().split(/\n+/).filter(p=>p.trim()).map(p=>`<p class="ef-p">${esc(p.trim())}</p>`).join("");
+function tarjetaEfem(){
+  if (!verEfem()) return "";
+  const f = today(), l = efItems(mdDe(f));
+  if (!l || !l.length) return "";
+  const it = l[0], ex = extracto(it.x);
+  return `<button class="ef-card no-print" data-a="ef-ir" data-f="${f}">
+    <span class="ef-card-h"><span>Tal día como hoy · ${Number(f.slice(8))} ${MESES[Number(f.slice(5,7))-1].slice(0,3)}</span>${l.length>1?`<span>1 de ${l.length}</span>`:""}</span>
+    ${it.a?`<span class="ef-y"><b>${it.a}</b><span class="muted small">${esc(haceAnios(it.a,f))}</span></span>`:""}
+    <span class="ef-t">${esc(it.t)}</span>
+    ${ex.txt?`<span class="ef-ex">${esc(ex.txt)}</span>`:""}
+    <span class="ef-card-f"><span class="muted">${l.length>1 ? "Y «"+esc(efTit(l[1]))+"»"+(l.length>2?" y "+(l.length-2)+" más":"") : ""}</span><span class="ef-ver">Ver efemérides →</span></span>
+  </button>`;
+}
+function avisoEfemHTML(){
+  const e = estadoPush(), on = efemOn() && e==="on";
+  const ayuda = (e==="ios" || e==="no" || e==="bloqueado") ? `<p class="muted small" style="margin:6px 0 0">Antes hay que permitir los avisos en este dispositivo. <button class="link" data-a="push-abrir">Ver cómo</button></p>` : "";
+  return `<div class="ef-aviso"><div><strong>Avisarme cada mañana</strong><div class="muted small">Una notificación hacia las 8:00 con la efeméride del día, en este dispositivo.</div>${ayuda}</div>
+    <button class="ef-sw" role="switch" aria-checked="${on}" data-a="ef-aviso" aria-label="Avisarme cada mañana"><span></span></button></div>`;
+}
+function efemeridesView(){
+  const f = S.efFecha || today(), md = mdDe(f), q = String(S.efQ||"").trim(), abiertas = S.efAbiertas || new Set();
+  const busca = `<div class="row ef-busca"><input class="input" id="ef_q" data-draft="ef_q" type="search" placeholder="Buscar en todas: Loreto, Polonia, 1958…" value="${esc(draft("ef_q", q))}" aria-label="Buscar en todas las efemérides"><button class="btn" data-a="ef-buscar">Buscar</button></div>`;
+  if (q){
+    let res;
+    if (!S.efTodas) res = `<p class="muted">Cargando todas las efemérides…</p>`;
+    else {
+      const n = s => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(), qq = n(q), hits = [], y = today().slice(0,4);
+      Object.keys(S.efDia).sort().forEach(k=>(S.efDia[k]||[]).forEach(it=>{ if (n(it.t+" "+(it.a||"")+" "+it.x).includes(qq)) hits.push([k,it]); }));
+      res = `<p class="muted small">${hits.length===0 ? "No hay ninguna con «"+esc(q)+"»." : hits.length===1 ? "1 efeméride" : hits.length+" efemérides"}${hits.length>100?" (se muestran las 100 primeras)":""}</p>`
+        + hits.slice(0,100).map(([k,it])=>`<button class="res ef-hit" data-a="ef-ir" data-f="${y}-${k}"><span><span class="muted small">${Number(k.slice(3))} de ${MESES[Number(k.slice(0,2))-1]}</span><br><b>${esc(efTit(it))}</b></span><span class="muted">›</span></button>`).join("");
+    }
+    return busca + `<p style="margin-top:-6px"><button class="link" data-a="ef-limpiar">← Volver al día</button></p>` + res;
+  }
+  const l = efItems(md), esHoy = f===today();
+  const lista = !l ? `<p class="muted">Cargando…</p>` : !l.length ? `<div class="empty">No hay efemérides este día.</div>` : l.map((it,i)=>{
+    const k = md+"|"+i, ab = abiertas.has(k), ex = extracto(it.x);
+    return `<article class="ef-art">${it.a?`<div class="ef-y"><b>${it.a}</b><span class="muted small">${esc(haceAnios(it.a,f))}</span></div>`:""}
+      <h3 class="ef-t">${esc(it.t)}</h3>
+      ${!it.x ? "" : ab ? parrafos(it.x) : `<p class="ef-p">${esc(ex.txt)}</p>`}
+      ${ex.corto ? `<button class="btn ghost ef-mas" data-a="ef-mas" data-v="${esc(k)}" aria-expanded="${ab}">${ab?"Leer menos ▴":"Leer más ▾"}</button>` : ""}</article>`; }).join("");
+  return `<div class="weeknav"><button class="arrow" data-a="ef-dia" data-v="-1" aria-label="Día anterior">‹</button>
+      <h2>${esc(fmtLong(f))}<small class="ef-sub">${esHoy?"Hoy":""}${esHoy&&l?" · ":""}${l ? (l.length===1?"1 efeméride":l.length+" efemérides") : ""}</small></h2>
+      <button class="arrow" data-a="ef-dia" data-v="1" aria-label="Día siguiente">›</button></div>
+    ${!esHoy?`<p class="row" style="margin-top:-4px"><button class="link" data-a="ef-ir" data-f="${today()}">Volver a hoy</button></p>`:""}
+    ${lista}${avisoEfemHTML()}${busca}`;
+}
+async function cambiarAvisoEfem(){
+  const quiero = !(efemOn() && estadoPush()==="on");
+  const marca = v => { try { localStorage.setItem("mizar.efem", v ? "1" : "0"); } catch(e){} };
+  if (quiero){
+    marca(true);
+    const e = estadoPush();
+    if (e==="on") await refrescarPush();
+    else if (e==="off"){ await activarPush(); if (estadoPush()!=="on"){ marca(false); render(); return; } }
+    else { marca(false); S.modal = {tipo:"push", rol: rolDe(resById(S.session.uid))}; render(); return; }
+    toast("Te avisaremos cada mañana hacia las 8:00.");
+  } else {
+    marca(false);
+    const tk = tokenGuardado(); if (tk){ try { await S.db.doc("tokens/"+tk).update({efem:false}); } catch(e){} }
+    toast("Ya no te avisaremos de las efemérides.");
+  }
+  render();
 }
 function avisoEventos(){
   const vis = new Set(), l = eventosEntre(today(), addDays(today(),3)).filter(x=>{ if (vis.has(x.clave)) return false; vis.add(x.clave); return true; });
@@ -2015,7 +2146,8 @@ function adscritosView(){
 const NOVEDADES = [
   {id:"2026.11.07b", de: rol => novedades1(rol)},
   {id:"2026.11.08", de: rol => PUSH_ROLES.includes(rol) ? [["Avisos en el móvil", [ "Ahora la aplicación puede avisarte en el móvil aunque la tengas cerrada.", "Actívalo en el "+"<b>círculo de tus iniciales → «Avisos en el móvil»</b>. En iPhone hace falta tener la aplicación instalada en la pantalla de inicio.", "Te avisará de: "+queAvisa(rol).join("; ")+". Puede tardar unos minutos." ]]] : []},
-  {id:"2026.11.08b", de: rol => (rol==="residente" || rol==="admin") ? [["Mi semana: solo lo que queda", [ "En "+"<b>Semana</b>"+" ya no aparecen los días de esta semana que ya han pasado. "+"<b>Hoy sigue apareciendo</b>"+", aunque esté cerrado, para que compruebes lo que pediste.", "Si quieres verlos, toca "+"<b>«Ver los días ya pasados»</b>"+" encima de la lista." ]]] : []}
+  {id:"2026.11.08b", de: rol => (rol==="residente" || rol==="admin") ? [["Mi semana: solo lo que queda", [ "En "+"<b>Semana</b>"+" ya no aparecen los días de esta semana que ya han pasado. "+"<b>Hoy sigue apareciendo</b>"+", aunque esté cerrado, para que compruebes lo que pediste.", "Si quieres verlos, toca "+"<b>«Ver los días ya pasados»</b>"+" encima de la lista." ]]] : []},
+  {id:"2026.11.09", de: rol => (rol==="residente" || rol==="admin") ? [["Efemérides", [ "Cada día, arriba de "+"<b>Semana</b>"+", verás «Tal día como hoy» con la efeméride del día.", "En "+"<b>Más → Efemérides</b>"+" puedes leerlas enteras, pasar de un día a otro y buscar en todas.", "En el "+"<b>Calendario</b>"+", cada día indica cuántas efemérides tiene.", "Si quieres, en Efemérides activa "+"<b>«Avisarme cada mañana»</b>"+" para recibirla en el móvil hacia las 8:00." ]]] : []}
 ];
 const NOV_ID = NOVEDADES[NOVEDADES.length-1].id;
 function novedadesDe(rol, desde){ return NOVEDADES.filter(n=>!desde || n.id > desde).flatMap(n=>n.de(rol)); }
@@ -2122,6 +2254,9 @@ function modalHTML(){
     const puede = x => x.tipo==="evento" && (rolDe(resById(S.session.uid))==="admin" || (rolDe(resById(S.session.uid))==="cocina" && x.autor===S.session.uid)) && !S.vista;
     tit = fmtLong(m.f);
     cuerpo = its.length ? its.map(x=>`<div class="res" style="grid-template-columns:1fr"><div><span class="tag ${x.tipo==="cumple"?"plantilla":"abierto"}">${x.tipo==="cumple"?"Cumpleaños":"Evento"}</span></div><div style="font-weight:700">${esc(x.texto)}</div>${x.tipo==="evento" && (x.hora || x.varios) ? `<div class="small muted">${esc(x.varios ? x.cuando : "A las "+x.hora)}</div>` : ""}${x.repite?`<div class="small" style="color:var(--accent);font-weight:700">↻ ${esc(x.repite)}</div>`:""}${puede(x)?`<div><button class="link" data-a="ev-edit" data-id="${x.id}">Editar</button></div>`:""}${x.detalle?`<div class="small">${esc(x.detalle).replace(/\n/g,"<br>")}</div>`:""}</div>`).join("") : `<p class="muted">No hay nada este día.</p>`;
+    const nEf = verEfem() ? efCuenta(mdDe(m.f)) : 0;
+    if (nEf){ const l = efItems(mdDe(m.f)); if (!its.length) cuerpo = "";
+      cuerpo += `<div class="res" style="grid-template-columns:1fr"><div><span class="tag ef">Efemérides</span></div>${l ? l.map(it=>`<div style="font-weight:700">${esc(efTit(it))}</div>`).join("") : `<div class="muted small">Cargando…</div>`}<div><button class="link" data-a="ef-ir" data-f="${m.f}">Leer en Efemérides</button></div></div>`; }
   }
   if (m.tipo==="edit"){
     const r = resById(m.rid), f = m.f, manana = DIAS[wd(addDays(f,1))].toLowerCase(), v = S.drafts.ed || norm();
@@ -2314,6 +2449,7 @@ function viewApp(uReal){
   if (esComensal(u) && rol!=="cocina") t.push(["quien","Quién come","",G1]);
   if ((esComensal(u) && rol!=="cocina") || rol==="adscritos") t.push(["wordle","Juego del día","",G1]);
   if (rol==="residente") t.push(["calendario","Calendario","",G1],["consultas","Mensajes", consultasSinLeer("residente")||"",G1]);
+  if (rol==="residente" || rol==="admin") t.push(["efemerides","Efemérides","",G1]);
   if (rol!=="cocina" && rol!=="adscritos") t.push(["datos","Mis datos","",G1]);
   if (rol==="adscritos"){ t.length = 0; t.push(["adscritos","Adscritos","",G2]); }
   if (rol==="cocina") t.push(["parte","Parte del día","",G2],["resumen","Resumen del mes","",G2],["cumples","Cumpleaños","",G2],["calendario","Calendario","",G2],["notas","Mensajes", unread("cocina")||"",G2]);
@@ -2321,8 +2457,9 @@ function viewApp(uReal){
   if (!t.length) return cabecera(u.nombre||"") + `<div class="empty">Tu usuario no tiene ninguna función asignada.</div>`;
   if (!t.find(x=>x[0]===S.tab)) S.tab = rol==="adscritos" ? "adscritos" : esComensal(u) ? "semana" : (t.find(x=>x[0]==="parte")||t[0])[0];
   let main;
-  if (S.tab==="semana"||S.tab==="plantilla") main = vistaComensal(u);
-  else if (S.tab==="parte") main = avisoCumples() + avisoEventos() + parteView();
+  if (S.tab==="semana"||S.tab==="plantilla") main = (S.tab==="semana" && S.weekOffset===0 ? tarjetaEfem() : "") + vistaComensal(u);
+  else if (S.tab==="parte") main = (rol==="admin" && !esComensal(u) ? tarjetaEfem() : "") + avisoCumples() + avisoEventos() + parteView();
+  else if (S.tab==="efemerides") main = efemeridesView();
   else if (S.tab==="wordle") main = wordleView(u);
   else if (S.tab==="calendario") main = calendarioView(rol==="admin" ? "admin" : rol==="cocina" ? "cocina" : "residente");
   else if (S.tab==="avisos") main = avisosAdminView();
@@ -2513,6 +2650,7 @@ document.addEventListener("keydown", e => {
     if (k==="enter" || k==="back" || /^[a-zñ0-9]$/.test(k)){ e.preventDefault(); wlTecla(k); return; }
   }
   if (e.key==="Enter" && (e.ctrlKey || e.metaKey) && e.target.id==="msg"){ e.preventDefault(); act("sendmsg", e.target); return; }
+  if (e.key==="Enter" && e.target.id==="ef_q"){ e.preventDefault(); act("ef-buscar", e.target); return; }
   if (e.key==="Enter" && e.target.id==="pin"){ e.preventDefault(); act("login", e.target); }
 });
 document.addEventListener("click", e => {
@@ -2836,6 +2974,12 @@ async function act(a, b){
       toast(v==="auto" ? "Juego automático para esa semana." : JUEGOS[v].nombre+" para esa semana."); break;
     }
     case "cal-mes": S.calMes = v; break;
+    case "ef-ir": S.efFecha = b.dataset.f; S.efQ = ""; delete S.drafts.ef_q; S.tab = "efemerides"; S.modal = null; S.menu = false; window.scrollTo(0,0); break;
+    case "ef-dia": S.efFecha = addDays(S.efFecha || today(), Number(v)); window.scrollTo(0,0); break;
+    case "ef-mas": { const s = S.efAbiertas = S.efAbiertas || new Set(); if (s.has(v)) s.delete(v); else s.add(v); break; }
+    case "ef-buscar": S.efQ = String(draft("ef_q","")).trim(); if (S.efQ) cargarTodasEfem(); break;
+    case "ef-limpiar": S.efQ = ""; delete S.drafts.ef_q; break;
+    case "ef-aviso": await cambiarAvisoEfem(); return;
     case "mes": { const hoy = ymDe(today()), act = S.mesSel || hoy; S.mesSel = v==="0" ? hoy : ymMas(act, Number(v)); if (S.mesSel > hoy) S.mesSel = hoy; break; }
     case "pm-orden": S.pmOrden = S.pmOrden===v ? "tot" : v; break;
     case "mes-csv": await entregarArchivo(new Blob([csvMes(v)], {type:"text/csv;charset=utf-8"}), "resumen-"+v+".csv", "Resumen de "+nombreMes(v)); return;

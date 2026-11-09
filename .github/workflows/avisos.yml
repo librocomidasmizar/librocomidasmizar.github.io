@@ -70,18 +70,35 @@ jobs:
           (await db.collection("adscritos").where("ts", ">", desde).get()).forEach(d => {
             const a = d.data(); if (a.estado === "pendiente") avisar("ad:" + d.id + ":" + a.ts, conRol("admin"), "Propuesta del jefe de adscritos", "Para el " + fechaTxt(a.fecha) + ". Revísala en Comensales extra.");
           });
+          // Efemérides: una vez al día, hacia las 8:00 de Madrid, a los dispositivos que lo han activado
+          const pm = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ahora)).map(p => [p.type, p.value]));
+          const hoyMad = pm.year + "-" + pm.month + "-" + pm.day, horaMad = Number(pm.hour);
+          let efFecha = est.efFecha || "";
+          if (horaMad >= 8 && horaMad < 12 && efFecha !== hoyMad) {
+            efFecha = hoyMad;
+            const ef = await db.doc("efemerides/" + pm.month + "-" + pm.day).get();
+            const items = (ef.exists && ef.data().items) || [];
+            const rolOk = p => activo(p) && ["residente", "admin"].includes(U[p].rol || "residente");
+            const tokensEf = [];
+            tks.forEach(d => { const t = d.data(); if (t.efem === true && rolOk(t.perfil)) tokensEf.push(d.id); });
+            if (items.length && tokensEf.length) {
+              const it = items[0];
+              envios.push({ tokens: tokensEf, titulo: "Tal día como hoy" + (it.a ? " · " + it.a : ""), cuerpo: String(it.t || "") + (items.length > 1 ? " · y " + (items.length - 1) + " más" : ""), link: WEB + "?ir=efemerides" });
+            }
+            console.log("Efemérides del " + hoyMad + ": " + items.length + ". Dispositivos: " + tokensEf.length + ".");
+          }
           let entregas = 0; const malos = new Set();
           const BORRAR = ["messaging/registration-token-not-registered", "messaging/invalid-registration-token", "messaging/invalid-argument"];
           for (const e of envios) {
-            const tokens = [...new Set(e.perfiles.filter(activo).flatMap(p => porPerfil[p] || []))];
+            const tokens = e.tokens || [...new Set(e.perfiles.filter(activo).flatMap(p => porPerfil[p] || []))];
             for (let i = 0; i < tokens.length; i += 500) {
               const lote = tokens.slice(i, i + 500);
-              const r = await fcm.sendEachForMulticast({ tokens: lote, webpush: { notification: { title: e.titulo, body: e.cuerpo, icon: WEB + "icon-192.png" }, fcmOptions: { link: WEB } } });
+              const r = await fcm.sendEachForMulticast({ tokens: lote, webpush: { notification: { title: e.titulo, body: e.cuerpo, icon: WEB + "icon-192.png" }, fcmOptions: { link: e.link || WEB } } });
               r.responses.forEach((x, k) => { if (x.success) entregas++; else if (BORRAR.includes(x.error && x.error.code)) malos.add(lote[k]); else console.log("Error al enviar:", x.error && x.error.code); });
             }
           }
           for (const t of malos) await db.doc("tokens/" + t).delete();
-          await estRef.set({ ultimo: ahora, enviados: [...yaEnviados, ...nuevos].slice(-300), avisosEnviados: (est.avisosEnviados || 0) + entregas });
+          await estRef.set({ ultimo: ahora, enviados: [...yaEnviados, ...nuevos].slice(-300), avisosEnviados: (est.avisosEnviados || 0) + entregas, efFecha });
           console.log("Revisado. Avisos nuevos: " + envios.length + ". Entregas: " + entregas + ". Dispositivos dados de baja: " + malos.size + ".");
           FIN
           node avisos.mjs
