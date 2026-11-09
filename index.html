@@ -368,6 +368,10 @@ details.plegable[open] summary{margin-bottom:10px}
 .ef-dot[aria-current="true"]::after{background:var(--accent)}
 .ef-ver{text-decoration:none;font-weight:700;padding:6px 0}
 .ef-hint{margin:2px 0 0}
+.ef-x{width:32px;height:32px;margin:-6px -8px -6px 0;border:0;background:none;color:var(--accent);font-size:22px;line-height:1;cursor:pointer;border-radius:50%}
+.ef-fecha{gap:10px;margin:-2px 0 14px;flex-wrap:wrap}
+.ef-fecha label{font-weight:700;font-size:15px}
+.ef-fecha .input{width:auto;padding:8px 10px}
 .ef-card-h{justify-content:space-between;gap:8px;font-family:var(--head);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
 .ef-y{display:block;margin-top:6px}
 .ef-y b{font-family:var(--head);font-weight:750;font-size:28px;line-height:1;color:var(--primary);margin-right:6px}
@@ -465,7 +469,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.09-3";
+const VERSION = "2026.11.09-4";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -1903,6 +1907,7 @@ function calendarioView(modo){
 /* ---------- Efemérides: solo residentes y administradores (nunca la administración ni adscritos) ---------- */
 const verEfem = () => { const me = S.session && resById(S.session.uid), r = me && rolDe(me); return !S.vista && (r==="residente" || r==="admin"); };
 const mdDe = f => f.slice(5);
+const efCardOn = () => { try { return localStorage.getItem("mizar.efCard")!=="0"; } catch(e){ return true; } };
 const efemOn = () => { try { return localStorage.getItem("mizar.efem")==="1"; } catch(e){ return false; } };
 async function cargarIndiceEfem(){
   try { const s = await S.db.doc("efemerides/_indice").get(); S.efIdx = s.exists ? (s.data().n||{}) : {}; } catch(e){ console.warn("Efemérides:", e); S.efIdx = {}; }
@@ -1936,7 +1941,7 @@ function extracto(x){
 }
 const parrafos = x => String(x||"").trim().split(/\n+/).filter(p=>p.trim()).map(p=>`<p class="ef-p">${esc(p.trim())}</p>`).join("");
 function tarjetaEfem(){
-  if (!verEfem()) return "";
+  if (!verEfem() || !efCardOn()) return "";
   const f = today(), l = efItems(mdDe(f));
   if (!l || !l.length) return "";
   const n = l.length, act = Math.min(S.efSlide||0, n-1);
@@ -1948,7 +1953,7 @@ function tarjetaEfem(){
     </button>`; }).join("");
   const puntos = n>1 ? `<span class="ef-dots">${l.map((_,i)=>`<button class="ef-dot" data-a="ef-slide" data-v="${i}" aria-label="Ver la efeméride ${i+1} de ${n}" aria-current="${i===act}"></button>`).join("")}</span>` : "<span></span>";
   return `<div class="ef-card no-print">
-    <div class="ef-card-h"><span>Tal día como hoy · ${Number(f.slice(8))} ${MESES[Number(f.slice(5,7))-1].slice(0,3)}</span>${n>1?`<span class="ef-n">${act+1} de ${n}</span>`:""}</div>
+    <div class="ef-card-h"><span>Tal día como hoy · ${Number(f.slice(8))} ${MESES[Number(f.slice(5,7))-1].slice(0,3)}</span><span class="row" style="gap:10px">${n>1?`<span class="ef-n">${act+1} de ${n}</span>`:""}<button class="ef-x" data-a="ef-card" aria-label="Quitar «Tal día como hoy» de Semana">×</button></span></div>
     <div class="ef-car" id="ef-car">${slides}</div>
     <div class="ef-card-f">${puntos}<button class="ef-ver link" data-a="ef-ir" data-f="${f}">Ver efemérides →</button></div>
     ${n>1?`<p class="ef-hint muted small">Desliza para ver ${n===2?"la otra":"las demás"}</p>`:""}
@@ -1966,6 +1971,11 @@ function efCarRestaurar(suave){
   const car = document.getElementById("ef-car"); if (!car) return;
   const x = (S.efSlide||0) * (car.clientWidth + 16);
   if (suave) car.scrollTo({left:x, behavior:"smooth"}); else car.scrollLeft = x;
+}
+function tarjetaEfemHTML(){
+  const on = efCardOn();
+  return `<div class="ef-aviso"><div><strong>«Tal día como hoy» en Semana</strong><div class="muted small">La tarjeta con la efeméride del día, arriba de Semana, en este dispositivo.</div></div>
+    <button class="ef-sw" role="switch" aria-checked="${on}" data-a="ef-card" aria-label="Mostrar «Tal día como hoy» en Semana"><span></span></button></div>`;
 }
 function avisoEfemHTML(){
   const e = estadoPush(), on = efemOn() && e==="on";
@@ -1997,8 +2007,8 @@ function efemeridesView(){
   return `<div class="weeknav"><button class="arrow" data-a="ef-dia" data-v="-1" aria-label="Día anterior">‹</button>
       <h2>${esc(fmtLong(f))}<small class="ef-sub">${esHoy?"Hoy":""}${esHoy&&l?" · ":""}${l ? (l.length===1?"1 efeméride":l.length+" efemérides") : ""}</small></h2>
       <button class="arrow" data-a="ef-dia" data-v="1" aria-label="Día siguiente">›</button></div>
-    ${!esHoy?`<p class="row" style="margin-top:-4px"><button class="link" data-a="ef-ir" data-f="${today()}">Volver a hoy</button></p>`:""}
-    ${lista}${avisoEfemHTML()}${busca}`;
+    <div class="row ef-fecha"><label for="ef_fecha">Ir a una fecha</label><input class="input" type="date" id="ef_fecha" value="${esc(f)}">${!esHoy?`<button class="link" data-a="ef-ir" data-f="${today()}">Volver a hoy</button>`:""}</div>
+    ${lista}${tarjetaEfemHTML()}${avisoEfemHTML()}${busca}`;
 }
 async function cambiarAvisoEfem(){
   const quiero = !(efemOn() && estadoPush()==="on");
@@ -2669,6 +2679,7 @@ document.addEventListener("input", e => {
   if (k){ S.drafts[k] = e.target.value; if (k==="msg"){ const b=document.querySelector('[data-a="sendmsg"]'); if (b) b.disabled = !e.target.value.trim(); e.target.style.height = "auto"; e.target.style.height = Math.min(132, e.target.scrollHeight+2)+"px"; } }
 });
 document.addEventListener("change", e => {
+  if (e.target.id==="ef_fecha"){ if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){ S.efFecha = e.target.value; window.scrollTo(0,0); render(); } return; }
   if (e.target.tagName==="SELECT" && e.target.dataset.draft){ S.drafts[e.target.dataset.draft] = e.target.value; return; }
   if (e.target.type==="date" && /^(nb|cb)_f$/.test(e.target.dataset.draft||"")){ S.drafts[e.target.dataset.draft] = e.target.value; delete S.drafts[e.target.dataset.draft.slice(0,2)+"_ok"]; render(); return; }
   const ctx = e.target.dataset && e.target.dataset.hora;
@@ -3004,6 +3015,8 @@ async function act(a, b){
       toast(v==="auto" ? "Juego automático para esa semana." : JUEGOS[v].nombre+" para esa semana."); break;
     }
     case "cal-mes": S.calMes = v; break;
+    case "ef-card": { const on = !efCardOn(); try { localStorage.setItem("mizar.efCard", on ? "1" : "0"); } catch(e){}
+      toast(on ? "«Tal día como hoy» volverá a salir en Semana." : "Quitado de Semana. Puedes volver a ponerlo en Más → Efemérides."); break; }
     case "ef-slide": S.efSlide = Number(v)||0; efCarRestaurar(true); return;
     case "ef-ir": if (b.dataset.i!=null){ (S.efAbiertas = S.efAbiertas || new Set()).add(mdDe(b.dataset.f)+"|"+b.dataset.i); }
       S.efFecha = b.dataset.f; S.efQ = ""; delete S.drafts.ef_q; S.tab = "efemerides"; S.modal = null; S.menu = false; window.scrollTo(0,0); break;
