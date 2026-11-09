@@ -469,7 +469,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.09-4";
+const VERSION = "2026.11.09-5";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -821,8 +821,23 @@ async function comprobarVersion(){
     const r = await fetch(location.pathname + "?comprobar=" + Date.now(), {cache:"no-store"});
     if (!r.ok) return;
     const m = (await r.text()).match(/const VERSION = "([^"]+)"/);
-    if (m && m[1] !== VERSION && !S.hayNueva){ S.hayNueva = m[1]; render(); }
+    if (m && m[1] !== VERSION && !S.hayNueva){ S.hayNueva = m[1]; refrescarCache(); render(); }
   } catch(e){}
+}
+/* Renueva la copia guardada de la página de inicio, para que al volver a abrir la app no salga una versión antigua */
+function refrescarCache(){
+  const urls = [location.pathname, "./", "index.html"];
+  return Promise.all(urls.map(u => fetch(u, {cache:"reload"}).catch(()=>{})));
+}
+/* Si venimos del botón «Actualizar ahora» (?v=...), dejamos guardada la versión nueva y limpiamos la dirección */
+if (/[?&]v=\d/.test(location.search)){
+  refrescarCache();
+  try { history.replaceState(null, "", location.pathname); } catch(e){}
+}
+/* Trabajador de fondo: hace que la app pida siempre la página al servidor al abrirse */
+if ("serviceWorker" in navigator){
+  const regSW = () => navigator.serviceWorker.register("firebase-messaging-sw.js").catch(()=>{});
+  if (document.readyState==="complete") regSW(); else window.addEventListener("load", regSW);
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState==="visible") comprobarVersion(); });
 window.addEventListener("focus", comprobarVersion);
@@ -2895,7 +2910,7 @@ async function act(a, b){
     }
     case "parteday": S.parteFecha = v==="0" ? today() : addDays(S.parteFecha, Number(v)); break;
     case "reload": location.reload(); return;
-    case "actualizar": location.replace(location.pathname + "?v=" + Date.now()); return;
+    case "actualizar": refrescarCache().then(() => location.replace(location.pathname + "?v=" + Date.now())); return;
     case "pdf": await descargarPDF(b.dataset.f); return;
     case "print": {
       const f = b.dataset.f || S.parteFecha;

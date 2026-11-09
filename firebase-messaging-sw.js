@@ -12,3 +12,10 @@ firebase.initializeApp({
 firebase.messaging();
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
+/* Al abrir la app, pedir siempre la página al servidor (así nunca se abre una versión antigua guardada).
+   Sin conexión, se usa la copia guardada. */
+self.addEventListener("fetch", e => {
+  const r = e.request;
+  if (r.mode !== "navigate" || new URL(r.url).origin !== self.location.origin) return;
+  e.respondWith(fetch(r.url, {cache: "no-cache", credentials: "same-origin"}).catch(() => fetch(r)));
+});
