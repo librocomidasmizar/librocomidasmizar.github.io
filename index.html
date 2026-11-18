@@ -476,7 +476,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.18-5";
+const VERSION = "2026.11.18-6";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -2559,7 +2559,7 @@ function viewApp(uReal){
   else main = ajustesView();
   const nuevas = !S.vista && (rol==="admin"||rol==="cocina") ? S.mensajes.filter(m=>m.para===rol && !m.leido && !m.fecha) : [];
   if (rol==="cocina" && !S.vista && S.tab==="parte" && avisosParteSinLeer("cocina").some(m=>m.fecha===S.parteFecha)) marcarLeidos("cocina", m=>m.fecha===S.parteFecha);
-  const apN = rol==="cocina" && !S.vista ? avisosParteSinLeer("cocina").sort((a,b)=>a.fecha.localeCompare(b.fecha)) : [];
+  const apN = rol==="cocina" && !S.vista && S.tab==="parte" ? avisosParteSinLeer("cocina").sort((a,b)=>a.fecha.localeCompare(b.fecha)) : [];
   const bannerParte = apN.length ? `<div class="av-parte no-print" role="status"><h3 style="margin:0 0 4px">📌 ${apN.length===1?"Aviso nuevo":apN.length+" avisos nuevos"} para el parte</h3>
       ${apN.map(m=>`<div class="res"><div><div class="small muted">Para el ${esc(fmtLong(m.fecha).toLowerCase())}</div><div>${esc(m.texto).replace(/\n/g,"<br>")}</div></div><button class="link" data-a="parte-ir" data-f="${m.fecha}">Ver ese parte</button></div>`).join("")}
       <button class="link" data-a="ap-leidos" style="margin-top:6px">Marcar como leídos</button></div>` : "";
