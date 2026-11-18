@@ -44,15 +44,15 @@ jobs:
           const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
           const fechaTxt = f => { const [y, m, d] = String(f).split("-").map(Number); return DIAS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] + " " + d; };
           const envios = [];
-          const avisar = (clave, perfiles, titulo, cuerpo, link) => {
+          const avisar = (clave, perfiles, titulo, cuerpo) => {
             if (yaEnviados.has(clave)) return;
             nuevos.push(clave);
-            envios.push({ perfiles, titulo, cuerpo: String(cuerpo || "").replace(/\s+/g, " ").trim().slice(0, 160), link });
+            envios.push({ perfiles, titulo, cuerpo: String(cuerpo || "").replace(/\s+/g, " ").trim().slice(0, 160) });
           };
           (await db.collection("mensajes").where("ts", ">", desde).get()).forEach(d => {
             const m = d.data(), para = m.para === "cocina" ? conRol("cocina") : conRol("admin");
             const tit = m.fecha ? "📌 Aviso para el parte del " + fechaTxt(m.fecha) : (m.de === "admin" ? "Mensaje de los administradores" : "Mensaje de la administración");
-            avisar("m:" + d.id, para, tit, m.texto, WEB + (m.fecha ? "?ir=parte&f=" + m.fecha : "?ir=mensajes"));
+            avisar("m:" + d.id, para, tit, m.texto);
           });
           (await db.collection("consultas").where("ultimoTs", ">", desde).get()).forEach(d => {
             const c = d.data();
