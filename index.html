@@ -470,7 +470,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.18-3";
+const VERSION = "2026.11.18-4";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -2207,7 +2207,6 @@ const NOVEDADES = [
   {id:"2026.11.08", de: rol => PUSH_ROLES.includes(rol) ? [["Avisos en el móvil", [ "Ahora la aplicación puede avisarte en el móvil aunque la tengas cerrada.", "Actívalo en el "+"<b>círculo de tus iniciales → «Avisos en el móvil»</b>. En iPhone hace falta tener la aplicación instalada en la pantalla de inicio.", "Te avisará de: "+queAvisa(rol).join("; ")+". Puede tardar unos minutos." ]]] : []},
   {id:"2026.11.08b", de: rol => (rol==="residente" || rol==="admin") ? [["Mi semana: solo lo que queda", [ "En "+"<b>Semana</b>"+" ya no aparecen los días de esta semana que ya han pasado. "+"<b>Hoy sigue apareciendo</b>"+", aunque esté cerrado, para que compruebes lo que pediste.", "Si quieres verlos, toca "+"<b>«Ver los días ya pasados»</b>"+" encima de la lista." ]]] : []},
   {id:"2026.11.09", de: rol => (rol==="residente" || rol==="admin") ? [["Efemérides", [ "Cada día, arriba de "+"<b>Semana</b>"+", verás «Tal día como hoy» con la efeméride del día.", "En "+"<b>Más → Efemérides</b>"+" puedes leerlas enteras, pasar de un día a otro y buscar en todas.", "En el "+"<b>Calendario</b>"+", cada día indica cuántas efemérides tiene.", "Si quieres, en Efemérides activa "+"<b>«Avisarme cada mañana»</b>"+" para recibirla en el móvil hacia las 8:00." ]]] : []},
-  {id:"2026.11.18", de: rol => (rol==="admin" || rol==="residente" || rol==="adscritos") ? [["Juego del día", [ "Se quitan el Sudoku y el Nonograma. Quedan "+"<b>Palabra del día, Código secreto y Reinas</b>"+", que se turnan cada lunes." ]]] : []},
   {id:"2026.11.18c", de: rol => {
     const b = s => "<b>"+s+"</b>", l = [];
     if (rol==="cocina") l.push(["Mensajes: lo nuevo, arriba", [ "En "+b("Mensajes")+" el último mensaje sale el primero, y se escribe en el recuadro de arriba." ]],
@@ -2215,26 +2214,23 @@ const NOVEDADES = [
       ["Tal día como hoy", [ "Si queréis, arriba del Parte del día podéis ver la efeméride de la Obra de cada día. Se activa en el "+b("círculo de arriba a la derecha → «Efemérides de la Obra»")+"." ]]);
     if (rol==="admin") l.push(["Mensajes con la administración", [ "Lo más nuevo sale arriba, y se escribe en el recuadro de arriba.", "Los avisos para el parte ya no se mezclan con el chat: están solo en "+b("Parte del día")+". A la administración le sale un número en su Parte del día." ]],
       ["Efemérides para la administración", [ "La administración puede elegir ver «Tal día como hoy» arriba de su Parte del día. Se lo pregunta la aplicación una vez." ]]);
-    if (rol==="admin" || rol==="residente" || rol==="adscritos") l.push(["Reinas, ahora de 9×9", [ "El tablero de Reinas pasa a 9×9: nueve reinas, una por fila, columna y color, sin tocarse." ]]);
     return l; }}
 ];
 const NOV_ID = NOVEDADES[NOVEDADES.length-1].id;
 function novedadesDe(rol, desde){ return NOVEDADES.filter(n=>!desde || n.id > desde).flatMap(n=>n.de(rol)); }
 function novedades1(rol){
   const b = s => "<b>"+s+"</b>";
-  const JUEGO = ["Juego del día", [ "Tres juegos que se turnan cada lunes: "+b("Palabra del día")+", "+b("Código secreto")+" y "+b("Reinas")+" (una por fila, columna y color, sin tocarse).", "En Reinas puedes equivocarte 3 veces: 6 puntos sin errores, 4 con uno y 2 con dos." ]];
   if (rol==="admin") return [
     ["Panel", [ "En "+b("Más → Panel")+": resumen del mes con medias y comparación, gráficos, turnos, regímenes, evolución de 6 meses, servicios por persona y lo pendiente.", b("Toca un día o una columna")+" de los gráficos para ver sus cifras sin mirar los ejes.", b("PDF, Excel y correo")+" sin nombres; el «Excel por persona» sí lleva nombres." ]],
     ["Mensajes: dos apartados", [ "Un solo botón, "+b("Mensajes")+", con dos pestañas arriba: "+b("Administración")+" (vuestro chat con ellas, antes «Notas») y "+b("Residentes")+". Cada una lleva su número de pendientes.", "Cuando la administración escribe, sale un aviso arriba de la pantalla y un número en Mensajes." ]],
     ["Chat con la administración", [ "Escribe abajo, en la barra, a cualquier hora.", b("Toca un mensaje")+" para responderlo citándolo, o para borrarlo. Abajo puedes borrar todas las de un día o hasta una fecha." ]],
     ["Avisos para un parte", [ "Se ponen en "+b("Parte del día")+", en el recuadro «Avisos para este parte». La administración los ve en ese parte (y en el PDF) y además le llegan a sus Mensajes, marcados con 📌." ]],
-    ["Mensajes de residentes", [ "Puedes borrar una conversación o todas las de una fecha (o anteriores)." ]],
-    JUEGO ];
+    ["Mensajes de residentes", [ "Puedes borrar una conversación o todas las de una fecha (o anteriores)." ]] ];
   if (rol==="cocina") return [
     ["Resumen del mes", [ "Nueva sección en la barra de abajo: desayunos, comidas (y en bolsa), cenas, tuppers y bolsas de comida de cada día y del mes, con medias y gráficos.", b("Toca un día o una columna")+" de los gráficos para ver sus cifras.", "Con "+b("PDF, Excel o Enviar por correo")+" lo tenéis para el cierre de mes. Con las flechas veis los meses anteriores." ]],
     ["Mensajes: un chat con los administradores", [ "El botón «Notas» pasa a llamarse "+b("Mensajes")+". Escribid abajo, en la barra, cuando queráis: os pueden responder a cualquier hora.", b("Tocad un mensaje")+" para responderlo citándolo." ]],
     ["Avisos para el parte", [ "Los avisos de los administradores para un día salen "+b("arriba de ese parte")+" y también os llegan a Mensajes, marcados con 📌. Desde ahí, tocándolos, podéis ir a ese parte." ]] ];
-  if (rol==="residente") return [JUEGO];
+  if (rol==="residente") return [];
   return [];
 }
 function guiaDe(rol){
