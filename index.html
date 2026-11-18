@@ -169,6 +169,7 @@ h3{font-size:17px;font-weight:600}
 .cuenta button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:11px 10px;font-weight:700;color:var(--primary)}
 .cuenta button:hover{background:var(--soft)}
 .cuenta button.salir{color:var(--danger)}
+.cuenta-vista button:disabled{opacity:1;cursor:default;background:none}
 .link{background:none;border:0;padding:6px 0;color:var(--primary);text-decoration:underline;text-underline-offset:3px}
 
 /* Tabs */
@@ -476,7 +477,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.18-6";
+const VERSION = "2026.11.18-7";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -2570,7 +2571,10 @@ function viewApp(uReal){
   const bannerAdm = avsAdm.map(a=>`<div class="alert no-print" role="status" style="border-left-color:var(--primary)"><strong>Aviso de los administradores</strong> <span class="muted small">${esc(hora(a.ts))}</span><p style="margin:6px 0">${esc(a.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="av|${esc(a.id)}">Entendido</button></div>`).join("");
   const bannerAv = bannerAdm + (avs.length ? avs.map(x=>`<div class="alert no-print" role="status"><strong>Aviso para el ${esc(fmtLong(x.fecha).toLowerCase())}</strong><p style="margin:6px 0">${esc(x.texto).replace(/\n/g,"<br>")}</p><button class="link" data-a="av-visto" data-v="${esc(x.clave)}">Entendido</button></div>`).join("") : "");
   const cab = S.vista
-    ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div></div>`
+    ? `<div class="status prov no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>Estás viendo lo que ve la administración. Solo lectura.</span><button class="btn" data-a="vista-salir">Volver a mi vista</button></div><div class="top"><div class="brand"><h1>Libro de comidas<span class="marca">Mizar</span></h1></div><button class="avatar" data-a="cuenta" aria-expanded="${!!S.cuenta}" aria-label="Menú del perfil de la administración">A</button></div>
+      ${S.cuenta ? `<div class="cuenta cuenta-vista no-print"><div class="yo">Administración<small>Administración · así lo ven ellas (solo lectura)</small></div>
+        ${["Cómo se usa","Efemérides de la Obra","Avisos en el móvil","Novedades","Cambiar contraseña"].map(x=>`<button disabled>${x}</button>`).join("")}<button class="salir" disabled>Salir</button>
+        <p class="muted small" style="margin:8px 10px 0">Versión ${VERSION}</p></div>` : ""}`
     : cabecera(rol==="cocina" ? "Administración" : (uReal.nombre||""), rol==="admin", ROLES[rol]) + panelPw();
   if (!S.vista && !S.modal && !S.novVisto){ S.novVisto = true; let visto = ""; try { visto = localStorage.getItem("mizar.novedades")||""; } catch(e){}
     if (visto!==NOV_ID && novedadesDe(rol, visto).length){ S.modal = {tipo:"nov", rol, desde:visto}; }
@@ -2790,7 +2794,7 @@ async function act(a, b){
     }
     case "logout": if (tokenGuardado()){ try { await S.db.doc("tokens/"+tokenGuardado()).delete(); } catch(e){} } S.cuenta = false; S.drafts={}; S.openDay=null; S.openWd=null; await signOut(auth); return;
     case "vista-admon": S.cuenta = false; S.vista = true; S.tabReal = S.tab; S.tab = "parte"; S.verPw = false; S.menu = false; window.scrollTo(0,0); break;
-    case "vista-salir": S.vista = false; S.tab = S.tabReal || null; S.menu = false; window.scrollTo(0,0); break;
+    case "vista-salir": S.vista = false; S.cuenta = false; S.tab = S.tabReal || null; S.menu = false; window.scrollTo(0,0); break;
     case "menu": S.menu = !S.menu; S.cuenta = false; break;
     case "guia": { const me = resById(S.session.uid); S.cuenta = false; S.guiaAb = 0; S.modal = {tipo:"guia", rol: S.vista ? "cocina" : rolDe(me)}; break; }
     case "guia-ab": S.guiaAb = S.guiaAb===Number(v) ? -1 : Number(v); break;
