@@ -393,6 +393,12 @@ details.plegable[open] summary{margin-bottom:10px}
 .ef-sw[aria-checked="true"] span{left:24px}
 .ef-busca{flex-wrap:nowrap;margin-bottom:14px}
 .ef-busca .input{flex:1;min-width:0}
+.ef-mini{display:flex;align-items:center;gap:8px;background:var(--accent-soft);border:2px solid color-mix(in srgb, var(--accent) 35%, transparent);border-radius:12px;padding:6px 10px;margin:0 0 12px}
+.ef-mini-t{flex:1;min-width:0;display:block;text-align:left;background:none;border:0;padding:2px 0;color:var(--ink);font:inherit;cursor:pointer}
+.ef-mini-k{display:block;font-family:var(--head);font-weight:600;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.ef-mini-x{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.ef-mini-n{flex:none;font-size:13px;font-weight:700;color:var(--accent)}
+.ef-mini .ef-x{margin:0}
 .ef-hit{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;max-width:90vw;z-index:10}
 /* Resumen del mes y panel */
@@ -470,7 +476,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.18-4";
+const VERSION = "2026.11.18-5";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -953,6 +959,7 @@ function navegacion(list, rol, comensal){
     const n = list.find(x=>x[0]==="notas"), c = list.find(x=>x[0]==="consultas");
     if (n && c){ const i = list.indexOf(n); list = list.filter(x=>x!==n && x!==c); list.splice(i, 0, ["mensajes","Mensajes",(Number(n[2])||0)+(Number(c[2])||0)||"",n[3]]); }
   }
+  if (rol==="cocina") list = list.filter(x=>x[0]!=="efemerides"); // la administración entra a Efemérides desde su círculo
   const pref = rol==="adscritos" ? ["adscritos"]
     : rol==="cocina" ? ["parte","resumen","notas","calendario","cumples"]
     : rol==="admin" ? (comensal ? ["semana","parte","mensajes","panel"] : ["parte","panel","extras","mensajes"])
@@ -1964,6 +1971,10 @@ function tarjetaEfem(){
   if (!verEfem() || !efCardOn()) return "";
   const f = today(), l = efItems(mdDe(f));
   if (!l || !l.length) return "";
+  if (rolActual()==="cocina"){ // versión de una línea, para no tapar el parte
+    const it = l[0];
+    return `<div class="ef-mini no-print"><button class="ef-mini-t" data-a="ef-ir" data-f="${f}" data-i="0" aria-label="Leer la efeméride de hoy: ${esc(efTit(it))}"><span class="ef-mini-k">Tal día como hoy</span><span class="ef-mini-x">${it.a?`<b>${it.a}</b> · `:""}${esc(it.t)}</span></button>${l.length>1?`<span class="ef-mini-n">+${l.length-1}</span>`:""}<button class="ef-x" data-a="ef-card" aria-label="Quitar «Tal día como hoy»">×</button></div>`;
+  }
   const n = l.length, act = Math.min(S.efSlide||0, n-1);
   const slides = l.map((it,i)=>{ const ex = extracto(it.x);
     return `<button class="ef-sl" data-a="ef-ir" data-f="${f}" data-i="${i}" aria-label="Leer ${esc(efTit(it))}">
