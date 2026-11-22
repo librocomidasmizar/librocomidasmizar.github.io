@@ -36,9 +36,15 @@ jobs:
           const yaEnviados = new Set(est.enviados || []), nuevos = [];
           // Primero, solo lo nuevo. Si no hay nada que enviar, no se leen personas ni dispositivos (ahorra lecturas)
           const [qMen, qCon, qAvi, qEve, qAds] = await Promise.all(["mensajes:ts", "consultas:ultimoTs", "avisos:ts", "eventos:ts", "adscritos:ts"].map(x => { const [c, f] = x.split(":"); return db.collection(c).where(f, ">", desde).get(); }));
-          const pm0 = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ahora)).map(p => [p.type, p.value]));
+          const pm0 = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ahora)).map(p => [p.type, p.value]));
           const tocaEf = Number(pm0.hour) >= 8 && Number(pm0.hour) < 12 && (est.efFecha || "") !== pm0.year + "-" + pm0.month + "-" + pm0.day;
-          if (!tocaEf && [qMen, qCon, qAvi, qEve, qAds].every(q => q.empty)) {
+          // Recordatorio del cierre: entre 45 y 5 minutos antes de la hora de cierre de hoy, una vez al día
+          const hoy0 = pm0.year + "-" + pm0.month + "-" + pm0.day, wd0 = (new Date(Date.UTC(+pm0.year, +pm0.month - 1, +pm0.day)).getUTCDay() + 6) % 7;
+          const cg = (await db.doc("config/general").get()).data() || {};
+          const hCierre = (cg.excepciones || {})[hoy0] || (cg.horasDia || {})[wd0] || (wd0 >= 5 ? (cg.horaCierreFinde || "10:30") : (cg.horaCierre || "09:30"));
+          const faltan = Number(hCierre.slice(0, 2)) * 60 + Number(hCierre.slice(3, 5)) - (Number(pm0.hour) * 60 + Number(pm0.minute));
+          const tocaRec = cg.recordatorio !== false && faltan > 5 && faltan <= 45 && (est.recFecha || "") !== hoy0;
+          if (!tocaEf && !tocaRec && [qMen, qCon, qAvi, qEve, qAds].every(q => q.empty)) {
             await estRef.set({ ...est, ultimo: ahora });
             console.log("Revisado. Nada nuevo.");
             process.exit(0);
@@ -47,7 +53,8 @@ jobs:
           const U = {}, N = {}, porPerfil = {};
           us.forEach(d => U[d.id] = d.data());
           nom.forEach(d => N[d.id] = d.data());
-          tks.forEach(d => { const p = d.data().perfil; (porPerfil[p] = porPerfil[p] || []).push(d.id); });
+          const tokRec = {};
+          tks.forEach(d => { const p = d.data().perfil; (porPerfil[p] = porPerfil[p] || []).push(d.id); tokRec[d.id] = d.data().recordar; });
           const activo = id => U[id] && U[id].activo !== false;
           const conRol = r => Object.keys(U).filter(id => activo(id) && (U[id].rol || "residente") === r);
           const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -96,10 +103,23 @@ jobs:
             }
             console.log("Efemérides del " + hoyMad + ": " + items.length + ". Dispositivos: " + tokensEf.length + ".");
           }
+          let recFecha = est.recFecha || "";
+          if (tocaRec) {
+            recFecha = hoy0;
+            const [qPed, qPla] = await Promise.all([db.collection("pedidos").where("fecha", "==", hoy0).get(), db.collection("plantillas").get()]);
+            const conPedido = new Set(), conPlantilla = new Set();
+            qPed.forEach(d => conPedido.add(d.data().residente));
+            qPla.forEach(d => { if (d.data()["d" + wd0]) conPlantilla.add(d.id); });
+            const comensal = id => activo(id) && ((U[id].rol || "residente") === "residente" || U[id].comensal === true);
+            const sinNada = Object.keys(U).filter(id => comensal(id) && !conPedido.has(id) && !conPlantilla.has(id));
+            if (sinNada.length) envios.push({ perfiles: sinNada, titulo: "Hoy no tienes nada apuntado", cuerpo: "El parte se cierra a las " + hCierre + ". Si comes en casa, apúntate ahora.", recordatorio: true });
+            console.log("Recordatorio del " + hoy0 + " (cierre " + hCierre + "): " + sinNada.length + " personas sin nada apuntado.");
+          }
           let entregas = 0; const malos = new Set();
           const BORRAR = ["messaging/registration-token-not-registered", "messaging/invalid-registration-token", "messaging/invalid-argument"];
           for (const e of envios) {
-            const tokens = e.tokens || [...new Set(e.perfiles.filter(activo).flatMap(p => porPerfil[p] || []))];
+            let tokens = e.tokens || [...new Set(e.perfiles.filter(activo).flatMap(p => porPerfil[p] || []))];
+            if (e.recordatorio) tokens = tokens.filter(t => tokRec[t] !== false);
             for (let i = 0; i < tokens.length; i += 500) {
               const lote = tokens.slice(i, i + 500);
               const r = await fcm.sendEachForMulticast({ tokens: lote, webpush: { notification: { title: e.titulo, body: e.cuerpo, icon: WEB + "icon-192.png" }, fcmOptions: { link: e.link || WEB } } });
@@ -107,7 +127,7 @@ jobs:
             }
           }
           for (const t of malos) await db.doc("tokens/" + t).delete();
-          await estRef.set({ ultimo: ahora, enviados: [...yaEnviados, ...nuevos].slice(-300), avisosEnviados: (est.avisosEnviados || 0) + entregas, efFecha });
+          await estRef.set({ ultimo: ahora, enviados: [...yaEnviados, ...nuevos].slice(-300), avisosEnviados: (est.avisosEnviados || 0) + entregas, efFecha, recFecha });
           console.log("Revisado. Avisos nuevos: " + envios.length + ". Entregas: " + entregas + ". Dispositivos dados de baja: " + malos.size + ".");
           FIN
           node avisos.mjs

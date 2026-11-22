@@ -476,7 +476,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.22-1";
+const VERSION = "2026.11.22-2";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -795,7 +795,7 @@ function estadoPush(){
 async function guardarToken(tk){
   const viejo = tokenGuardado();
   if (viejo && viejo!==tk){ try { await S.db.doc("tokens/"+viejo).delete(); } catch(e){} }
-  await S.db.doc("tokens/"+tk).set({perfil:S.session.uid, ts:Date.now(), disp:dispositivo(), efem:efemOn()});
+  await S.db.doc("tokens/"+tk).set({perfil:S.session.uid, ts:Date.now(), disp:dispositivo(), efem:efemOn(), recordar:recOn()});
   try { localStorage.setItem("mizar.push", tk); } catch(e){}
 }
 async function activarPush(){
@@ -825,10 +825,13 @@ async function refrescarPush(){
     await guardarToken(await getToken(m, {vapidKey:S.config.vapid, serviceWorkerRegistration:swReg}));
   } catch(e){ console.warn("Avisos:", e); }
 }
+/* Recordatorio antes del cierre (lo envía el robot si ese día no tienes nada apuntado). Por defecto, sí. */
+const recOn = () => { try { return localStorage.getItem("mizar.rec")!=="0"; } catch(e){ return true; } };
+const REC_TXT = "un recordatorio media hora antes del cierre, si ese día no tienes nada apuntado";
 function queAvisa(rol){
-  if (rol==="admin") return ["mensajes de la administración (y sus avisos)", "mensajes de residentes", "propuestas de eventos y de adscritos", "la efeméride del día, si lo activas en Efemérides"];
+  if (rol==="admin") return ["mensajes de la administración (y sus avisos)", "mensajes de residentes", "propuestas de eventos y de adscritos", "la efeméride del día, si lo activas en Efemérides"].concat(esComensal(resById(S.session && S.session.uid)||{}) ? [REC_TXT] : []);
   if (rol==="cocina") return ["mensajes de los administradores", "avisos para el parte (📌)", "la efeméride del día, si lo activáis en Efemérides"];
-  return ["respuestas de los administradores a tus mensajes", "avisos de los administradores para todos", "la efeméride del día, si lo activas en Efemérides"];
+  return ["respuestas de los administradores a tus mensajes", "avisos de los administradores para todos", "la efeméride del día, si lo activas en Efemérides", REC_TXT];
 }
 function pushModalHTML(rol){
   const e = estadoPush(), lista = `<ul class="guia-l">${queAvisa(rol).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
@@ -836,7 +839,9 @@ function pushModalHTML(rol){
   if (e==="ios") return `<p style="margin-top:0">En iPhone los avisos solo funcionan con la aplicación <b>instalada en la pantalla de inicio</b> (iOS 16.4 o posterior):</p><ol class="guia-l"><li>Abre la aplicación en <b>Safari</b>.</li><li>Pulsa el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba).</li><li>Elige <b>«Añadir a pantalla de inicio»</b>.</li><li>Abre la aplicación desde ese icono y vuelve aquí: círculo de tus iniciales → «Avisos en el móvil».</li></ol>` + pie;
   if (e==="no") return `<p style="margin-top:0">Este navegador no admite avisos. En Android usa <b>Chrome</b>; en iPhone, la aplicación instalada en la pantalla de inicio.</p>`;
   if (e==="bloqueado") return `<p style="margin-top:0">Los avisos están <b>bloqueados</b> para esta aplicación. Para permitirlos:</p><ul class="guia-l"><li><b>Android (Chrome):</b> toca el candado o los tres puntos → Información del sitio → Notificaciones → Permitir.</li><li><b>iPhone:</b> Ajustes → Notificaciones → Mizar → Permitir notificaciones.</li></ul><p>Después vuelve aquí y pulsa «Activar avisos».</p><button class="btn" data-a="push-on">Activar avisos</button>` + pie;
-  if (e==="on") return `<div class="status def">Avisos activados en este dispositivo.</div><p>Te avisaremos de:</p>${lista}<button class="btn danger" data-a="push-off">Desactivar en este dispositivo</button>` + pie;
+  const me = resById(S.session && S.session.uid), rec = (rol==="residente" || rol==="admin") && me && esComensal(me) ? `<div class="ef-aviso" style="margin:0 0 14px"><div><strong>Recordatorio antes del cierre</strong><div class="muted small">Media hora antes de que se cierre el parte, si ese día no tienes nada apuntado (ni en la plantilla fija). En este dispositivo.</div></div>
+    <button class="ef-sw" role="switch" aria-checked="${recOn()}" data-a="rec-aviso" aria-label="Recordatorio antes del cierre"><span></span></button></div>` : "";
+  if (e==="on") return `<div class="status def">Avisos activados en este dispositivo.</div><p>Te avisaremos de:</p>${lista}${rec}<button class="btn danger" data-a="push-off">Desactivar en este dispositivo</button>` + pie;
   return `<p style="margin-top:0">Recibe un aviso en el móvil aunque tengas la aplicación cerrada. Te avisaremos de:</p>${lista}<button class="btn" data-a="push-on">Activar avisos</button><p class="muted small">El móvil te preguntará si permites las notificaciones: pulsa «Permitir».</p>` + pie;
 }
 
@@ -2249,7 +2254,11 @@ const NOVEDADES = [
       ["Tal día como hoy", [ "Si queréis, arriba del Parte del día podéis ver la efeméride de la Obra de cada día. Se activa en el "+b("círculo de arriba a la derecha → «Efemérides de la Obra»")+"." ]]);
     if (rol==="admin") l.push(["Mensajes con la administración", [ "Lo más nuevo sale arriba, y se escribe en el recuadro de arriba.", "Los avisos para el parte ya no se mezclan con el chat: están solo en "+b("Parte del día")+". A la administración le sale un número en su Parte del día." ]],
       ["Efemérides para la administración", [ "La administración puede elegir ver «Tal día como hoy» arriba de su Parte del día. Se lo pregunta la aplicación una vez." ]]);
-    return l; }}
+    return l; }},
+  {id:"2026.11.22", de: rol => {
+    const me = resById(S.session && S.session.uid);
+    if (!(rol==="residente" || (rol==="admin" && me && esComensal(me)))) return [];
+    return [["Recordatorio antes del cierre", [ "Si tienes los avisos del móvil activados y ese día no tienes nada apuntado, media hora antes del cierre te llegará un recordatorio.", "Si tienes la "+"<b>plantilla fija</b>"+" rellena para ese día, no te llegará.", "Se puede quitar en el "+"<b>círculo de tus iniciales → «Avisos en el móvil»</b>"+"." ]]]; }}
 ];
 const NOV_ID = NOVEDADES[NOVEDADES.length-1].id;
 function novedadesDe(rol, desde){ return NOVEDADES.filter(n=>!desde || n.id > desde).flatMap(n=>n.de(rol)); }
@@ -3103,6 +3112,11 @@ async function act(a, b){
     case "ef-buscar": S.efQ = String(draft("ef_q","")).trim(); if (S.efQ) cargarTodasEfem(); break;
     case "ef-limpiar": S.efQ = ""; delete S.drafts.ef_q; break;
     case "ef-aviso": await cambiarAvisoEfem(); return;
+    case "rec-aviso": {
+      const nuevo = !recOn(); try { localStorage.setItem("mizar.rec", nuevo ? "1" : "0"); } catch(e){}
+      const tk = tokenGuardado(); if (tk){ try { await setDoc(fdoc(fs, "tokens/"+tk), {perfil:S.session.uid, recordar:nuevo}, {merge:true}); } catch(e){ console.warn(e); } }
+      toast(nuevo ? "Te recordaremos apuntarte antes del cierre." : "Ya no te llegará el recordatorio en este dispositivo."); break;
+    }
     case "mes": { const hoy = ymDe(today()), act = S.mesSel || hoy; S.mesSel = v==="0" ? hoy : ymMas(act, Number(v)); if (S.mesSel > hoy) S.mesSel = hoy; break; }
     case "pm-orden": S.pmOrden = S.pmOrden===v ? "tot" : v; break;
     case "mes-csv": await entregarArchivo(new Blob([csvMes(v)], {type:"text/csv;charset=utf-8"}), "resumen-"+v+".csv", "Resumen de "+nombreMes(v)); return;
