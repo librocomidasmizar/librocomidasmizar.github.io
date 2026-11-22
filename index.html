@@ -11,7 +11,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mizar">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,750&display=swap" rel="stylesheet">
@@ -466,7 +465,7 @@ window.addEventListener("unhandledrejection", e => { const a = document.getEleme
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, initializeAuth, inMemoryPersistence, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getMessaging, getToken, deleteToken, isSupported as pushSoportado } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
-import { initializeFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsnap, query, where as fwhere, writeBatch, deleteField, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, doc as fdoc, collection as fcol, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot as fsnap, query, where as fwhere, writeBatch, deleteField, arrayUnion, persistentLocalCache, persistentMultipleTabManager, terminate, clearIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const FB_CONFIG = {
   apiKey: "AIzaSyA5dr_N0Z8VqiRWTCDMHbrRsmK6gFsUDBM",
@@ -477,11 +476,14 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.18-7";
+const VERSION = "2026.11.22-1";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
-const fs = initializeFirestore(fbApp, {ignoreUndefinedProperties:true});
+/* Caché en el dispositivo: los datos salen al instante al abrir y solo se descarga lo nuevo */
+let fs;
+try { fs = initializeFirestore(fbApp, {ignoreUndefinedProperties:true, localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})}); }
+catch(e){ console.warn("Sin caché local:", e); fs = initializeFirestore(fbApp, {ignoreUndefinedProperties:true}); }
 let secAuth = null;
 function authSecundaria(){ if (!secAuth) secAuth = initializeAuth(initializeApp(FB_CONFIG, "altas"), {persistence: inMemoryPersistence}); return secAuth; }
 const emailNuevo = u => u + "." + Date.now().toString(36) + "@" + DOMINIO;
@@ -490,11 +492,24 @@ const emailNuevo = u => u + "." + Date.now().toString(36) + "@" + DOMINIO;
 const wrap = s => ({id:s.id, exists:s.exists(), data:()=>s.data()});
 function mkDoc(path){ const r = fdoc(fs, path); return {id:r.id, path,
   get: async()=>wrap(await getDoc(r)), set:d=>setDoc(r,d), update:d=>updateDoc(r,d), delete:()=>deleteDoc(r),
-  onSnapshot:(n,e)=>fsnap(r, s=>n(wrap(s)), e)}; }
+  onSnapshot:(n,e)=>escuchar(r, s=>n(wrap(s)), e)}; }
 function mkCol(path, cons=[]){ const base = fcol(fs, path), q = cons.length ? query(base, ...cons) : base; return {
   where:(f,op,v)=>mkCol(path,[...cons, fwhere(f,op,v)]), doc:id=>mkDoc(path+"/"+id),
   get: async()=>{ const s = await getDocs(q); return {docs:s.docs.map(wrap)}; },
-  onSnapshot:(n,e)=>fsnap(q, s=>n({docs:s.docs.map(wrap)}), e)}; }
+  onSnapshot:(n,e)=>escuchar(q, s=>n({docs:s.docs.map(wrap), inicial:s.inicial}), e)}; }
+/* Escucha con caché: «inicial» = aún no ha llegado lo del servidor (no se avisa de novedades con eso).
+   pendCache: escuchas que todavía solo tienen datos guardados (el resumen mensual no se escribe con ellos). */
+const pendCache = new Set(); let nEsc = 0;
+function escuchar(q, n, e){
+  const k = ++nEsc; let servido = false; pendCache.add(k);
+  const u = fsnap(q, s => {
+    const cache = s.metadata.fromCache;
+    if (cache) pendCache.add(k); else pendCache.delete(k);
+    s.inicial = cache || !servido; if (!cache) servido = true;
+    n(s);
+  }, err => { pendCache.delete(k); if (e) e(err); });
+  return () => { pendCache.delete(k); u(); };
+}
 
 /* ---------- Utilidades ---------- */
 const $app = document.getElementById("app");
@@ -624,28 +639,28 @@ function suscribir(pid, rol){
   add(S.db.collection("usuarios").onSnapshot(q => {
     const o = {}; q.docs.forEach(d=>o[d.id]=d.data()); S.pub = o; S.resLoaded = true; mezclar();
     if (!o[pid] || o[pid].activo===false){ toast("Tu usuario ya no está activo."); signOut(auth); return; }
-    revisarPeticion(); render();
+    revisarPeticion(); renderLuego();
     if (rol==="admin" && !S.migrado){ S.migrado = true; setTimeout(migrarNombres, 2500); setTimeout(()=>limpiarAntiguos(false), 6000); }
   }, dbErr));
-  if (rol!=="cocina") add(S.db.collection("nombres").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.nom=o; mezclar(); render(); }, dbErr));
-  if (gest) add(S.db.collection("privados").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.priv=o; mezclar(); revisarPeticion(); render(); }, dbErr));
-  else add(S.db.doc("privados/"+pid).onSnapshot(s => { S.priv = s.exists ? {[pid]: s.data()} : {}; mezclar(); revisarPeticion(); render(); }, dbErr));
-  add(S.db.collection("plantillas").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.plantillas=o; S.listo.plantillas=true; render(); }, dbErr));
-  add(S.db.collection("pedidos").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.pedidos=o; S.listo.pedidos=true; render(); }, dbErr));
+  if (rol!=="cocina") add(S.db.collection("nombres").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.nom=o; mezclar(); renderLuego(); }, dbErr));
+  if (gest) add(S.db.collection("privados").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.priv=o; mezclar(); revisarPeticion(); renderLuego(); }, dbErr));
+  else add(S.db.doc("privados/"+pid).onSnapshot(s => { S.priv = s.exists ? {[pid]: s.data()} : {}; mezclar(); revisarPeticion(); renderLuego(); }, dbErr));
+  add(S.db.collection("plantillas").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.plantillas=o; S.listo.plantillas=true; renderLuego(); }, dbErr));
+  add(S.db.collection("pedidos").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.pedidos=o; S.listo.pedidos=true; renderLuego(); }, dbErr));
   add(S.db.collection("extras").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => {
     const prev = S.extrasCargados; const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.extras=o; S.extrasCargados = true; S.listo.extras = true;
     const me = S.session && resById(S.session.uid);
-    if (prev && me && rolDe(me)==="residente") avisosResidente().filter(x=>!x.visto).slice(0,1).forEach(x=>toast("Nuevo aviso para el "+fmtLong(x.fecha).toLowerCase()+"."));
-    render();
+    if (prev && !q.inicial && me && rolDe(me)==="residente") avisosResidente().filter(x=>!x.visto).slice(0,1).forEach(x=>toast("Nuevo aviso para el "+fmtLong(x.fecha).toLowerCase()+"."));
+    renderLuego();
   }, dbErr));
   const ordenEv = l => l.sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
   if (gest) add(S.db.collection("eventos").onSnapshot(q => {
     const prev = S.evIds; S.eventos = ordenEv(q.docs.map(d=>({id:d.id, ...d.data()}))); S.evIds = new Set(S.eventos.map(e=>e.id));
-    if (prev && rol==="admin" && S.eventos.some(e=>!prev.has(e.id) && e.estado==="pendiente")) toast("Un residente ha propuesto un evento para el calendario.");
-    render();
+    if (prev && !q.inicial && rol==="admin" && S.eventos.some(e=>!prev.has(e.id) && e.estado==="pendiente")) toast("Un residente ha propuesto un evento para el calendario.");
+    renderLuego();
   }, dbErr));
   else {
-    const junta = () => { S.eventos = ordenEv(Object.values({...(S.evA||{}), ...(S.evM||{})})); render(); };
+    const junta = () => { S.eventos = ordenEv(Object.values({...(S.evA||{}), ...(S.evM||{})})); renderLuego(); };
     add(S.db.collection("eventos").where("estado","==","aprobado").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]={id:d.id, ...d.data()}); S.evA=o; junta(); }, dbErr));
     add(S.db.collection("eventos").where("autor","==",pid).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]={id:d.id, ...d.data()}); S.evM=o; junta(); }, dbErr));
   }
@@ -655,36 +670,36 @@ function suscribir(pid, rol){
     add(cq.onSnapshot(q => {
       const prev = S.cqTs || {}; S.consultas = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(b.ultimoTs||0)-(a.ultimoTs||0));
       const ahora = {}; S.consultas.forEach(c=>ahora[c.id]=c.ultimoTs||0);
-      if (S.cqTs) S.consultas.forEach(c=>{ if ((c.ultimoTs||0) > (prev[c.id]||0)){ const ult = (c.mensajes||[]).slice(-1)[0]; if (ult && ult.quien!==pid) toast(rol==="admin" ? "Nuevo mensaje de un residente." : "Los administradores te han respondido."); } });
+      if (S.cqTs && !q.inicial) S.consultas.forEach(c=>{ if ((c.ultimoTs||0) > (prev[c.id]||0)){ const ult = (c.mensajes||[]).slice(-1)[0]; if (ult && ult.quien!==pid) toast(rol==="admin" ? "Nuevo mensaje de un residente." : "Los administradores te han respondido."); } });
       S.cqTs = ahora;
       caducarConsultas();
-      render();
+      renderLuego();
     }, dbErr));
   }
   add(S.db.collection("adscritos").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => {
     const prev = S.adsPend; const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.adscritos=o;
     const ahora = new Set(adsPendientes().map(a=>a.fecha+"|"+a.ts));
-    if (prev && rol==="admin" && [...ahora].some(k=>!prev.has(k))) toast("El jefe de adscritos ha propuesto comensales para un martes.");
-    S.adsPend = ahora; S.listo.adscritos = true; render();
+    if (prev && !q.inicial && rol==="admin" && [...ahora].some(k=>!prev.has(k))) toast("El jefe de adscritos ha propuesto comensales para un martes.");
+    S.adsPend = ahora; S.listo.adscritos = true; renderLuego();
   }, dbErr));
   /* Resumen diario guardado: para el control mensual (administradores y administración) */
-  const errResumen = e => { console.warn("Resumen mensual:", e); S.partesErr = true; render(); };
-  if (gest) add(S.db.collection("partes").where("fecha",">=",addDays(today(),-40)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.partes=o; S.listo.partes=true; render(); }, errResumen));
-  if (rol==="admin") add(S.db.collection("partesDet").where("fecha",">=",addDays(today(),-40)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.det=o; S.listo.det=true; render(); }, errResumen));
+  const errResumen = e => { console.warn("Resumen mensual:", e); S.partesErr = true; renderLuego(); };
+  if (gest) add(S.db.collection("partes").where("fecha",">=",addDays(today(),-40)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.partes=o; S.listo.partes=true; renderLuego(); }, errResumen));
+  if (rol==="admin") add(S.db.collection("partesDet").where("fecha",">=",addDays(today(),-40)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.det=o; S.listo.det=true; renderLuego(); }, errResumen));
   if (rol!=="cocina") add(S.db.collection("avisos").where("hasta",">=",today()).onSnapshot(q => {
     const prev = S.avIds; S.avisos = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0)); S.avIds = new Set(S.avisos.map(a=>a.id));
-    if (prev && rol==="residente" && S.avisos.some(a=>!prev.has(a.id))) toast("Nuevo aviso de los administradores.");
-    render();
+    if (prev && !q.inicial && rol==="residente" && S.avisos.some(a=>!prev.has(a.id))) toast("Nuevo aviso de los administradores.");
+    renderLuego();
   }, dbErr));
-  if (rol!=="cocina") add(S.db.collection("wordle").where("fecha",">=",addDays(today(),-62)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.wordle=o; render(); }, dbErr));
+  if (rol!=="cocina") add(S.db.collection("wordle").where("fecha",">=",addDays(today(),-62)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.wordle=o; renderLuego(); }, dbErr));
   if (gest){
-    add(S.db.collection("mensajes").onSnapshot(q => {
+    add(S.db.collection("mensajes").where("ts",">=",Date.now()-180*86400000).onSnapshot(q => {
       const prev = S.msgIds;
       S.mensajes = q.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(a.ts||0)-(b.ts||0));
       S.msgIds = new Set(S.mensajes.map(m=>m.id));
-      if (prev) S.mensajes.filter(m=>!prev.has(m.id) && m.para===rol && !m.leido).forEach(m=>{ if (!m.fecha && S.tab==="notas" && document.visibilityState==="visible") S.irAbajo = true; else notificar(m); });
+      if (prev && !q.inicial) S.mensajes.filter(m=>!prev.has(m.id) && m.para===rol && !m.leido).forEach(m=>{ if (!m.fecha && S.tab==="notas" && document.visibilityState==="visible") S.irAbajo = true; else notificar(m); });
       if (S.tab==="notas" && !S.vista && document.visibilityState==="visible" && S.mensajes.some(m=>m.para===rol && !m.leido && !m.fecha)) marcarLeidos(rol, m=>!m.fecha);
-      render();
+      renderLuego();
     }, dbErr));
   }
 }
@@ -741,7 +756,10 @@ async function entrarCon(user){
   try {
     const c = await S.db.doc("cuentas/"+user.uid).get();
     if (!c.exists){ S.loginErr = "Este acceso ya no es válido. Pide al administrador una contraseña nueva."; await signOut(auth); return; }
-    const pid = c.data().perfil, p = await S.db.doc("usuarios/"+pid).get();
+    const pid = c.data().perfil;
+    let antes = null; try { antes = localStorage.getItem("mizar.cachePid"); localStorage.setItem("mizar.cachePid", pid); } catch(e){}
+    if (antes && antes !== pid){ try { await terminate(fs); await clearIndexedDbPersistence(fs); } catch(e){ console.warn(e); } location.reload(); return; }
+    const p = await S.db.doc("usuarios/"+pid).get();
     if (!p.exists || p.data().activo===false){ S.loginErr = "Tu usuario está dado de baja."; await signOut(auth); return; }
     S.session = {uid:pid}; S.authListo = true; S.loginErr = "";
     suscribir(pid, p.data().rol || "residente");
@@ -749,7 +767,7 @@ async function entrarCon(user){
   } catch(e){ console.error(e); S.loginErr = e.code==="permission-denied" ? "Tu usuario está dado de baja o no tiene acceso. Habla con el administrador." : "No se ha podido entrar ("+(e.code||e.message)+")."; S.authListo = true; try { await signOut(auth); } catch(e2){} }
   render();
 }
-S.db.doc("config/general").onSnapshot(s => { S.config = s.exists ? s.data() : null; S.cfgLoaded = true; render(); }, e => { console.error(e); S.loadErr = e.code||e.message; S.cfgLoaded = true; render(); });
+S.db.doc("config/general").onSnapshot(s => { S.config = s.exists ? s.data() : null; S.cfgLoaded = true; renderLuego(); }, e => { console.error(e); S.loadErr = e.code||e.message; S.cfgLoaded = true; render(); });
 onAuthStateChanged(auth, user => { if (S.enAlta) return; entrarCon(user); });
 
 /* ---------- Avisos al móvil (notificaciones push, las envía el robot de GitHub) ---------- */
@@ -863,7 +881,11 @@ function notificar(m){
   toast((m.fecha ? "Nuevo aviso para el parte, de " : "Nuevo mensaje de ")+quien+".");
   try { if ("Notification" in window && Notification.permission==="granted") new Notification("Libro de comidas - Mizar", {body:"Mensaje de "+quien+": "+String(m.texto).slice(0,120)}); } catch(e){}
 }
+/* Varias novedades seguidas (al abrir llegan muchas) → un solo dibujado */
+let renderT = null;
+function renderLuego(){ if (!renderT) renderT = setTimeout(render, 40); }
 function render(){
+  if (renderT){ clearTimeout(renderT); renderT = null; }
   try { const me = S.session && resById(S.session.uid), rol = me && rolDe(me); const n = rol ? S.mensajes.filter(m=>m.para===rol && !m.leido).length + (rol==="residente" ? consultasSinLeer("residente") : 0) : 0; document.title = (n?"("+n+") ":"")+"Libro de comidas - Mizar"; } catch(e){}
   const a = document.activeElement, fid = a && a.id, sel = a && a.selectionStart;
   $app.innerHTML = view();
@@ -1195,6 +1217,7 @@ function programarSync(){ clearTimeout(syncT); syncT = setTimeout(sincronizarPar
 async function sincronizarPartes(){
   const rol = S.miRol; if ((rol!=="admin" && rol!=="cocina") || S.partesErr || syncando) return;
   if (!datosListos() || !S.listo.partes || (rol==="admin" && !S.listo.det)) return;
+  if (pendCache.size){ programarSync(); return; }
   const ini = inicioDatos(); if (!ini) return;
   syncando = true;
   try {

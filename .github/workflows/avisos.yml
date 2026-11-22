@@ -34,6 +34,15 @@ jobs:
           // Mira desde la última revisión (con 3 minutos de margen) y nunca más de 3 horas atrás
           const desde = Math.max((est.ultimo || ahora - 10 * 60000) - 3 * 60000, ahora - 3 * 3600000);
           const yaEnviados = new Set(est.enviados || []), nuevos = [];
+          // Primero, solo lo nuevo. Si no hay nada que enviar, no se leen personas ni dispositivos (ahorra lecturas)
+          const [qMen, qCon, qAvi, qEve, qAds] = await Promise.all(["mensajes:ts", "consultas:ultimoTs", "avisos:ts", "eventos:ts", "adscritos:ts"].map(x => { const [c, f] = x.split(":"); return db.collection(c).where(f, ">", desde).get(); }));
+          const pm0 = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ahora)).map(p => [p.type, p.value]));
+          const tocaEf = Number(pm0.hour) >= 8 && Number(pm0.hour) < 12 && (est.efFecha || "") !== pm0.year + "-" + pm0.month + "-" + pm0.day;
+          if (!tocaEf && [qMen, qCon, qAvi, qEve, qAds].every(q => q.empty)) {
+            await estRef.set({ ...est, ultimo: ahora });
+            console.log("Revisado. Nada nuevo.");
+            process.exit(0);
+          }
           const [us, nom, tks] = await Promise.all([db.collection("usuarios").get(), db.collection("nombres").get(), db.collection("tokens").get()]);
           const U = {}, N = {}, porPerfil = {};
           us.forEach(d => U[d.id] = d.data());
@@ -49,25 +58,25 @@ jobs:
             nuevos.push(clave);
             envios.push({ perfiles, titulo, cuerpo: String(cuerpo || "").replace(/\s+/g, " ").trim().slice(0, 160), link });
           };
-          (await db.collection("mensajes").where("ts", ">", desde).get()).forEach(d => {
+          qMen.forEach(d => {
             const m = d.data(), para = m.para === "cocina" ? conRol("cocina") : conRol("admin");
             const tit = m.fecha ? "📌 Aviso para el parte del " + fechaTxt(m.fecha) : (m.de === "admin" ? "Mensaje de los administradores" : "Mensaje de la administración");
             avisar("m:" + d.id, para, tit, m.texto, WEB + (m.fecha ? "?ir=parte&f=" + m.fecha : "?ir=mensajes"));
           });
-          (await db.collection("consultas").where("ultimoTs", ">", desde).get()).forEach(d => {
+          qCon.forEach(d => {
             const c = d.data();
             (c.mensajes || []).filter(x => (x.ts || 0) > desde).forEach(x => {
               if (x.de === "residente") avisar("c:" + d.id + ":" + x.ts, conRol("admin"), "Mensaje de " + ((N[c.autor] || {}).nombre || "un residente"), x.texto);
               else avisar("c:" + d.id + ":" + x.ts, [c.autor], "Te han respondido los administradores", x.texto);
             });
           });
-          (await db.collection("avisos").where("ts", ">", desde).get()).forEach(d => {
+          qAvi.forEach(d => {
             avisar("a:" + d.id, conRol("residente"), "Aviso de los administradores", d.data().texto);
           });
-          (await db.collection("eventos").where("ts", ">", desde).get()).forEach(d => {
+          qEve.forEach(d => {
             const e = d.data(); if (e.estado === "pendiente") avisar("e:" + d.id, conRol("admin"), "Propuesta de evento para el calendario", e.titulo);
           });
-          (await db.collection("adscritos").where("ts", ">", desde).get()).forEach(d => {
+          qAds.forEach(d => {
             const a = d.data(); if (a.estado === "pendiente") avisar("ad:" + d.id + ":" + a.ts, conRol("admin"), "Propuesta del jefe de adscritos", "Para el " + fechaTxt(a.fecha) + ". Revísala en Comensales extra.");
           });
           // Efemérides: una vez al día, hacia las 8:00 de Madrid, a los dispositivos que lo han activado
