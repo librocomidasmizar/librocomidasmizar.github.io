@@ -484,7 +484,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.28-1";
+const VERSION = "2026.11.28-2";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -1163,14 +1163,19 @@ function vistaComensal(r){
 }
 
 /* --- Ausencias en Mi semana --- */
+function ausAvisosHTML(uid, yo){
+  return ausActivas(uid).map(a=>`<div class="aus-av"><span class="ico" aria-hidden="true">🧳</span><div style="flex:1"><strong>Fuera ${esc(ausFueraTxt(a))}</strong>${a.motivo?` · ${esc(a.motivo)}`:""}
+      <div class="small">${yo?"Te vas":"Se va"} el ${esc(diaC(a.sal))} ${esc(ausSalidaTxt(a))} y ${esc(ausVuelveTxt(a))}.</div></div>
+      ${S.ausForm && S.ausForm.id===a.id ? "" : `<button class="link" data-a="au-editar" data-id="${a.id}">Cambiar</button>`}</div>`).join("");
+}
 function ausSemanaHTML(r){
   if (S.vista) return "";
-  const l = ausActivas(r.id), pl = primeraLibre();
-  const avisos = l.map(a=>`<div class="aus-av"><span class="ico" aria-hidden="true">🧳</span><div style="flex:1"><strong>Fuera ${esc(ausFueraTxt(a))}</strong>${a.motivo?` · ${esc(a.motivo)}`:""}
-      <div class="small">Te vas el ${esc(diaC(a.sal))} ${esc(ausSalidaTxt(a))} y ${esc(ausVuelveTxt(a))}.</div></div>
-      ${S.ausForm && S.ausForm.id===a.id ? "" : `<button class="link" data-a="au-editar" data-id="${a.id}">Cambiar</button>`}</div>`).join("");
-  if (!S.ausForm) return avisos + `<p class="row" style="margin:0 0 12px"><button class="btn ghost" data-a="au-nueva">🧳 Me voy unos días</button></p>`;
-  const F = S.ausForm, ya = F.id && mk(F.orig.ini,F.orig.iniM) < mk(pl.f,pl.m);
+  const avisos = ausAvisosHTML(r.id, true);
+  if (!S.ausForm || S.ausForm.uid!==r.id || S.modal) return avisos + `<p class="row" style="margin:0 0 12px"><button class="btn ghost" data-a="au-nueva" data-id="${r.id}">🧳 Me voy unos días</button></p>`;
+  return avisos + ausFormHTML(true);
+}
+function ausFormHTML(yo){
+  const pl = primeraLibre(), F = S.ausForm, ya = F.id && mk(F.orig.ini,F.orig.iniM) < mk(pl.f,pl.m);
   const sal = draft("au_sal"), salM = Number(draft("au_salm","0")), vue = draft("au_vue"), vueM = Number(draft("au_vuem","1"));
   const segA = (k, opts, val) => `<div class="seg" role="group">${opts.map(([x,l])=>`<button class="opt" data-a="au-seg" data-k="${k}" data-v="${x}" aria-pressed="${String(val)===x}">${l}</button>`).join("")}</div>`;
   let res = "";
@@ -1178,14 +1183,14 @@ function ausSemanaHTML(r){
     const i = salidaAIni(sal, salM), u = comidaAnterior(vue, vueM);
     if (mk(vue,vueM) <= mk(i.ini,i.iniM)) res = `<span style="color:var(--danger)">La vuelta tiene que ser después de irte.</span>`;
     else { let n = 0; for (let f=i.ini, m=i.iniM; mk(f,m) < mk(vue,vueM) && n<2000; ({f,m} = m<2 ? {f, m:m+1} : {f:addDays(f,1), m:0})) n++;
-      res = `No se te apunta nada desde ${COMIDA_DE[i.iniM]} del ${esc(diaC(i.ini))} hasta ${COMIDA_DE[u.m]} del ${esc(diaC(u.f))}, aunque lo tengas en tu plantilla (${n} ${n===1?"comida":"comidas"}). El ${esc(diaC(vue))} vuelves a ${VERBO_M[vueM]} en casa.`; }
+      res = `No se ${yo?"te":"le"} apunta nada desde ${COMIDA_DE[i.iniM]} del ${esc(diaC(i.ini))} hasta ${COMIDA_DE[u.m]} del ${esc(diaC(u.f))}, aunque lo ${yo?"tengas en tu":"tenga en su"} plantilla (${n} ${n===1?"comida":"comidas"}). El ${esc(diaC(vue))} ${yo?"vuelves":"vuelve"} a ${VERBO_M[vueM]} en casa.`; }
   }
-  return avisos + `<div class="panel aus-form">
-    <h3 style="margin-bottom:12px">${F.id ? "Cambiar la ausencia" : "Me voy unos días"}</h3>
-    ${ya ? `<p class="small" style="margin:0 0 12px">Te fuiste el ${esc(diaC(sal))} ${esc(ausSalidaTxt({salM}))}. Eso ya está cerrado: solo puedes cambiar la vuelta.</p>`
-      : `<div class="field"><label for="au_sal">Me voy</label><input class="input" type="date" id="au_sal" data-draft="au_sal" min="${today()}" value="${esc(sal)}"></div>
+  return `<div class="panel aus-form">
+    <h3 style="margin-bottom:12px">${F.id ? "Cambiar la ausencia" : yo ? "Me voy unos días" : "Nueva ausencia"}</h3>
+    ${ya ? `<p class="small" style="margin:0 0 12px">${yo?"Te fuiste":"Se fue"} el ${esc(diaC(sal))} ${esc(ausSalidaTxt({salM}))}. Eso ya está cerrado: solo puedes cambiar la vuelta.</p>`
+      : `<div class="field"><label for="au_sal">${yo?"Me voy":"Se va"}</label><input class="input" type="date" id="au_sal" data-draft="au_sal" min="${today()}" value="${esc(sal)}"></div>
     <div class="field">${segA("au_salm", SALIDA, salM)}</div>`}
-    <div class="field"><label for="au_vue">Vuelvo a comer en casa</label><input class="input" type="date" id="au_vue" data-draft="au_vue" min="${today()}" value="${esc(vue)}"></div>
+    <div class="field"><label for="au_vue">${yo?"Vuelvo":"Vuelve"} a comer en casa</label><input class="input" type="date" id="au_vue" data-draft="au_vue" min="${today()}" value="${esc(vue)}"></div>
     <div class="field">${segA("au_vuem", VUELTA, vueM)}</div>
     <div class="field"><label for="au_mot">Motivo (opcional, lo ven todos)</label><input class="input" id="au_mot" data-draft="au_mot" maxlength="60" placeholder="Convivencia en Pamplona" value="${esc(draft("au_mot",""))}"></div>
     ${res ? `<p class="small aus-res">${res}</p>` : ""}
@@ -1272,12 +1277,14 @@ function parteHTML(f, anon, sinAvisos){
         <td>${o.sel.llevar==="nada"?"—":(o.sel.llevar==="tupper"?"Tupper":"Bolsa")}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No hay comensales activos.</div>`}`}`;
 }
 /* Quién está fuera en lo que cubre el parte del día f: comida y cena de f y desayuno de f+1 */
+const ausParteLista = f => activos().map(r=>({r, a: ausEn(r.id,f,1) || ausEn(r.id,f,2) || ausEn(r.id,addDays(f,1),0)})).filter(x=>x.a);
+const ausParteTxt = (a, f) => { const t = ausEstadoTxt(a, f); return (t.charAt(0).toLowerCase()+t.slice(1)).replace(/^fuera · /,""); };
 function ausParteHTML(f, anon){
-  const l = activos().map(r=>({r, a: ausEn(r.id,f,1) || ausEn(r.id,f,2) || ausEn(r.id,addDays(f,1),0)})).filter(x=>x.a);
+  const l = ausParteLista(f);
   if (!l.length) return "";
-  const txt = (a) => { const t = ausEstadoTxt(a, f); return t.charAt(0).toLowerCase()+t.slice(1); };
+  const txt = a => ausParteTxt(a, f);
   return `<div class="aus-av" style="display:block"><strong>🧳 ${l.length===1?"1 residente fuera de casa":l.length+" residentes fuera de casa"}</strong>
-    ${l.sort((x,y)=>(anon?iniciales(x.r):String(x.r.nombre||"")).localeCompare(anon?iniciales(y.r):String(y.r.nombre||""),"es")).map(x=>`<div class="small" style="margin-top:4px"><b>${esc(anon?iniciales(x.r):(x.r.nombre||""))}</b>: ${esc(txt(x.a).replace(/^fuera · /,""))}</div>`).join("")}</div>`;
+    ${l.sort((x,y)=>(anon?iniciales(x.r):String(x.r.nombre||"")).localeCompare(anon?iniciales(y.r):String(y.r.nombre||""),"es")).map(x=>`<div class="small" style="margin-top:4px">${anon ? `<b>${esc(iniciales(x.r))}</b>` : `<button class="link" style="padding:0;font-weight:700" data-a="au-admin" data-id="${x.r.id}">${esc(x.r.nombre||"")}</button>`}: ${esc(txt(x.a).replace(/^fuera · /,""))}</div>`).join("")}</div>`;
 }
 function parteView(){
   const f = S.parteFecha, anon = verAnon();
@@ -2492,6 +2499,13 @@ function modalHTML(){
     if (nEf){ const l = efItems(mdDe(m.f)); if (!its.length) cuerpo = "";
       cuerpo += `<div class="res" style="grid-template-columns:1fr"><div><span class="tag ef">Efemérides</span></div>${l ? l.map(it=>`<div style="font-weight:700">${esc(efTit(it))}</div>`).join("") : `<div class="muted small">Cargando…</div>`}<div><button class="link" data-a="ef-ir" data-f="${m.f}">Leer en Efemérides</button></div></div>`; }
   }
+  if (m.tipo==="aus"){
+    const r = resById(m.rid) || {};
+    tit = "Ausencias: " + (r.nombre||"");
+    cuerpo = `<p class="muted small" style="margin-top:0">Esos días no se le apunta nada, aunque lo tenga en su plantilla. Lo verá en su semana y saldrá en Quién come y en el Parte.</p>
+      ${ausAvisosHTML(m.rid, false) || `<p class="muted">No tiene ninguna ausencia.</p>`}
+      ${S.ausForm && S.ausForm.uid===m.rid ? ausFormHTML(false) : `<div class="row"><button class="btn" data-a="au-nueva" data-id="${m.rid}">🧳 Nueva ausencia</button><button class="btn ghost" data-a="modal-cerrar">Cerrar</button></div>`}`;
+  }
   if (m.tipo==="edit"){
     const r = resById(m.rid), f = m.f, manana = DIAS[wd(addDays(f,1))].toLowerCase(), v = S.drafts.ed || norm();
     const seg = (k, opts) => `<div class="seg" role="group">${opts.map(([val,l])=>`<button class="opt" data-a="ed-set" data-k="${k}" data-v="${val}" aria-pressed="${String(v[k])===val}">${l}</button>`).join("")}</div>`;
@@ -2503,7 +2517,8 @@ function modalHTML(){
       <div class="q"><h3>Desayuno del ${esc(manana)}</h3>${yn("desayuno")}</div>
       <div class="q"><h3>Se lleva el ${esc(manana)}</h3>${seg("llevar", LLEVAR)}</div>
       ${locked(f) ? `<label style="display:flex;gap:10px;align-items:center;margin:14px 0 4px;font-weight:700;cursor:pointer"><input type="checkbox" data-a="ed-aviso" ${S.drafts.ed_aviso!==false?"checked":""} style="width:22px;height:22px;accent-color:var(--primary)"> Avisar a la administración con una nota</label><p class="muted small" style="margin:0 0 10px 32px">Se enviará con las iniciales (${esc(iniciales(r||{}))}), nunca con el nombre.</p>` : ""}
-      <div class="row" style="margin-top:12px"><button class="btn" data-a="ed-guardar">Guardar corrección</button><button class="btn ghost" data-a="modal-cerrar">Cancelar</button></div>`;
+      <div class="row" style="margin-top:12px"><button class="btn" data-a="ed-guardar">Guardar corrección</button><button class="btn ghost" data-a="modal-cerrar">Cancelar</button></div>
+      <p style="margin:14px 0 0"><button class="link" data-a="au-admin" data-id="${m.rid}">🧳 ${ausActivas(m.rid).length ? "Ver o cambiar su ausencia de varios días" : "Marcar una ausencia de varios días"}</button></p>`;
   }
   return `<div class="modal-velo" data-a="modal-cerrar"></div><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(tit)}"><div class="modal-h"><h2>${esc(tit)}</h2><button class="cerrar" data-a="modal-cerrar" aria-label="Cerrar">×</button></div>${cuerpo}</div>`;
 }
@@ -2773,6 +2788,17 @@ async function descargarPDF(f){
     y += h + 7;
   }
 
+  const fueraL = ausParteLista(f).sort((a,b)=>iniciales(a.r).localeCompare(iniciales(b.r),"es"));
+  if (fueraL.length){
+    doc.setFontSize(10.5);
+    const lines = fueraL.flatMap(x => doc.splitTextToSize("- "+iniciales(x.r)+": "+ausParteTxt(x.a, f), CW-10));
+    const h = 10 + lines.length*5;
+    doc.setFillColor(...OCRE); doc.roundedRect(M, y, CW, h, 2, 2, "F");
+    doc.setFont("helvetica","bold"); col(TINTA); doc.text(fueraL.length===1 ? "1 residente fuera de casa" : fueraL.length+" residentes fuera de casa", M+5, y+7);
+    doc.setFont("helvetica","normal"); doc.text(lines, M+5, y+12.5);
+    y += h + 7;
+  }
+
   const cardW = (CW-6)/2;
   function card(x, y0, titulo, filasCard, extras){
     let yy = y0 + 8;
@@ -2962,7 +2988,7 @@ async function act(a, b){
     case "wl-del-no": delete S.drafts.wlDel; break;
     case "wl-del": { const id = b.dataset.id; delete S.drafts.wlDel; await w(()=>S.db.doc("wordle/"+id).delete()); delete S.wordle[id]; toast("Partida borrada: ya no cuenta en el ranking."); break; }
     case "cal-dia": S.modal = {tipo:"cal", f:b.dataset.f}; break;
-    case "modal-cerrar": if (S.evEditId){ ["ev_tit","ev_det","ev_hora","ev_fin","ev_rep","ev_tipo","ev_fecha"].forEach(k=>delete S.drafts[k]); S.evEditId = null; } S.modal = null; delete S.drafts.ed; delete S.drafts.ed_hora; delete S.drafts.ed_aviso; break;
+    case "modal-cerrar": if (S.modal && S.modal.tipo==="aus") S.ausForm = null; if (S.evEditId){ ["ev_tit","ev_det","ev_hora","ev_fin","ev_rep","ev_tipo","ev_fecha"].forEach(k=>delete S.drafts[k]); S.evEditId = null; } S.modal = null; delete S.drafts.ed; delete S.drafts.ed_hora; delete S.drafts.ed_aviso; break;
     case "ed-abrir": {
       if (rolDe(resById(S.session.uid))!=="admin") return;
       const rid = b.dataset.id, f = b.dataset.f;
@@ -3059,21 +3085,25 @@ async function act(a, b){
       break;
     case "week": S.weekOffset = v==="0" ? 0 : S.weekOffset + Number(v); S.openDay=null; S.verPasados=false; break;
     case "ver-pasados": S.verPasados = !S.verPasados; if (!S.verPasados && S.openDay && S.openDay<today()) S.openDay=null; break;
+    case "au-admin": {
+      if (rolDe(resById(S.session.uid))!=="admin") return;
+      S.ausForm = null; S.modal = {tipo:"aus", rid:b.dataset.id}; break;
+    }
     case "au-nueva": {
       const f0 = addDays(proxParte(),1);
-      S.ausForm = {id:null}; Object.assign(S.drafts, {au_sal:f0, au_salm:"0", au_vue:addDays(f0,6), au_vuem:"1", au_mot:""}); break;
+      S.ausForm = {id:null, uid:b.dataset.id || S.session.uid}; Object.assign(S.drafts, {au_sal:f0, au_salm:"0", au_vue:addDays(f0,6), au_vuem:"1", au_mot:""}); break;
     }
     case "au-editar": {
       const a = (S.ausencias||{})[b.dataset.id]; if (!a) return;
-      S.ausForm = {id:a.id, orig:a}; S.openDay = null;
+      S.ausForm = {id:a.id, uid:a.uid, orig:a}; S.openDay = null;
       Object.assign(S.drafts, {au_sal:a.sal, au_salm:String(a.salM), au_vue:a.vue, au_vuem:String(a.vueM), au_mot:a.motivo||""});
-      window.scrollTo(0,0); break;
+      if (!S.modal) window.scrollTo(0,0); break;
     }
     case "au-seg": S.drafts[b.dataset.k] = v; break;
     case "au-cancelar": S.ausForm = null; break;
     case "au-guardar": {
       const F = S.ausForm; if (!F) return;
-      const uid = S.session.uid, pl = primeraLibre(), kPl = mk(pl.f,pl.m), libreTxt = COMIDA_DE[pl.m]+" del "+diaC(pl.f);
+      const uid = F.uid || S.session.uid, pl = primeraLibre(), kPl = mk(pl.f,pl.m), libreTxt = COMIDA_DE[pl.m]+" del "+diaC(pl.f);
       const sal = draft("au_sal"), salM = Number(draft("au_salm","0")), vue = draft("au_vue"), vueM = Number(draft("au_vuem","1"));
       const motivo = String(draft("au_mot","")).trim().slice(0,60), okF = x => /^\d{4}-\d{2}-\d{2}$/.test(x||"");
       if (!okF(sal) || !okF(vue)){ toast("Pon el día en que te vas y el día en que vuelves."); return; }
@@ -3083,8 +3113,8 @@ async function act(a, b){
       const o = F.id ? F.orig : null, mismaSalida = o && o.ini===ini && o.iniM===iniM;
       if (!mismaSalida && (kI < kPl || (o && mk(o.ini,o.iniM) < kPl))){ toast("Eso ya está cerrado. Lo primero que puedes tachar es "+libreTxt+"."); return; }
       if (o && mismaSalida && kV!==mk(o.vue,o.vueM) && (kV < mk(o.vue,o.vueM) ? kV : mk(o.vue,o.vueM)) < kPl){ toast("Eso ya está cerrado. Lo primero que puedes cambiar es "+libreTxt+"."); return; }
-      if (ausDe(uid).some(a => a.id!==F.id && mk(a.ini,a.iniM) < kV && kI < mk(a.vue,a.vueM))){ toast("Ya tienes otra ausencia en esos días. Cámbiala en lugar de crear una nueva."); return; }
-      const id = F.id || newId("au"), doc = {id, uid, sal, salM, ini, iniM, vue, vueM, motivo, ts:Date.now()};
+      if (ausDe(uid).some(a => a.id!==F.id && mk(a.ini,a.iniM) < kV && kI < mk(a.vue,a.vueM))){ toast((uid===S.session.uid?"Ya tienes":"Ya tiene")+" otra ausencia en esos días. Cámbiala en lugar de crear una nueva."); return; }
+      const id = F.id || newId("au"), doc = {id, uid, sal, salM, ini, iniM, vue, vueM, motivo, ts:Date.now(), ...(uid!==S.session.uid ? {autor:S.session.uid} : {})};
       S.ausForm = null;
       await guardarAus(uid, ausDe(uid).filter(a=>a.id!==id).concat([doc]));
       toast("Ausencia guardada: "+ausFueraTxt(doc)+"."); return;
@@ -3092,9 +3122,9 @@ async function act(a, b){
     case "au-borrar": {
       const F = S.ausForm; if (!F || !F.id) return;
       const o = F.orig, pl = primeraLibre(), kPl = mk(pl.f,pl.m);
-      const uid = S.session.uid;
+      const uid = F.uid || S.session.uid;
       if (mk(o.ini,o.iniM) >= kPl){ S.ausForm = null; await guardarAus(uid, ausDe(uid).filter(a=>a.id!==o.id)); toast("Ausencia quitada."); return; }
-      if (mk(o.vue,o.vueM) > kPl){ S.ausForm = null; await guardarAus(uid, ausDe(uid).map(a=>a.id===o.id ? {...a, vue:pl.f, vueM:pl.m, ts:Date.now()} : a)); toast("Hecho: desde "+COMIDA_DE[pl.m]+" del "+diaC(pl.f)+" vuelve a contar tu semana y tu plantilla."); return; }
+      if (mk(o.vue,o.vueM) > kPl){ S.ausForm = null; await guardarAus(uid, ausDe(uid).map(a=>a.id===o.id ? {...a, vue:pl.f, vueM:pl.m, ts:Date.now()} : a)); toast("Hecho: desde "+COMIDA_DE[pl.m]+" del "+diaC(pl.f)+" vuelve a contar "+(uid===S.session.uid?"tu semana y tu plantilla":"su semana y su plantilla")+"."); return; }
       S.ausForm = null; break;
     }
     case "openday": S.openDay = S.openDay===b.dataset.f ? null : b.dataset.f; break;
