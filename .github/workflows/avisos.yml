@@ -107,11 +107,14 @@ jobs:
           if (tocaRec) {
             recFecha = hoy0;
             const [qPed, qPla] = await Promise.all([db.collection("pedidos").where("fecha", "==", hoy0).get(), db.collection("plantillas").get()]);
-            const conPedido = new Set(), conPlantilla = new Set();
+            const conPedido = new Set(), conPlantilla = new Set(), fuera = new Set();
+            // Quien está fuera de casa en la comida y en la cena de hoy no recibe el recordatorio
+            const k = (f, m) => f + "#" + m, dentro = (a, m) => k(a.ini, a.iniM) <= k(hoy0, m) && k(hoy0, m) < k(a.vue, a.vueM);
+            qPla.forEach(d => (d.data().aus || []).forEach(a => { if (dentro(a, 1) && dentro(a, 2)) fuera.add(d.id); }));
             qPed.forEach(d => conPedido.add(d.data().residente));
             qPla.forEach(d => { if (d.data()["d" + wd0]) conPlantilla.add(d.id); });
             const comensal = id => activo(id) && ((U[id].rol || "residente") === "residente" || U[id].comensal === true);
-            const sinNada = Object.keys(U).filter(id => comensal(id) && !conPedido.has(id) && !conPlantilla.has(id));
+            const sinNada = Object.keys(U).filter(id => comensal(id) && !conPedido.has(id) && !conPlantilla.has(id) && !fuera.has(id));
             if (sinNada.length) envios.push({ perfiles: sinNada, titulo: "Hoy no tienes nada apuntado", cuerpo: "El parte se cierra a las " + hCierre + ". Si comes en casa, apúntate ahora.", recordatorio: true });
             console.log("Recordatorio del " + hoy0 + " (cierre " + hCierre + "): " + sinNada.length + " personas sin nada apuntado.");
           }

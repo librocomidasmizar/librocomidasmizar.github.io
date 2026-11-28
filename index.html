@@ -229,6 +229,14 @@ select.input option{background:var(--surface);color:var(--ink)}
 .tag{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
 .tag.plantilla{background:var(--accent-soft);color:var(--accent)}
 .tag.cerrado{background:var(--line);color:var(--muted)}
+.tag.fuera{background:var(--accent-soft);color:var(--accent);vertical-align:2px;margin-left:4px}
+.fuera-t{color:var(--accent);font-weight:700}
+.fuera-c{display:inline-block;background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:8px;padding:3px 8px}
+.aus-av{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);color:var(--ink);border-left:5px solid var(--accent);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.aus-av .ico{font-size:20px;line-height:1.2}
+.aus-blk{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.aus-form{border-color:var(--accent)}
+.aus-res{background:var(--bg);border-radius:10px;padding:10px 12px;margin:0 0 14px}
 .tag.abierto{background:var(--soft);color:var(--primary)}
 .day.locked .day-head{opacity:.75}
 .editor{padding:4px 14px 16px;border-top:1px solid var(--line)}
@@ -476,7 +484,7 @@ const FB_CONFIG = {
   appId: "1:574865497497:web:ec6708809617672cd50708"
 };
 const DOMINIO = "libro-comidas-mizar.app";
-const VERSION = "2026.11.22-2";
+const VERSION = "2026.11.28-1";
 
 const fbApp = initializeApp(FB_CONFIG);
 const auth = getAuth(fbApp);
@@ -548,19 +556,66 @@ const S = {
 };
 S.pub = {}; S.priv = {}; S.authListo = false; S.nom = {};
 S.listo = {}; S.partes = {}; S.det = {}; S.hist = {}; S.histDet = {}; S.histMes = {}; S.forzar = new Set();
-S.extras = {}; S.wordle = {}; S.eventos = []; S.wlTyped = "";
+S.extras = {}; S.ausencias = {}; S.wordle = {}; S.eventos = []; S.wlTyped = "";
 try { S.vistos = JSON.parse(localStorage.getItem("comedor.avisos")||"[]"); } catch(e){ S.vistos = []; }
 try { const q = new URLSearchParams(location.search), ir = q.get("ir");
   if (ir==="efemerides"){ S.irEf = true; history.replaceState(null, "", location.pathname); }
   else if (ir==="parte" || ir==="mensajes"){ S.irTab = ir==="parte" ? "parte" : "notas"; const f = q.get("f"); if (f && /^\d{4}-\d{2}-\d{2}$/.test(f)) S.parteFecha = f; history.replaceState(null, "", location.pathname); } } catch(e){}
 function saveSession(){}
 
-function efectiva(rid,f){
+function efectivaBase(rid,f){
   const p = S.pedidos[f+"_"+rid];
-  if (p) return {sel:norm(p), fuente:"pedido", editadoPor:p.editadoPor};
+  if (p) return {sel:norm(p), fuente:"pedido", editadoPor:p.editadoPor, ts:p.ts||0};
   const t = S.plantillas[rid] && S.plantillas[rid]["d"+wd(f)];
   if (t) return {sel:norm(t), fuente:"plantilla"};
   return {sel:norm(), fuente:"vacio"};
+}
+/* ---------- Ausencias (me voy unos días) ----------
+   Cada comida es una clave "AAAA-MM-DD#m" (m: 0 desayuno, 1 comida, 2 cena). Una ausencia tacha desde ini#iniM (incluida)
+   hasta vue#vueM (la primera comida en casa, no incluida). El pedido del día f lleva la comida y la cena de f y el desayuno de f+1;
+   lo que se lleva (tupper o bolsa) se quita si esa noche está fuera. Una corrección de un administrador posterior a la ausencia manda. */
+const mk = (f,m) => f+"#"+m;
+/* Se guardan en plantillas/{persona}.aus (lista): cada uno escribe las suyas y todos las leen, como la plantilla */
+function ausDesdePlantillas(){ const o = {}; Object.entries(S.plantillas||{}).forEach(([uid,t])=>(t.aus||[]).forEach(a=>{ o[a.id] = {...a, uid}; })); S.ausencias = o; }
+async function guardarAus(uid, lista){
+  const lim = addDays(today(),-28), l = lista.filter(a=>a.vue >= lim).map(a=>{ const x = {...a}; delete x.uid; return x; });
+  S.plantillas[uid] = {...(S.plantillas[uid]||{}), aus:l}; ausDesdePlantillas(); render();
+  await w(()=>setDoc(fdoc(fs,"plantillas/"+uid), {aus:l}, {merge:true}));
+}
+const ausDe = uid => Object.values(S.ausencias||{}).filter(a=>a.uid===uid);
+function ausEn(uid, f, m){ const k = mk(f,m); return ausDe(uid).find(a => mk(a.ini,a.iniM) <= k && k < mk(a.vue,a.vueM)) || null; }
+function mascara(rid, f){ return {com: ausEn(rid,f,1), cen: ausEn(rid,f,2), des: ausEn(rid,addDays(f,1),0)}; }
+function efectiva(rid,f){
+  const e = efectivaBase(rid,f), m = mascara(rid,f), a = m.com || m.cen || m.des;
+  if (!a) return e;
+  if (e.fuente==="pedido" && e.editadoPor && e.ts > Math.max(...[m.com,m.cen,m.des].filter(Boolean).map(x=>x.ts||0))) return e;
+  const sel = {...e.sel};
+  if (m.com){ sel.comida = "no"; sel.horaBolsa = ""; }
+  if (m.cen){ sel.cena = false; sel.llevar = "nada"; }
+  if (m.des) sel.desayuno = false;
+  return {...e, sel, aus:a, mask:m};
+}
+const COMIDA_DE = ["el desayuno","la comida","la cena"], VERBO_M = ["desayunar","comer","cenar"];
+const SALIDA = [["0","Antes de desayunar"],["1","Después de desayunar"],["2","Después de comer"],["3","Después de cenar"]];
+const VUELTA = [["0","Desayuno"],["1","Comida"],["2","Cena"]];
+const diaC = f => DIAS[wd(f)].toLowerCase()+" "+parse(f).getDate();
+const salidaAIni = (f, sm) => sm===3 ? {ini:addDays(f,1), iniM:0} : {ini:f, iniM:sm};
+const comidaAnterior = (f,m) => m>0 ? {f, m:m-1} : {f:addDays(f,-1), m:2};
+const recDe = (f,m) => m===0 ? addDays(f,-1) : f;   /* parte (día) en el que se decide esa comida */
+const primeraLibre = () => ({f: proxParte(), m: 1});
+const ausActivas = uid => ausDe(uid).filter(a => mk(a.vue,a.vueM) > mk(primeraLibre().f, primeraLibre().m)).sort((x,y)=>mk(x.ini,x.iniM).localeCompare(mk(y.ini,y.iniM)));
+const ausFueraTxt = a => { const u = comidaAnterior(a.vue, a.vueM); return a.sal===u.f ? "el "+diaC(a.sal) : "del "+diaC(a.sal)+" al "+diaC(u.f); };
+const ausSalidaTxt = a => ["antes de desayunar","después de desayunar","después de comer","después de cenar"][a.salM];
+const ausVuelveTxt = a => "vuelve el "+diaC(a.vue)+" a "+VERBO_M[a.vueM];
+/* Quién está fuera en algún momento del día f (desayuno, comida o cena de f) */
+function fueraEnDia(rid, f){ return ausEn(rid,f,0) || ausEn(rid,f,1) || ausEn(rid,f,2); }
+function fueraDelTodo(rid, f){ return !!(ausEn(rid,f,0) && ausEn(rid,f,1) && ausEn(rid,f,2)); }
+function ausEstadoTxt(a, f){
+  const empieza = mk(a.ini,a.iniM) > mk(f,0), acaba = a.vue===f;
+  const dia = f===today() ? "hoy" : "el "+diaC(f);
+  if (empieza) return "Se va "+dia+" "+ausSalidaTxt(a)+" · "+ausVuelveTxt(a);
+  if (acaba) return "Vuelve "+dia+" a "+VERBO_M[a.vueM];
+  return "Fuera · "+ausVuelveTxt(a);
 }
 function resumen(sel, f){
   const manana = f ? DIAS[wd(addDays(f,1))].toLowerCase() : "día siguiente";
@@ -645,7 +700,7 @@ function suscribir(pid, rol){
   if (rol!=="cocina") add(S.db.collection("nombres").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.nom=o; mezclar(); renderLuego(); }, dbErr));
   if (gest) add(S.db.collection("privados").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.priv=o; mezclar(); revisarPeticion(); renderLuego(); }, dbErr));
   else add(S.db.doc("privados/"+pid).onSnapshot(s => { S.priv = s.exists ? {[pid]: s.data()} : {}; mezclar(); revisarPeticion(); renderLuego(); }, dbErr));
-  add(S.db.collection("plantillas").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.plantillas=o; S.listo.plantillas=true; renderLuego(); }, dbErr));
+  add(S.db.collection("plantillas").onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.plantillas=o; ausDesdePlantillas(); S.listo.plantillas=true; renderLuego(); }, dbErr));
   add(S.db.collection("pedidos").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => { const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.pedidos=o; S.listo.pedidos=true; renderLuego(); }, dbErr));
   add(S.db.collection("extras").where("fecha",">=",addDays(today(),-28)).onSnapshot(q => {
     const prev = S.extrasCargados; const o={}; q.docs.forEach(d=>o[d.id]=d.data()); S.extras=o; S.extrasCargados = true; S.listo.extras = true;
@@ -1024,8 +1079,9 @@ function resumenDia(v){
   if (!p.length) return "Sin servicios";
   const t = p.join(", ").replace("se lleva","te llevas"); return t.charAt(0).toUpperCase()+t.slice(1);
 }
-function editor(v, ctx, f, lockA, lockB){
-  const seg = (k, opts, dis) => `<div class="seg" role="group">${opts.map(([val,l])=>`<button class="opt" ${dis?'aria-disabled="true"':""} data-a="set" data-ctx="${ctx}" data-k="${k}" data-v="${val}" aria-pressed="${String(v[k])===val}">${l}</button>`).join("")}</div>`;
+function editor(v, ctx, f, lockA, lockB, aw){
+  aw = aw || {};
+  const seg = (k, opts, dis) => `<div class="seg" role="group">${opts.map(([val,l])=>`<button class="opt" ${dis?'aria-disabled="true"':""} ${aw[k]?'data-fuera="1"':""} data-a="set" data-ctx="${ctx}" data-k="${k}" data-v="${val}" aria-pressed="${String(v[k])===val}">${l}</button>`).join("")}</div>`;
   const yn = (k, dis) => seg(k, [["false","No"],["true","Sí"]], dis);
   const ant = f ? addDays(f,-1) : null;
   const notaB = f
@@ -1033,12 +1089,12 @@ function editor(v, ctx, f, lockA, lockB){
              : `<p class="small muted" style="margin:10px 0 0">Se cierra antes que el resto del día: puedes cambiarlo hasta el <b>${esc(fmtLong(ant).toLowerCase())} a las ${esc(horaCierre(ant))}</b>, porque se prepara la noche anterior.</p>`)
     : `<p class="small muted" style="margin:10px 0 0">El desayuno y lo que te llevas se avisan la víspera, porque se preparan la noche anterior.</p>`;
   return `
-    <div class="q ${lockB?"bloq":""}"><h3>Desayuno</h3>${yn("desayuno", lockB)}
-      <p class="small" style="margin:14px 0 6px;font-weight:700">¿Te llevas tupper o bolsa de comida ese día?</p>${seg("llevar", LLEVAR, lockB)}${notaB}</div>
-    <div class="q ${lockA?"bloq":""}"><h3>Comida</h3>${v.llevar!=="nada" && v.comida==="no" ? `<p class="small muted" style="margin:-4px 0 8px">Te llevas ${v.llevar==="tupper"?"tupper":"bolsa de comida"}, así que ese día no comes aquí.</p>` : ""}${seg("comida", COMIDA, lockA)}
+    <div class="q ${lockB?"bloq":""}"><h3>Desayuno${aw.desayuno?' <span class="tag fuera">Fuera</span>':""}</h3>${yn("desayuno", lockB||aw.desayuno)}
+      <p class="small" style="margin:14px 0 6px;font-weight:700">¿Te llevas tupper o bolsa de comida ese día?</p>${seg("llevar", LLEVAR, lockB||aw.llevar)}${notaB}</div>
+    <div class="q ${lockA?"bloq":""}"><h3>Comida${aw.comida?' <span class="tag fuera">Fuera</span>':""}</h3>${v.llevar!=="nada" && v.comida==="no" ? `<p class="small muted" style="margin:-4px 0 8px">Te llevas ${v.llevar==="tupper"?"tupper":"bolsa de comida"}, así que ese día no comes aquí.</p>` : ""}${seg("comida", COMIDA, lockA||aw.comida)}
       ${v.comida==="bolsa" ? `<div class="hora"><label for="h_${ctx}">Hora a la que quieres la bolsa</label><input class="input" type="time" id="h_${ctx}" data-hora="${ctx}" value="${esc(v.horaBolsa)}" ${lockA?"disabled":""}></div>` : ""}
     </div>
-    <div class="q ${lockA?"bloq":""}"><h3>Cena</h3>${yn("cena", lockA)}</div>`;
+    <div class="q ${lockA?"bloq":""}"><h3>Cena${aw.cena?' <span class="tag fuera">Fuera</span>':""}</h3>${yn("cena", lockA||aw.cena)}</div>`;
 }
 
 function vistaComensal(r){
@@ -1058,22 +1114,30 @@ function vistaComensal(r){
         <button class="arrow" data-a="week" data-v="1" aria-label="Semana siguiente" ${S.weekOffset>=8?"disabled":""}>›</button>
       </div>
       ${S.weekOffset!==0?`<p class="row"><button class="link" data-a="week" data-v="0">Volver a esta semana</button></p>`:""}
+      ${ausSemanaHTML(r)}
       ${pasados.length ? `<p class="row"><button class="link" data-a="ver-pasados" aria-expanded="${!!S.verPasados}">${S.verPasados ? "Ocultar los días ya pasados" : "Ver "+(pasados.length===1?"el día ya pasado":"los "+pasados.length+" días ya pasados")+" ("+rango(pasados.length)+")"}</button></p>` : ""}
       <div class="days">${days.map(f=>{
         const ant = addDays(f,-1), A = efectiva(r.id, f), B = efectiva(r.id, ant), v = vistaDia("d:"+f);
         const lkA = locked(f), lkB = locked(ant), lk = lkA && lkB, isToday = f===today(), open = S.openDay===f;
+        const aw = {desayuno: ausEn(r.id,f,0), llevar: ausEn(r.id,ant,2), comida: ausEn(r.id,f,1), cena: ausEn(r.id,f,2)};
+        const todoFuera = !!(aw.desayuno && aw.comida && aw.cena), algoFuera = aw.desayuno || aw.comida || aw.cena;
+        const fueraTxt = !algoFuera ? "" : todoFuera ? "Fuera"+((algoFuera.motivo)?" · "+algoFuera.motivo:"")
+          : "Fuera "+["desayuno","comida","cena"].filter(k=>aw[k]).join(", ").replace(/, ([^,]*)$/," y $1");
         const manual = A.fuente==="pedido" || B.fuente==="pedido", dePlantilla = !manual && (A.fuente==="plantilla" || B.fuente==="plantilla");
         const tpl = S.plantillas[r.id] || {}, hayTpl = !!(tpl["d"+wd(f)] || tpl["d"+wd(ant)]);
-        const tag = lk ? `<span class="tag cerrado">Cerrado</span>` : (isToday || esEspecial(f)) ? `<span class="tag abierto">Hasta las ${esc(horaCierre(f))}</span>` : dePlantilla ? `<span class="tag plantilla">Plantilla</span>` : "";
+        const tag = todoFuera ? `<span class="tag fuera">Fuera</span>` : lk ? `<span class="tag cerrado">Cerrado</span>` : (isToday || esEspecial(f)) ? `<span class="tag abierto">Hasta las ${esc(horaCierre(f))}</span>` : dePlantilla ? `<span class="tag plantilla">Plantilla</span>` : "";
         return `<div class="day ${isToday?"today":""} ${lk?"locked":""}">
           <button class="day-head" data-a="openday" data-f="${f}" aria-expanded="${open}">
             <span class="day-name">${DIAS[wd(f)]}<small>${fmtDay(f)}</small></span>
-            <span class="day-sum">${esc(resumenDia(v))}</span>
+            <span class="day-sum">${todoFuera ? `<span class="fuera-t">${esc(fueraTxt)}</span>` : esc(resumenDia(v))+(algoFuera?` <span class="fuera-t">· ${esc(fueraTxt.toLowerCase())}</span>`:"")}</span>
             <span class="tagcol">${tag}</span>
           </button>
-          ${open ? `<div class="editor">
+          ${open && todoFuera ? `<div class="editor"><p class="small" style="margin:0 0 10px">Este día estás fuera (${esc(ausFueraTxt(algoFuera))}${algoFuera.motivo?": "+esc(algoFuera.motivo):""}). No se te apunta nada, aunque lo tengas en la plantilla.</p>
+            <button class="btn ghost" data-a="au-editar" data-id="${algoFuera.id}">Cambiar la ausencia</button></div>` : ""}
+          ${open && !todoFuera ? `<div class="editor">
             ${lk?`<p class="muted small">Este día ya está cerrado y la administración tiene el parte. Si necesitas un cambio, llama a alguno de los administradores.</p>`:""}
-            ${editor(v, "d:"+f, f, lkA, lkB)}
+            ${algoFuera?`<p class="small" style="margin:0 0 10px"><span class="fuera-t">${esc(fueraTxt)}</span> por tu ausencia (${esc(ausFueraTxt(algoFuera))}). <button class="link" data-a="au-editar" data-id="${algoFuera.id}">Cambiarla</button></p>`:""}
+            ${editor(v, "d:"+f, f, lkA, lkB, aw)}
             ${[A,B].some(x=>x.editadoPor) ? `<p class="editado" style="margin:0 0 6px">Modificado por ${esc((resById(([A,B].find(x=>x.editadoPor)||{}).editadoPor)||{}).nombre||"un administrador")}.</p>` : ""}
             ${!lk ? `<div class="editor-foot"><span class="muted small">${manual?"Cambiado a mano para este día.":dePlantilla?"Viene de tu plantilla fija. Cualquier cambio afecta solo a este día.":"Sin plantilla para este día."}</span>
               ${manual && hayTpl ? `<button class="btn ghost" data-a="reset" data-f="${f}">Volver a la plantilla</button>`:""}</div>`:""}
@@ -1096,6 +1160,38 @@ function vistaComensal(r){
       }).join("")}</div>`;
   }
   return main;
+}
+
+/* --- Ausencias en Mi semana --- */
+function ausSemanaHTML(r){
+  if (S.vista) return "";
+  const l = ausActivas(r.id), pl = primeraLibre();
+  const avisos = l.map(a=>`<div class="aus-av"><span class="ico" aria-hidden="true">🧳</span><div style="flex:1"><strong>Fuera ${esc(ausFueraTxt(a))}</strong>${a.motivo?` · ${esc(a.motivo)}`:""}
+      <div class="small">Te vas el ${esc(diaC(a.sal))} ${esc(ausSalidaTxt(a))} y ${esc(ausVuelveTxt(a))}.</div></div>
+      ${S.ausForm && S.ausForm.id===a.id ? "" : `<button class="link" data-a="au-editar" data-id="${a.id}">Cambiar</button>`}</div>`).join("");
+  if (!S.ausForm) return avisos + `<p class="row" style="margin:0 0 12px"><button class="btn ghost" data-a="au-nueva">🧳 Me voy unos días</button></p>`;
+  const F = S.ausForm, ya = F.id && mk(F.orig.ini,F.orig.iniM) < mk(pl.f,pl.m);
+  const sal = draft("au_sal"), salM = Number(draft("au_salm","0")), vue = draft("au_vue"), vueM = Number(draft("au_vuem","1"));
+  const segA = (k, opts, val) => `<div class="seg" role="group">${opts.map(([x,l])=>`<button class="opt" data-a="au-seg" data-k="${k}" data-v="${x}" aria-pressed="${String(val)===x}">${l}</button>`).join("")}</div>`;
+  let res = "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(sal) && /^\d{4}-\d{2}-\d{2}$/.test(vue)){
+    const i = salidaAIni(sal, salM), u = comidaAnterior(vue, vueM);
+    if (mk(vue,vueM) <= mk(i.ini,i.iniM)) res = `<span style="color:var(--danger)">La vuelta tiene que ser después de irte.</span>`;
+    else { let n = 0; for (let f=i.ini, m=i.iniM; mk(f,m) < mk(vue,vueM) && n<2000; ({f,m} = m<2 ? {f, m:m+1} : {f:addDays(f,1), m:0})) n++;
+      res = `No se te apunta nada desde ${COMIDA_DE[i.iniM]} del ${esc(diaC(i.ini))} hasta ${COMIDA_DE[u.m]} del ${esc(diaC(u.f))}, aunque lo tengas en tu plantilla (${n} ${n===1?"comida":"comidas"}). El ${esc(diaC(vue))} vuelves a ${VERBO_M[vueM]} en casa.`; }
+  }
+  return avisos + `<div class="panel aus-form">
+    <h3 style="margin-bottom:12px">${F.id ? "Cambiar la ausencia" : "Me voy unos días"}</h3>
+    ${ya ? `<p class="small" style="margin:0 0 12px">Te fuiste el ${esc(diaC(sal))} ${esc(ausSalidaTxt({salM}))}. Eso ya está cerrado: solo puedes cambiar la vuelta.</p>`
+      : `<div class="field"><label for="au_sal">Me voy</label><input class="input" type="date" id="au_sal" data-draft="au_sal" min="${today()}" value="${esc(sal)}"></div>
+    <div class="field">${segA("au_salm", SALIDA, salM)}</div>`}
+    <div class="field"><label for="au_vue">Vuelvo a comer en casa</label><input class="input" type="date" id="au_vue" data-draft="au_vue" min="${today()}" value="${esc(vue)}"></div>
+    <div class="field">${segA("au_vuem", VUELTA, vueM)}</div>
+    <div class="field"><label for="au_mot">Motivo (opcional, lo ven todos)</label><input class="input" id="au_mot" data-draft="au_mot" maxlength="60" placeholder="Convivencia en Pamplona" value="${esc(draft("au_mot",""))}"></div>
+    ${res ? `<p class="small aus-res">${res}</p>` : ""}
+    <div class="row"><button class="btn" data-a="au-guardar">Guardar ausencia</button><button class="btn ghost" data-a="au-cancelar">Cancelar</button>
+      ${F.id ? `<button class="btn danger" data-a="au-borrar">${ya ? "Quitar desde ahora" : "Quitar la ausencia"}</button>` : ""}</div>
+  </div>`;
 }
 
 /* --- Parte del día --- */
@@ -1156,6 +1252,7 @@ function parteHTML(f, anon, sinAvisos){
   const llevarNombres = !anon && (d.tupper.length+d.bolsaM.length) ? `<ul class="list">${[...d.tupper,...d.bolsaM].map(o=>`<li>${esc(o.r.nombre)}: ${o.sel.llevar==="tupper"?"tupper":"bolsa de comida"}</li>`).join("")}</ul>` : "";
   return `
     <div class="status ${lk?"def":"prov"}">${lk ? "Parte cerrado. Es el definitivo." : `Provisional: puede cambiar hasta las ${esc(horaCierre(f))} del ${fmtLong(f).toLowerCase()}.`}</div>
+    ${ausParteHTML(f, anon)}
     ${d.avisos.length && !sinAvisos ? `<div class="alert"><strong>Avisos para este parte</strong>${d.avisos.map(t=>`<p style="margin:6px 0 0">${esc(t).replace(/\n/g,"<br>")}</p>`).join("")}</div>` : ""}
     <div class="blocks">
       <section class="block"><h3>Comida (${totalComida})</h3>
@@ -1173,6 +1270,14 @@ function parteHTML(f, anon, sinAvisos){
       <tbody>${d.filas.map(o=>`<tr class="fila-ed" data-a="ed-abrir" data-id="${o.r.id}" data-f="${f}"><td><span class="lapiz" aria-hidden="true">✎</span> ${esc(o.r.nombre)}${o.editadoPor?' <span class="editado">Corregido</span>':""}${o.r.regimen?`<span class="regcell">${esc(o.r.regimen)}${esc(regAmbito(o.r))} (${esc(iniciales(o.r))})</span>`:""}</td>
         <td>${o.sel.comida==="no"?"—":esc(comidaTxt(o.sel))}</td><td>${o.sel.cena?"Sí":"—"}</td><td>${o.sel.desayuno?"Sí":"—"}</td>
         <td>${o.sel.llevar==="nada"?"—":(o.sel.llevar==="tupper"?"Tupper":"Bolsa")}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No hay comensales activos.</div>`}`}`;
+}
+/* Quién está fuera en lo que cubre el parte del día f: comida y cena de f y desayuno de f+1 */
+function ausParteHTML(f, anon){
+  const l = activos().map(r=>({r, a: ausEn(r.id,f,1) || ausEn(r.id,f,2) || ausEn(r.id,addDays(f,1),0)})).filter(x=>x.a);
+  if (!l.length) return "";
+  const txt = (a) => { const t = ausEstadoTxt(a, f); return t.charAt(0).toLowerCase()+t.slice(1); };
+  return `<div class="aus-av" style="display:block"><strong>🧳 ${l.length===1?"1 residente fuera de casa":l.length+" residentes fuera de casa"}</strong>
+    ${l.sort((x,y)=>(anon?iniciales(x.r):String(x.r.nombre||"")).localeCompare(anon?iniciales(y.r):String(y.r.nombre||""),"es")).map(x=>`<div class="small" style="margin-top:4px"><b>${esc(anon?iniciales(x.r):(x.r.nombre||""))}</b>: ${esc(txt(x.a).replace(/^fuera · /,""))}</div>`).join("")}</div>`;
 }
 function parteView(){
   const f = S.parteFecha, anon = verAnon();
@@ -2182,13 +2287,16 @@ function quienComeView(){
   const f = S.qcFecha || today(), d = datosParte(f), lk = locked(f);
   const ex = extrasDe(f), ads = S.adscritos[f] || {};
   const desHoy = id => efectiva(id, addDays(f,-1)).sel.desayuno, nDes = d.filas.filter(o=>desHoy(o.r.id)).length;
-  const cuenta = k => d.filas.filter(o=>o.sel.comida===k).length;
+  const fueraR = id => fueraEnDia(id, f), fuera = d.filas.filter(o=>fueraR(o.r.id));
+  const pasa = (o, k) => k==="fuera" ? !!fueraR(o.r.id) : k==="no" ? o.sel.comida==="no" && !ausEn(o.r.id,f,1) : o.sel.comida===k;
+  const cuenta = k => d.filas.filter(o=>pasa(o,k)).length;
   const nCom = d.filas.filter(o=>o.sel.comida!=="no").length;
   const fil = S.qcFiltro, ord = S.qcOrden || {col:"persona", dir:1};
   const ORDEN_COM = {primer:0, normal:1, segundo:2, bolsa:3, no:4};
   const clave = o => ord.col==="desay" ? (desHoy(o.r.id)?0:1) : ord.col==="comida" ? ORDEN_COM[o.sel.comida] : ord.col==="cena" ? (o.sel.cena?0:1) : 0;
-  const filas = d.filas.filter(o=>!fil || o.sel.comida===fil)
-    .sort((a,b)=> ((clave(a)-clave(b))*ord.dir) || String(a.r.nombre||"").localeCompare(String(b.r.nombre||""),"es")*(ord.col==="persona"?ord.dir:1));
+  const filas = d.filas.filter(o=>!fil || pasa(o,fil))
+    .sort((a,b)=> ((fueraR(a.r.id)?1:0)-(fueraR(b.r.id)?1:0)) || ((clave(a)-clave(b))*ord.dir) || String(a.r.nombre||"").localeCompare(String(b.r.nombre||""),"es")*(ord.col==="persona"?ord.dir:1));
+  const fz = `<span class="fuera-t">Fuera</span>`;
   const marca = v => v ? "Sí" : '<span class="muted">No</span>';
   const exCom = (ex.primer||0)+(ex.normal||0)+(ex.segundo||0)+sumaBolsas(ex.bolsas), adsCom = (ads.normal||0)+(ads.segundo||0);
   const extraTxt = [exCom ? exCom+" comensal"+(exCom>1?"es":"")+" extra" : "", adsCom ? adsCom+" adscrito"+(adsCom>1?"s":"")+" ("+[ads.normal?ads.normal+" normal":"", ads.segundo?ads.segundo+" 2.º turno":""].filter(Boolean).join(", ")+")" : "", (ex.cena||0) ? ex.cena+" extra en la cena" : ""].filter(Boolean).join(", ");
@@ -2201,17 +2309,22 @@ function quienComeView(){
     </div>
     ${f!==today()?`<p class="row"><button class="link" data-a="qcday" data-v="0">Ir a hoy</button></p>`:""}
     <div class="status ${lk?"def":"prov"}">${lk ? "Cerrado: así queda el día." : `Provisional: puede cambiar hasta las ${esc(horaCierre(f))}.`}</div>
-    <div class="blocks" style="grid-template-columns:repeat(3,1fr);gap:8px">
+    <div class="blocks" style="grid-template-columns:repeat(${fuera.length?4:3},1fr);gap:8px">
       <section class="block" style="padding:10px 12px;text-align:center"><div class="muted small">Comen</div><b style="font-family:var(--head);font-size:28px">${nCom}</b></section>
       <section class="block" style="padding:10px 12px;text-align:center"><div class="muted small">Cenan</div><b style="font-family:var(--head);font-size:28px">${d.cena[0].length}</b></section>
       <section class="block" style="padding:10px 12px;text-align:center"><div class="muted small">Desayunan</div><b style="font-family:var(--head);font-size:28px">${nDes}</b></section>
+      ${fuera.length ? `<section class="block aus-blk" style="padding:10px 6px;text-align:center"><div class="small">Fuera</div><b style="font-family:var(--head);font-size:28px">${fuera.length}</b></section>` : ""}
     </div>
+    ${fuera.length ? `<div class="aus-av" style="display:block"><strong>🧳 Fuera de casa ${f===today()?"hoy":"este día"}</strong>${fuera.sort((a,b)=>String(a.r.nombre||"").localeCompare(String(b.r.nombre||""),"es")).map(o=>{ const a = fueraR(o.r.id);
+      return `<div class="small" style="margin-top:4px"><b>${esc(o.r.nombre||"")}</b> · ${esc(ausEstadoTxt(a,f).replace(/^Fuera · /,""))}${a.motivo?` <span class="muted">(${esc(a.motivo)})</span>`:""}</div>`; }).join("")}</div>` : ""}
     <p class="small" style="margin:-10px 0 6px;font-weight:700">Comida por turnos <span class="muted" style="font-weight:400">(toca para ver solo a esas personas)</span></p>
-    <div class="chips-f">${chip("todos","Todos",d.filas.length)}${chip("primer","1.er turno",cuenta("primer"))}${chip("normal","Normal",cuenta("normal"))}${chip("segundo","2.º turno",cuenta("segundo"))}${chip("bolsa","En bolsa",cuenta("bolsa"))}${chip("no","No comen",cuenta("no"))}</div>
+    <div class="chips-f">${chip("todos","Todos",d.filas.length)}${chip("primer","1.er turno",cuenta("primer"))}${chip("normal","Normal",cuenta("normal"))}${chip("segundo","2.º turno",cuenta("segundo"))}${chip("bolsa","En bolsa",cuenta("bolsa"))}${chip("no","No comen",cuenta("no"))}${fuera.length?chip("fuera","Fuera",fuera.length):""}</div>
     ${extraTxt ? `<p class="muted small" style="margin:4px 0 12px">Además: ${esc(extraTxt)}.</p>` : ""}
     ${filas.length ? `<div class="tablewrap"><table class="tabla-qc">
       <thead><tr>${th("persona","Persona")}${th("desay","Desay.")}${th("comida","Comida")}${th("cena","Cena")}</tr></thead>
-      <tbody>${filas.map(o=>`<tr${o.r.id===S.session.uid?' style="background:var(--soft)"':""}><td>${esc(o.r.nombre||"")}</td><td>${marca(desHoy(o.r.id))}</td><td>${o.sel.comida==="no" ? '<span class="muted">No</span>' : esc(comidaTxt(o.sel))}</td><td>${marca(o.sel.cena)}</td></tr>`).join("")}</tbody></table></div>`
+      <tbody>${filas.map(o=>{ const id = o.r.id, a = fueraR(id), yo = id===S.session.uid?' style="background:var(--soft)"':"";
+        if (a && fueraDelTodo(id,f)) return `<tr${yo}><td>${esc(o.r.nombre||"")}</td><td colspan="3"><span class="fuera-c">🧳 ${esc(ausEstadoTxt(a,f))}</span></td></tr>`;
+        return `<tr${yo}><td>${esc(o.r.nombre||"")}</td><td>${ausEn(id,f,0)?fz:marca(desHoy(id))}</td><td>${ausEn(id,f,1)?fz:o.sel.comida==="no" ? '<span class="muted">No</span>' : esc(comidaTxt(o.sel))}</td><td>${ausEn(id,f,2)?fz:marca(o.sel.cena)}</td></tr>`; }).join("")}</tbody></table></div>`
       : `<div class="empty">Nadie en este grupo.</div>`}
 `;
 }
@@ -2259,6 +2372,13 @@ const NOVEDADES = [
     const me = resById(S.session && S.session.uid);
     if (!(rol==="residente" || (rol==="admin" && me && esComensal(me)))) return [];
     return [["Recordatorio antes del cierre", [ "Si tienes los avisos del móvil activados y ese día no tienes nada apuntado, media hora antes del cierre te llegará un recordatorio.", "Si tienes la "+"<b>plantilla fija</b>"+" rellena para ese día, no te llegará.", "Se puede quitar en el "+"<b>círculo de tus iniciales → «Avisos en el móvil»</b>"+"." ]]]; }}
+  ,{id:"2026.11.28", de: rol => {
+    const b = s => "<b>"+s+"</b>", me = resById(S.session && S.session.uid), com = rol==="residente" || (rol==="admin" && me && esComensal(me));
+    const l = [];
+    if (com) l.push(["Me voy unos días", [ "Si vas a estar fuera varios días, en "+b("Mi semana")+" toca "+b("«Me voy unos días»")+": pon cuándo te vas y para qué comida vuelves.", "Esos días no se te apunta nada, aunque lo tengas en la plantilla, y tu plantilla sigue igual para cuando vuelvas.", "En "+b("Quién come")+" se ve quién está fuera de casa y cuándo vuelve." ]]);
+    if (rol==="admin" && !com) l.push(["Ausencias de varios días", [ "Los residentes pueden marcar que se van unos días. En el "+b("Parte del día")+" verás quién está fuera de casa y cuándo vuelve." ]]);
+    if (rol==="cocina") l.push(["Residentes fuera de casa", [ "Arriba del "+b("Parte del día")+" sale quién está fuera de casa esos días (con iniciales) y cuándo vuelve." ]]);
+    return l; }}
 ];
 const NOV_ID = NOVEDADES[NOVEDADES.length-1].id;
 function novedadesDe(rol, desde){ return NOVEDADES.filter(n=>!desde || n.id > desde).flatMap(n=>n.de(rol)); }
@@ -2284,6 +2404,7 @@ function guiaDe(rol){
     ["La hora límite", [ "Puedes cambiar el día hasta las "+b("9:30")+" (10:30 los sábados y domingos). Algún día, como un festivo, puede ser más tarde: la ficha te lo indica.", "El "+b("desayuno y el tupper o bolsa")+" de un día se cierran "+b("la víspera")+", porque se preparan la noche anterior.", "Lo que ya no se puede cambiar sale "+b("en gris")+".", "¿Se te ha pasado la hora? "+b("Llama a alguno de los administradores")+"." ]],
     ["Tupper o bolsa de comida", [ "Si te llevas tupper o bolsa de comida, ese día "+b("no comes aquí")+": la comida se marca sola como «No como».", "Si luego eliges un turno de comida, el tupper se quita solo." ]],
     ["Plantilla fija", [ "Está en "+b("Más → Plantilla fija")+". Rellénala una vez y se aplica sola cada semana.", "Si un día cambias de plan, cámbialo en Semana: solo afecta a ese día. Con «Volver a la plantilla» lo dejas como siempre." ]],
+    ["Me voy unos días", [ "En "+b("Mi semana")+", toca "+b("«Me voy unos días»")+": pon cuándo te vas y para qué comida vuelves a casa.", "Esos días no se te apunta nada, aunque lo tengas en tu plantilla. La plantilla no se borra: al volver sigue igual.", "Para cambiarla o quitarla, toca "+b("«Cambiar»")+" en el aviso de arriba de la semana.", "Los demás lo ven en "+b("Quién come")+", y la administración en el Parte del día." ]],
     ["Quién come", [ "Ves cada día cuántos comen, cenan y desayunan, y quién.", "Toca un turno (por ejemplo, «Normal») para ver solo a esas personas, y toca los encabezados de la tabla para ordenarla." ]],
     ["Calendario", [ "Eventos de la residencia y cumpleaños. "+b("Toca un día")+" para ver lo que hay.", "Puedes "+b("proponer un evento")+": aparecerá cuando lo apruebe un administrador. No escribas nombres." ]],
     ["Mensajes y avisos", [ "Arriba verás los "+b("avisos de los administradores")+"; el número de la barra te avisa de los nuevos.", "Puedes escribir a los administradores: verás si lo han leído y cuándo está resuelto. Las conversaciones se borran al mes." ]],
@@ -2735,6 +2856,10 @@ async function guardarSel(ctx, sel){
   if (ctx.startsWith("d:")){
     const f = ctx.slice(2);
     if (locked(f)){ toast("Ya no se puede cambiar: está cerrado."); return; }
+    { const ms = mascara(rid,f), raw = efectivaBase(rid,f).sel; sel = {...sel};
+      if (ms.com){ sel.comida = raw.comida; sel.horaBolsa = raw.horaBolsa; }
+      if (ms.cen){ sel.cena = raw.cena; sel.llevar = raw.llevar; }
+      if (ms.des) sel.desayuno = raw.desayuno; }
     const id = f+"_"+rid, base = norm((S.plantillas[rid]||{})["d"+wd(f)]), K = ["comida","horaBolsa","cena","desayuno","llevar"];
     if (K.every(k=>String(sel[k])===String(base[k]))){ delete S.pedidos[id]; render(); await w(()=>S.db.doc("pedidos/"+id).delete()); return; }
     const doc = {fecha:f, residente:rid, ...sel, ts:Date.now()};
@@ -2765,6 +2890,7 @@ document.addEventListener("input", e => {
 document.addEventListener("change", e => {
   if (e.target.id==="ef_fecha"){ if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){ S.efFecha = e.target.value; window.scrollTo(0,0); render(); } return; }
   if (e.target.tagName==="SELECT" && e.target.dataset.draft){ S.drafts[e.target.dataset.draft] = e.target.value; return; }
+  if (e.target.type==="date" && /^au_(sal|vue)$/.test(e.target.dataset.draft||"")){ S.drafts[e.target.dataset.draft] = e.target.value; render(); return; }
   if (e.target.type==="date" && /^(nb|cb)_f$/.test(e.target.dataset.draft||"")){ S.drafts[e.target.dataset.draft] = e.target.value; delete S.drafts[e.target.dataset.draft.slice(0,2)+"_ok"]; render(); return; }
   const ctx = e.target.dataset && e.target.dataset.hora;
   if (ctx) guardarSel(ctx, {...selDe(ctx), horaBolsa:e.target.value});
@@ -2781,6 +2907,7 @@ document.addEventListener("keydown", e => {
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-a]");
   if (!b || b.disabled) return;
+  if (b.dataset.fuera==="1"){ toast("Ese día estás fuera. Si cambias de planes, toca «Cambiar» en tu ausencia, arriba de la semana."); return; }
   if (b.getAttribute("aria-disabled")==="true"){ toast("Esto ya está cerrado: no se puede cambiar. Si lo necesitas, llama a un administrador."); return; }
   act(b.dataset.a, b);
 });
@@ -2932,6 +3059,44 @@ async function act(a, b){
       break;
     case "week": S.weekOffset = v==="0" ? 0 : S.weekOffset + Number(v); S.openDay=null; S.verPasados=false; break;
     case "ver-pasados": S.verPasados = !S.verPasados; if (!S.verPasados && S.openDay && S.openDay<today()) S.openDay=null; break;
+    case "au-nueva": {
+      const f0 = addDays(proxParte(),1);
+      S.ausForm = {id:null}; Object.assign(S.drafts, {au_sal:f0, au_salm:"0", au_vue:addDays(f0,6), au_vuem:"1", au_mot:""}); break;
+    }
+    case "au-editar": {
+      const a = (S.ausencias||{})[b.dataset.id]; if (!a) return;
+      S.ausForm = {id:a.id, orig:a}; S.openDay = null;
+      Object.assign(S.drafts, {au_sal:a.sal, au_salm:String(a.salM), au_vue:a.vue, au_vuem:String(a.vueM), au_mot:a.motivo||""});
+      window.scrollTo(0,0); break;
+    }
+    case "au-seg": S.drafts[b.dataset.k] = v; break;
+    case "au-cancelar": S.ausForm = null; break;
+    case "au-guardar": {
+      const F = S.ausForm; if (!F) return;
+      const uid = S.session.uid, pl = primeraLibre(), kPl = mk(pl.f,pl.m), libreTxt = COMIDA_DE[pl.m]+" del "+diaC(pl.f);
+      const sal = draft("au_sal"), salM = Number(draft("au_salm","0")), vue = draft("au_vue"), vueM = Number(draft("au_vuem","1"));
+      const motivo = String(draft("au_mot","")).trim().slice(0,60), okF = x => /^\d{4}-\d{2}-\d{2}$/.test(x||"");
+      if (!okF(sal) || !okF(vue)){ toast("Pon el día en que te vas y el día en que vuelves."); return; }
+      const {ini, iniM} = salidaAIni(sal, salM), kI = mk(ini,iniM), kV = mk(vue,vueM);
+      if (kV <= kI){ toast("La vuelta tiene que ser después de irte."); return; }
+      if (vue > addDays(today(), 200)){ toast("La vuelta no puede ser dentro de más de seis meses."); return; }
+      const o = F.id ? F.orig : null, mismaSalida = o && o.ini===ini && o.iniM===iniM;
+      if (!mismaSalida && (kI < kPl || (o && mk(o.ini,o.iniM) < kPl))){ toast("Eso ya está cerrado. Lo primero que puedes tachar es "+libreTxt+"."); return; }
+      if (o && mismaSalida && kV!==mk(o.vue,o.vueM) && (kV < mk(o.vue,o.vueM) ? kV : mk(o.vue,o.vueM)) < kPl){ toast("Eso ya está cerrado. Lo primero que puedes cambiar es "+libreTxt+"."); return; }
+      if (ausDe(uid).some(a => a.id!==F.id && mk(a.ini,a.iniM) < kV && kI < mk(a.vue,a.vueM))){ toast("Ya tienes otra ausencia en esos días. Cámbiala en lugar de crear una nueva."); return; }
+      const id = F.id || newId("au"), doc = {id, uid, sal, salM, ini, iniM, vue, vueM, motivo, ts:Date.now()};
+      S.ausForm = null;
+      await guardarAus(uid, ausDe(uid).filter(a=>a.id!==id).concat([doc]));
+      toast("Ausencia guardada: "+ausFueraTxt(doc)+"."); return;
+    }
+    case "au-borrar": {
+      const F = S.ausForm; if (!F || !F.id) return;
+      const o = F.orig, pl = primeraLibre(), kPl = mk(pl.f,pl.m);
+      const uid = S.session.uid;
+      if (mk(o.ini,o.iniM) >= kPl){ S.ausForm = null; await guardarAus(uid, ausDe(uid).filter(a=>a.id!==o.id)); toast("Ausencia quitada."); return; }
+      if (mk(o.vue,o.vueM) > kPl){ S.ausForm = null; await guardarAus(uid, ausDe(uid).map(a=>a.id===o.id ? {...a, vue:pl.f, vueM:pl.m, ts:Date.now()} : a)); toast("Hecho: desde "+COMIDA_DE[pl.m]+" del "+diaC(pl.f)+" vuelve a contar tu semana y tu plantilla."); return; }
+      S.ausForm = null; break;
+    }
     case "openday": S.openDay = S.openDay===b.dataset.f ? null : b.dataset.f; break;
     case "openwd": S.openWd = S.openWd===Number(v) ? null : Number(v); break;
     case "set": {
